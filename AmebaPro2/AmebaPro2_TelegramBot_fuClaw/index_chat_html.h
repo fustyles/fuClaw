@@ -364,8 +364,8 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   <div class="messages" id="messages">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">&#10022;</div>
-      <div class="empty-title">開始與 Gemini 對話</div>
-      <div class="empty-hint">輸入訊息後按送出<br>fuClaw 將呼叫 Gemini AI</div>
+      <div class="empty-title">Start a conversation with Gemini</div>
+      <div class="empty-hint">Enter your message and click Send.<br>fuClaw will invoke Gemini AI.</div>
     </div>
   </div>
 
@@ -373,10 +373,10 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     <div class="input-wrap">
       <textarea
         id="msgInput"
-        placeholder="輸入訊息… (Shift+Enter 換行)"
+        placeholder="Type a message... (Shift+Enter for a new line)"
         rows="1"
       ></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="送出">
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/>
           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -384,7 +384,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       </button>
     </div>
     <div class="input-hint">
-      <kbd>Enter</kbd> 送出 &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> 換行
+      <kbd>Enter</kbd> Send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> New Line
     </div>
   </div>
 
@@ -525,7 +525,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       })
       .catch(function(err) {
         hideTyping();
-        showError('無法連線至裝置 (' + err.message + ')');
+        showError('Cannot connect to the device. (' + err.message + ')');
       })
       .finally(function() {
         isWaiting = false;

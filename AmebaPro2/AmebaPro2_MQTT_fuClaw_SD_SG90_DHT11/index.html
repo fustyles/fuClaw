@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>fuClaw AI Agent — MQTT 系統參數設定</title>
+<title>fuClaw AI Agent — System Settings</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -265,9 +265,9 @@
     </div>
     <div class="tagline">AI Agent &nbsp;·&nbsp; MQTT System Configuration</div>
     <div class="chips">
-      <span class="chip"><span class="chip-dot"></span>線上設定</span>
-      <span class="chip">&#128274; 安全傳輸</span>
-      <span class="chip">&#128200; MQTT v1.0</span>
+      <span class="chip"><span class="chip-dot"></span>Online Settings</span>
+      <span class="chip">&#128274; Secure Transmission</span>
+      <span class="chip">&#128200; v1.0</span>
     </div>
   </header>
 
@@ -275,13 +275,13 @@
 
     <!-- Wi-Fi -->
     <div class="section-label">
-      <span class="sl-icon sl-blue">&#128246;</span>Wi-Fi 網路設定
+      <span class="sl-icon sl-blue">&#128246;</span>Wi-Fi Settings
     </div>
 
     <div class="field">
       <div class="field-header">
         <label for="wifi_ssid">SSID &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">無線網路名稱</span>
+        <span class="field-hint">Wi-Fi Name</span>
       </div>
       <div class="input-wrap">
         <input type="text" id="wifi_ssid" value="wifiSsid" placeholder="MyHomeNetwork" autocomplete="off" spellcheck="false">
@@ -291,8 +291,8 @@
 
     <div class="field">
       <div class="field-header">
-        <label for="wifi_pass">密碼 &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Wi-Fi 密碼</span>
+        <label for="wifi_pass">Password &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">Wi-Fi Password</span>
       </div>
       <div class="input-wrap">
         <input type="password" id="wifi_pass" value="wifiPassword" placeholder="••••••••••••" autocomplete="off">
@@ -303,14 +303,14 @@
 
     <!-- MQTT Server -->
     <div class="section-label">
-      <span class="sl-icon sl-amber">&#128200;</span>MQTT Broker 設定
+      <span class="sl-icon sl-amber">&#128200;</span>MQTT Broker Settings
     </div>
 
     <div class="field-grid">
       <div class="field">
         <div class="field-header">
           <label for="mqtt_server">Server &nbsp;<span style="color:var(--danger)">*</span></label>
-          <span class="field-hint">Broker IP / 網域</span>
+          <span class="field-hint">Broker IP / Domain</span>
         </div>
         <div class="input-wrap">
           <input type="text" id="mqtt_server" value="mqttServer" placeholder="192.168.1.100" autocomplete="off" spellcheck="false">
@@ -321,7 +321,7 @@
       <div class="field">
         <div class="field-header">
           <label for="mqtt_port">Port &nbsp;<span style="color:var(--danger)">*</span></label>
-          <span class="field-hint">預設 1883</span>
+          <span class="field-hint">Port: 1883 (Default)</span>
         </div>
         <div class="input-wrap">
           <input type="number" id="mqtt_port" value="mqttPort" placeholder="1883" min="1" max="65535" autocomplete="off">
@@ -334,7 +334,7 @@
       <div class="field">
         <div class="field-header">
           <label for="mqtt_user">Username</label>
-          <span class="field-hint">選填</span>
+          <span class="field-hint">(Optional)</span>
         </div>
         <div class="input-wrap">
           <input type="text" id="mqtt_user" value="mqttUser" placeholder="mqtt_user" autocomplete="off" spellcheck="false">
@@ -345,7 +345,7 @@
       <div class="field">
         <div class="field-header">
           <label for="mqtt_password">Password</label>
-          <span class="field-hint">選填</span>
+          <span class="field-hint">(Optional)</span>
         </div>
         <div class="input-wrap">
           <input type="password" id="mqtt_password" value="mqttPassword" placeholder="••••••••" autocomplete="off">
@@ -357,7 +357,7 @@
 
     <!-- MQTT Topics -->
     <div class="section-label">
-      <span class="sl-icon sl-cyan">&#128257;</span>MQTT Topic 設定
+      <span class="sl-icon sl-cyan">&#128257;</span>MQTT Topic Settings
     </div>
 
     <div class="field">
@@ -401,7 +401,7 @@
     <div class="field">
       <div class="field-header">
         <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Google AI Studio 金鑰</span>
+        <span class="field-hint">Google AI Studio API Key</span>
       </div>
       <div class="input-wrap">
         <input type="password" id="gemini_key" value="geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
@@ -412,13 +412,13 @@
 
     <!-- Timezone -->
     <div class="section-label">
-      <span class="sl-icon sl-green">&#127758;</span>時區設定
+      <span class="sl-icon sl-green">&#127758;</span>Timezone Settings
     </div>
 
     <div class="field">
       <div class="field-header">
         <label for="timezone">Timezone</label>
-        <span class="field-hint">裝置本地時區</span>
+        <span class="field-hint">Device Local Time Zone</span>
       </div>
       <div class="select-wrap">
         <span class="select-icon">&#127758;</span>
@@ -522,7 +522,7 @@
     <!-- submit -->
     <div class="btn-row">
       <button class="btn-submit" onclick="sendConfig()">
-        <span>儲存並送出至裝置</span>
+        <span>Save & Send to Device</span>
         <span>→</span>
       </button>
     </div>
@@ -532,7 +532,7 @@
 
   </div><!-- /card -->
 
-  <footer>fuClaw AI Agent &nbsp;·&nbsp; ESP32 MQTT Config Portal &nbsp;·&nbsp; v1.0</footer>
+  <footer>fuClaw AI Agent &nbsp;·&nbsp; Config Portal &nbsp;·&nbsp; v1.0</footer>
 
 </div>
 
@@ -567,14 +567,14 @@
   }
 
   function validate(cfg) {
-    if (!cfg.wifi_ssid)               return 'Wi-Fi SSID 不可為空';
-    if (!cfg.wifi_pass)               return 'Wi-Fi 密碼不可為空';
-    if (!cfg.mqtt_server)             return 'MQTT Server 不可為空';
-    if (!cfg.mqtt_port)               return 'MQTT Port 不可為空';
-    if (!cfg.mqtt_subscribeTextTopic) return 'Subscribe Text Topic 不可為空';
-    if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic 不可為空';
-    if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic 不可為空';
-    if (!cfg.gemini_apikey)           return 'Gemini API Key 不可為空';
+	if (!cfg.wifi_ssid)               return 'Wi-Fi SSID cannot be empty';
+	if (!cfg.wifi_pass)               return 'Wi-Fi password cannot be empty';
+	if (!cfg.mqtt_server)             return 'MQTT Server cannot be empty';
+	if (!cfg.mqtt_port)               return 'MQTT Port cannot be empty';
+	if (!cfg.mqtt_subscribeTextTopic) return 'Subscribe Text Topic cannot be empty';
+	if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic cannot be empty';
+	if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic cannot be empty';
+	if (!cfg.gemini_apikey)           return 'Gemini API Key cannot be empty';
     return null;
   }
 
@@ -603,7 +603,7 @@
         showToast('✔ ' + txt, 'success');
         setTimeout(() => location.reload(), 3000);
       })
-      .catch(() => showToast('⚠ 無法連線至裝置，JSON 預覽已顯示於下方。', 'error'));
+      .catch(() => showToast('⚠ Unable to connect to the device. JSON preview is shown below.', 'error'));
   }
 </script>
 </body>

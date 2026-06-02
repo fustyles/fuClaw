@@ -3,14 +3,14 @@
 
 const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Web Page Manager</title>
+<title>fuClaw — Gemini Chat</title>
 <style>
   :root {
-    --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
     --font-mono: 'Courier New', Courier, monospace;
     --bg:        #f5f7ff;
     --surface:   #ffffff;
@@ -352,7 +352,8 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       </svg>
     </div>
     <div>
-      <div class="header-title">Web Page Manager</div>
+      <div class="header-title">fuClaw</div>
+      <div class="header-sub">Gemini AI Agent</div>
     </div>
     <div class="header-status">
       <div class="status-dot" id="statusDot"></div>
@@ -363,7 +364,8 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   <div class="messages" id="messages">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">&#10022;</div>
-      <div class="empty-hint">Type a message and press Send</div>
+      <div class="empty-title">Start a conversation with Gemini</div>
+      <div class="empty-hint">Enter your message and click Send.<br>fuClaw will invoke Gemini AI.</div>
     </div>
   </div>
 
@@ -371,7 +373,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     <div class="input-wrap">
       <textarea
         id="msgInput"
-        placeholder="Type a message… (Shift+Enter for new line)"
+        placeholder="Type a message... (Shift+Enter for a new line)"
         rows="1"
       ></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
@@ -382,7 +384,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       </button>
     </div>
     <div class="input-hint">
-      <kbd>Enter</kbd> to send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line
+      <kbd>Enter</kbd> Send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> New Line
     </div>
   </div>
 
@@ -427,7 +429,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       .replace(/"/g,'&quot;');
   }
 
-  function appendMsg(role, text, time) {
+  function appendMsg(role, text, time, isHtml) {
     if (emptyState) emptyState.style.display = 'none';
 
     var msg = document.createElement('div');
@@ -435,11 +437,13 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 
     var avatarChar = role === 'user' ? 'U' : 'AI';
     var avatarCls  = role === 'user' ? 'user-av' : 'ai-av';
+	
+	var content = isHtml ? text : escHtml(text);
 
     msg.innerHTML =
       '<div class="msg-row">' +
         '<div class="avatar ' + avatarCls + '">' + avatarChar + '</div>' +
-        '<div class="bubble">' + escHtml(text) + '</div>' +
+        '<div class="bubble">' + content + '</div>' +
       '</div>' +
       '<div class="msg-time">' + time + '</div>';
 
@@ -514,11 +518,14 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       })
       .then(function(reply) {
         hideTyping();
-        appendMsg('ai', reply, nowStr());
+		if (reply.indexOf("data:image")!=-1)
+			appendMsg('ai', reply, nowStr(), true);
+		else
+			appendMsg('ai', reply, nowStr());
       })
       .catch(function(err) {
         hideTyping();
-        showError('Unable to connect to device (' + err.message + ')');
+        showError('Cannot connect to the device. (' + err.message + ')');
       })
       .finally(function() {
         isWaiting = false;

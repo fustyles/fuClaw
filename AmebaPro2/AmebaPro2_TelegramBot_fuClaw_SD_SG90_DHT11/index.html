@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>fuClaw AI Agent — 系統參數設定</title>
+<title>fuClaw AI Agent — System Settings</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -400,8 +400,8 @@
     </div>
     <div class="tagline">AI Agent &nbsp;·&nbsp; System Configuration</div>
     <div class="chips">
-      <span class="chip"><span class="chip-dot"></span>線上設定</span>
-      <span class="chip">&#128274; 安全傳輸</span>
+      <span class="chip"><span class="chip-dot"></span>Online Settings</span>
+      <span class="chip">&#128274; Secure Transmission</span>
       <span class="chip">&#9881; v1.0</span>
     </div>
   </header>
@@ -410,13 +410,13 @@
 
     <!-- Wi-Fi -->
     <div class="section-label">
-      <span class="sl-icon sl-blue">&#128246;</span>Wi-Fi 網路設定
+      <span class="sl-icon sl-blue">&#128246;</span>Wi-Fi Settings
     </div>
 
     <div class="field">
       <div class="field-header">
         <label for="wifi_ssid">SSID &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">無線網路名稱</span>
+        <span class="field-hint">Wi-Fi Name</span>
       </div>
       <div class="input-wrap">
         <input type="text" id="wifi_ssid" value= "wifiSsid" placeholder="MyHomeNetwork" autocomplete="off" spellcheck="false">
@@ -426,8 +426,8 @@
 
     <div class="field">
       <div class="field-header">
-        <label for="wifi_pass">密碼 &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Wi-Fi 密碼</span>
+        <label for="wifi_pass">Password &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">Wi-Fi Password</span>
       </div>
       <div class="input-wrap">
         <input type="password" id="wifi_pass" value= "wifiPassword" placeholder="••••••••••••" autocomplete="off">
@@ -444,7 +444,7 @@
     <div class="field">
       <div class="field-header">
         <label for="tg_token">Bot Token &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">從 @BotFather 取得</span>
+        <span class="field-hint">Get it from @BotFather</span>
       </div>
       <div class="input-wrap">
         <input type="password" id="tg_token" value= "telegrambotToken" placeholder="123456789:AAxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
@@ -456,7 +456,7 @@
     <div class="field">
       <div class="field-header">
         <label for="tg_chatid">Chat ID &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">目標聊天室或用戶 ID</span>
+        <span class="field-hint">Target Chat or User ID</span>
       </div>
       <div class="input-wrap">
         <input type="text" id="tg_chatid" value= "telegrambotChatId" placeholder="-100xxxxxxxxxx" autocomplete="off" spellcheck="false">
@@ -472,7 +472,7 @@
     <div class="field">
       <div class="field-header">
         <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Google AI Studio 金鑰</span>
+        <span class="field-hint">Google AI Studio API Key</span>
       </div>
       <div class="input-wrap">
         <input type="password" id="gemini_key" value= "geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
@@ -483,13 +483,13 @@
 
     <!-- Timezone -->
     <div class="section-label">
-      <span class="sl-icon sl-green">&#127758;</span>時區設定
+      <span class="sl-icon sl-green">&#127758;</span>Timezone Settings
     </div>
 
     <div class="field">
       <div class="field-header">
         <label for="timezone">Timezone</label>
-        <span class="field-hint">裝置本地時區</span>
+        <span class="field-hint">Device Local Time Zone</span>
       </div>
       <div class="select-wrap">
         <span class="select-icon">&#127758;</span>
@@ -593,7 +593,7 @@
     <!-- submit -->
     <div class="btn-row">
       <button class="btn-submit" onclick="sendConfig()">
-        <span>儲存並送出至裝置</span>
+        <span>Save & Send to Device</span>
         <span class="arrow">→</span>
       </button>
     </div>
@@ -603,7 +603,7 @@
 
   </div><!-- /card -->
 
-  <footer>fuClaw AI Agent &nbsp;·&nbsp; ESP32 Config Portal &nbsp;·&nbsp; v1.0</footer>
+  <footer>fuClaw AI Agent &nbsp;·&nbsp; Config Portal &nbsp;·&nbsp; v1.0</footer>
 
 </div>
 
@@ -633,11 +633,11 @@
   }
 
   function validate(cfg) {
-    if (!cfg.wifi_ssid)          return 'Wi-Fi SSID 不可為空';
-    if (!cfg.wifi_pass)          return 'Wi-Fi 密碼不可為空';
-    if (!cfg.telegramBot_token)  return 'Telegram Bot Token 不可為空';
-    if (!cfg.telegramBot_chatID) return 'Telegram Chat ID 不可為空';
-    if (!cfg.gemini_apikey)      return 'Gemini API Key 不可為空';
+	if (!cfg.wifi_ssid)          return 'Wi-Fi SSID cannot be empty';
+	if (!cfg.wifi_pass)          return 'Wi-Fi password cannot be empty';
+	if (!cfg.telegramBot_token)  return 'Telegram Bot Token cannot be empty';
+	if (!cfg.telegramBot_chatID) return 'Telegram Chat ID cannot be empty';
+	if (!cfg.gemini_apikey)      return 'Gemini API Key cannot be empty';
     return null;
   }
 
@@ -665,7 +665,7 @@
 	})
 	.then(res => res.text())
 	.then(txt => showToast('✔ ' + txt, 'success'))
-	.catch(()  => showToast('⚠ 無法連線至裝置', 'error'));
+	.catch(()  => showToast('⚠ Device connection failed.', 'error'));
   }
 </script>
 </body>
