@@ -3099,7 +3099,7 @@ void setup() {
   Serial.println("\n");   
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("fuClaw Home\nhttp://192.168.1.1:81");
+  Serial.println("fuClaw Configuration\nhttp://192.168.1.1:81");
   Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");  	
   Serial.println("\n");  
 
