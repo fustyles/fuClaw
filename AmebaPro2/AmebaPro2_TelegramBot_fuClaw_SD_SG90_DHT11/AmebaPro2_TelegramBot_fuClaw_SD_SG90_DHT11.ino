@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-01 07:30
+Build Date: 2026-06-03 01:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -98,6 +98,7 @@ Supported Tools
 /reset          Reset conversation state
 /chat           Natural language reply
 /reboot         Reboot the device
+/schedule       schedule tasks
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
@@ -115,6 +116,9 @@ soul.md
 
 memory.md
   Conversation history persistence
+
+schedule.json
+  schedule tasks
 
 index.html
   fuClaw configuration web page
@@ -807,6 +811,32 @@ Reboot the device:
   "params":{}
 }
 
+
+Schedule task creation:
+
+{
+  "type": "tool_call",
+  "method": "/schedule",
+  "params": {
+    "task": <Serialized a task JSON array. Do NOT serialize as string.>
+  }
+}
+
+Success response:
+
+{
+  "status": "success",
+  "method": "/schedule"
+}
+
+Error response:
+
+{
+  "status": "error",
+  "method": "/schedule",
+  "reason": "<Error message>"
+}
+
 Servo motor control:
 {
   "type": "tool_call",
@@ -828,7 +858,7 @@ Success response:
 Error response:
 {
   "status": "error",
-  "method": "/servo",
+  "method": "/servo",  
   "reason": "undefined_servo_pin",
   "pin": 3
 }
@@ -854,7 +884,7 @@ Success response:
 Error response:
 {
   "status": "error",
-  "method": "/dht11",
+  "method": "/dht11",  
   "reason": "dht11_read_failed",
   "pin": 20
 }
@@ -923,6 +953,97 @@ Use /vision when user requests:
 Never use /still as a substitute for /vision.
 
 Never use /vision when user only wants photo capture.
+
+==================================================
+SCHEDULE TASK CREATION RULES
+==================================================
+
+Schedule params schema:
+
+params.tasks MUST be a JSON array of task objects.
+
+Each task object:
+
+[
+  {
+    "task": "<Task description>",
+    "schedule": {
+      "year": <4-digit year>,
+      "month": <1-12>,
+      "day": <1-31>,
+      "hour": <0-23>,
+      "minute": <0-59>,
+      "second": <0-59>
+    },
+    "executed": false
+  }
+]
+
+ONLY the following fields are allowed:
+- task
+- schedule
+- executed
+
+ANY other fields MUST be rejected.
+
+Do NOT generate nested tool_call objects.
+Do NOT add "action", "tool", "function", or similar fields.
+
+--------------------------------------------------
+TIME PARSING RULES
+--------------------------------------------------
+
+1. All time values MUST be converted into explicit numeric values.
+2. Use system current datetime as reference ONLY for disambiguation.
+3. Natural language time expressions MUST be fully resolved before scheduling.
+
+Examples:
+- "in 10 minutes" → current time + 10 minutes
+- "at 15:30" → today 15:30
+- "tomorrow 9am" → next day 09:00
+
+
+--------------------------------------------------
+DEFAULT VALUE RULES
+--------------------------------------------------
+
+- If minute is missing → MUST NOT guess, treat as missing (see No Guessing Rule)
+- If second is missing → treat as 0 ONLY when minute is explicitly provided
+- If date is not specified:
+  - If time is in future today → use today
+  - If time already passed → use next valid occurrence (e.g. next day)
+
+--------------------------------------------------
+NO TIME GUESSING RULE
+--------------------------------------------------
+
+You MUST NOT assume missing time information.
+
+DO NOT infer:
+- morning = 09:00
+- afternoon = 15:00
+- evening = 19:00
+- today / tomorrow (unless explicitly stated by user)
+
+If any required time component is missing or ambiguous:
+→ STOP
+→ Ask user for clarification
+→ Do NOT create schedule task
+
+--------------------------------------------------
+MULTIPLE TASK RULE
+--------------------------------------------------
+
+If user requests multiple actions:
+→ Create one task object per action
+→ Append all into tasks array
+
+--------------------------------------------------
+EXECUTION STATE RULE
+--------------------------------------------------
+
+Every new task MUST include:
+"executed": false
 
 ==================================================
 WORKFLOW ORDER
@@ -1153,6 +1274,9 @@ String executeToolHistory = "";
 // Used to preserve conversation memory across requests
 String historicalMessages = "";
 
+// Schedule Tasks
+String scheduleTasks = "";
+
 // Indicator LED output pin
 int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
@@ -1205,6 +1329,9 @@ String deviceFilename = "device.md";
 
 // Skills definition
 String skillFilename = "skill.md";
+
+// schedule tasks
+String scheduleFilename = "schedule.json";
 
 // Web page
 String mainpageFilename = "index.html";    // Configuration
@@ -2251,7 +2378,44 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       executeToolHistory += workId + " " + command + "\n";
               
-    }      
+    }
+  	else if (command == "/schedule") {
+      String task = params["task"].as<String>();
+	  
+      String response = "";
+	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
+		    task = task.substring(0, task.lastIndexOf("]") + 1);
+        if (scheduleTasks == "")
+          scheduleTasks = task;
+        else
+          scheduleTasks += ", " + task;
+
+        String jsonArray = geminiChatRequest(workId, "Merge all given JSON arrays into a single valid JSON array. Output ONLY the merged array. Ensure the result is valid JSON starting with [ and ending with ]. For every object in the arrays, set the field \"executed\" to true while keeping all other fields unchanged.\n\n" + scheduleTasks, -1);
+        if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+          jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+          scheduleTasks = jsonArray;
+        }
+        
+        storeDataToFile(scheduleFilename, scheduleTasks);
+                
+    		response = 
+    			"{\"status\":\"success\","
+    			"\"method\":\"/schedule\"}";
+    	}
+    	else {
+    		response =
+        "{\"status\":\"success\","
+        "\"method\":\"/still\","
+        "\"reason\":\"Invalid JSON array format.\"}";	  
+  	  }   
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", task + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+  	}	
     else if (command == "/reset") {
       geminiChatReset();
       replyUserMessage(workId, "New chat started.");
@@ -3204,6 +3368,11 @@ void setup() {
   if (skill != "")
     skillsDefinition = skill;
 
+  String schedule = getStringFromFile(scheduleFilename);
+  Serial.println("schedule.md len: " + String(schedule.length()));
+  if (schedule != "")
+    scheduleTasks = schedule;
+
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
@@ -3267,11 +3436,11 @@ void setup() {
 
 */   
 
-  Serial.println("\n");   
+  Serial.println("\n");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("fuClaw Configuration\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");  	
+  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");      
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -3282,8 +3451,8 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Configuration http://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat http://" + Ip2String(WiFi.localIP()) + ":81/chat");    
+    Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");    
     Serial.println("\n");   
   }  
 
