@@ -860,7 +860,7 @@ Servo motor control:
 Success response:
 {
   "status": "success",
-  "method": "servo",
+  "method": "/servo",
   "pin": 2,
   "angle": 90
 }
@@ -868,6 +868,7 @@ Success response:
 Error response:
 {
   "status": "error",
+  "method": "/servo",
   "reason": "undefined_servo_pin",
   "pin": 3
 }
@@ -884,7 +885,7 @@ Reading the DHT11 temperature and humidity sensor:
 Success response:
 {
   "status": "success",
-  "method": "dht11",
+  "method": "/dht11",
   "pin": 20,
   "temperature": 26,
   "humidity": 65
@@ -893,6 +894,7 @@ Success response:
 Error response:
 {
   "status": "error",
+  "method": "/dht11",
   "reason": "dht11_read_failed",
   "pin": 20
 }
