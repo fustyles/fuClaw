@@ -161,8 +161,8 @@ HUB 8735 Ultra
 - Fill LED  : GPIO 13
 - Button    : GPIO 12 (input only)
 
-ESP32
-- 
+ESP32-S3
+- RGB LED : GPIO 48
 
 Unknown hardware mappings require clarification.
 
