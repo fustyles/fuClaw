@@ -3096,11 +3096,11 @@ void setup() {
 
 */   
 
-  Serial.println("\n"); 
-  Serial.println("fuClaw configuration");    
-  Serial.println("http://192.168.1.1:81");
+  Serial.println("\n");   
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
+  Serial.println("fuClaw Home\nhttp://192.168.1.1:81");
+  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");  	
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
