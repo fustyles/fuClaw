@@ -383,7 +383,8 @@ void executeCommand(String message) {
         // The second call passes capture=false to reuse the same frame
         // without incurring a second camera-pipeline latency.
         mqttSendImage(mqttPublishImageTopic,       true);         // Raw binary JPEG
-        mqttSendImage(mqttPublishBase64ImageTopic, true, true);   // Base64 data-URI JPEG
+        
+        // mqttSendImage(mqttPublishBase64ImageTopic, true, true);   // Base64 data-URI JPEG
 
     } else if (message == "/memory") {
 

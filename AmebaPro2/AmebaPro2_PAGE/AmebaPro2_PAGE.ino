@@ -27,8 +27,8 @@ HUB 8735 Ultra
 */
 
 // WiFi credentials
-String wifiSsid = "xxxxxxxxxx";
-String wifiPassword = "xxxxxxxxxx";
+String wifiSsid = "teacher";
+String wifiPassword = "12345678";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";

@@ -767,7 +767,7 @@ function appendMsg(role, bubbleHtml, meta, isHtml) {
   msg.className = 'msg ' + role;
 
   var avClass = role === 'outgoing' ? 'av-out' : 'av-in';
-  var avLabel = role === 'outgoing' ? 'ME'      : 'AI';
+  var avLabel = role === 'outgoing' ? 'U'      : 'AI';
   var bubbleCls = 'bubble' + (isHtml ? ' html-content' : '');
 
   msg.innerHTML =
