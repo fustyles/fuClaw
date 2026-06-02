@@ -162,6 +162,7 @@ HUB 8735 Ultra
 - Button    : GPIO 12 (input only)
 
 ESP32
+- 
 
 Unknown hardware mappings require clarification.
 
