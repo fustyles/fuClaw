@@ -304,10 +304,11 @@ void setup() {
     Serial.println("Create task_task_getRequest failed");
   }        
 
-  Serial.println("\n"); 
-  Serial.println("http://192.168.1.1");
+  Serial.println("\n");   
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
+  Serial.println("Home\nhttp://192.168.1.1");
+  Serial.println("Chat\nhttp://192.168.1.1/chat");  	
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
