@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-01 07:30
+Build Date: 2026-06-02 16:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1253,7 +1253,8 @@ String skillFilename = "skill.md";
 
 // Web page
 String mainpageFilename = "index.html";    // Configuration
-String chatpageFilename = "index_chat.html";    // Chat
+String chatpageFilename = "index_chat.html";    // TCP Chat
+String mqttchatpageFilename = "index_mqtt_chat.html";    // MQTT Chat
 
 // Forward declarations
 String buildGeminiMessage(String role, String message, bool comma);
@@ -1841,6 +1842,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     responseText = "Gemini did not respond. Please try again.";
   }
 
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -1940,7 +1943,9 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   if (responseText == "") {
     responseText = "Gemini Search did not respond. Please try again.";
   }
-
+  
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -2055,6 +2060,8 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
 
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -2682,7 +2689,20 @@ void task_getRequest(void *param) {
 
             currentLine = "";
 
-          }                      
+          }             
+          else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = getStringFromFile(mqttchatpageFilename);
+      
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);   
+
+            currentLine = "";
+
+          }  
           else if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             String workId = "<PAGE> " + getRtcTimeString();
@@ -3009,7 +3029,8 @@ void setup() {
     }
     
     Serial.println("fuClaw Configuration http://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat http://" + Ip2String(WiFi.localIP()) + ":81/chat");    
+    Serial.println("fuClaw tcp Chat http://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw mqtt Chat http://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
     Serial.println("\n");   
   }   
 
