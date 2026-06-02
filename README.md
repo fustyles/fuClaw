@@ -174,7 +174,7 @@ Software Stack
 
 - WiFi.h
 - WiFiSSLClient
-- MQTT
+- PubSubClient
 - ArduinoJson
 - FreeRTOS
 - VideoStream
