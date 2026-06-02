@@ -10,20 +10,19 @@
 :root {
   --font-ui:   -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
   --font-mono: 'Courier New', Courier, monospace;
-
-  --bg:        #0f1117;
-  --bg2:       #161b27;
-  --bg3:       #1e2536;
-  --border:    #2a3450;
-  --border2:   #3a4870;
-  --accent:    #4f8ef7;
-  --accent2:   #a855f7;
-  --green:     #22d3a5;
-  --red:       #f87171;
-  --amber:     #fbbf24;
-  --text:      #e2e8f8;
-  --text2:     #8899c0;
-  --text3:     #4a5a80;
+  --bg:        #f7f9ff;
+  --bg2:       #eef3ff;
+  --bg3:       #e3ebff;
+  --border:    #cfd8f5;
+  --border2:   #b8c5ee;
+  --accent:    #5b8cff;
+  --accent2:   #8b5cf6;
+  --green:     #10b981;
+  --red:       #ef4444;
+  --amber:     #f59e0b;
+  --text:      #1e293b;
+  --text2:     #475569;
+  --text3:     #94a3b8;
   --radius:    10px;
 }
 
@@ -451,6 +450,8 @@ kbd {
   .app { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr; }
   .sidebar { max-height: 220px; overflow-y: auto; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+
 </style>
 </head>
 <body>
@@ -472,7 +473,7 @@ kbd {
     <span class="logo-sub">MQTT Chat</span>
     <div class="conn-pill" onclick="toggleConnect()">
       <div class="conn-dot" id="connDot"></div>
-      <span id="connLabel">未連線</span>
+      <span id="connLabel">Disconnected</span>
     </div>
   </div>
 
@@ -482,7 +483,7 @@ kbd {
     <!-- MQTT Settings -->
     <div class="sidebar-section">
       <div class="sidebar-title open" id="settingsToggle" onclick="toggleSection('settingsBody', this)">
-        <span>&#9881;</span> MQTT 設定
+        <span>&#9881;</span> MQTT Settings
         <span class="chevron">&#9660;</span>
       </div>
       <div class="sidebar-body" id="settingsBody">
@@ -496,33 +497,33 @@ kbd {
         </div>
         <div class="field">
           <label>USERNAME</label>
-          <input type="text" id="cfg_user" value="mqttUser" placeholder="選填">
+          <input type="text" id="cfg_user" value="mqttUser" placeholder="Optional">
         </div>
         <div class="field">
           <label>PASSWORD</label>
-          <input type="password" id="cfg_pass" value="mqttPassword" placeholder="選填">
+          <input type="password" id="cfg_pass" value="mqttPassword" placeholder="Optional">
         </div>
-        <button class="btn btn-connect" id="btnConnect" onclick="doConnect()">連線</button>
+        <button class="btn btn-connect" id="btnConnect" onclick="doConnect()">Connect</button>
       </div>
     </div>
 
     <!-- Subscribe Topics -->
     <div class="sidebar-section" style="flex:1; overflow:hidden; display:flex; flex-direction:column;">
       <div class="sidebar-title open" id="subToggle" onclick="toggleSection('subBody', this)">
-        <span>&#128229;</span> 訂閱頻道
+        <span>&#128229;</span> Subscribe Topics
         <span class="chevron">&#9660;</span>
       </div>
       <div class="sidebar-body" id="subBody" style="flex:1; overflow-y:auto;">
         <div class="topic-list" id="topicList"></div>
         <div class="add-topic" style="margin-top:10px;">
-          <input type="text" id="newTopicName" value="mqttPublishTextTopic" placeholder="輸入 Topic 名稱">
+          <input type="text" id="newTopicName" value="mqttPublishTextTopic" placeholder="Enter Topic Name">
           <select class="fmt-select" id="newTopicFmt">
-            <option value="text">純文字 Text</option>
-            <option value="html">HTML 格式</option>
+            <option value="text">Plain Text</option>
+            <option value="html"> HTML Format</option>
             <!-- <option value="base64">Base64 圖片</option> -->
-            <option value="binary">Binary 圖片</option>
+            <option value="binary">Binary Image</option>
           </select>
-          <div class="btn-add" onclick="addTopic()">&#43; 新增訂閱頻道</div>
+          <div class="btn-add" onclick="addTopic()">&#43; Add Subscribe Topic</div>
         </div>
       </div>
     </div>
@@ -530,7 +531,7 @@ kbd {
     <!-- Publish Topic -->
     <div class="sidebar-section">
       <div class="sidebar-title open" id="pubToggle" onclick="toggleSection('pubBody', this)">
-        <span>&#128228;</span> 發布頻道
+        <span>&#128228;</span> Publish Topic
         <span class="chevron">&#9660;</span>
       </div>
       <div class="sidebar-body" id="pubBody">
@@ -548,14 +549,14 @@ kbd {
     <div class="messages" id="messages">
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">&#128200;</div>
-        <div class="empty-title">尚未連線</div>
-        <div class="empty-hint">填入左側 MQTT 設定後按連線，即可開始對話</div>
+        <div class="empty-title">Disconnected</div>
+        <div class="empty-hint">Enter MQTT settings on the left and click Connect to start chatting.</div>
       </div>
     </div>
 
     <div class="input-bar">
       <div class="input-wrap">
-        <textarea id="msgInput" placeholder="輸入訊息…" rows="1" onkeydown="onKey(event)"></textarea>
+        <textarea id="msgInput" placeholder="Enter message..." rows="1" onkeydown="onKey(event)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMsg()" disabled title="送出">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/>
@@ -563,7 +564,7 @@ kbd {
           </svg>
         </button>
       </div>
-      <div class="input-hint"><kbd>Enter</kbd> 送出 &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> 換行</div>
+      <div class="input-hint"><kbd>Enter</kbd> Send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> New Line</div>
     </div>
   </div>
 
@@ -602,13 +603,13 @@ function doConnect() {
   var user   = document.getElementById('cfg_user').value.trim();
   var pass   = document.getElementById('cfg_pass').value;
 
-  if (!server) { sysMsg('請填入 Broker Server 位址'); return; }
+  if (!server) { sysMsg('Please enter the Broker Server address'); return; }
 
   if (mqttClient) { mqttClient.end(true); }
 
   var url = 'ws://' + server + ':' + port + '/mqtt';
-  setStatus('connecting', '連線中…');
-  sysMsg('正在連線至 ' + url);
+  setStatus('connecting', 'Connecting...');
+  sysMsg('Connecting to ' + url);
 
   var opts = {
     clientId: 'fuClaw_' + Math.random().toString(16).substr(2,8),
@@ -621,17 +622,17 @@ function doConnect() {
   try {
     mqttClient = mqtt.connect(url, opts);
   } catch(e) {
-    setStatus('disconnected', '連線失敗');
-    sysMsg('mqtt.js 未載入，請確認網路或使用離線版本');
+    setStatus('disconnected', 'Connection Failed');
+    sysMsg('mqtt.js is not loaded. Please check your network connection or use the offline version.');
     return;
   }
 
   mqttClient.on('connect', function() {
     isConnected = true;
-    setStatus('connected', '已連線');
-    sysMsg('&#10003; 已連線至 ' + server + ':' + port);
+    setStatus('connected', 'Connected');
+    sysMsg('&#10003; Connected to ' + server + ':' + port);
     document.getElementById('sendBtn').disabled = false;
-    document.getElementById('btnConnect').textContent = '重新連線';
+    document.getElementById('btnConnect').textContent = 'Reconnect';
     document.getElementById('btnConnect').className = 'btn btn-disconnect';
     document.getElementById('emptyState').style.display = 'none';
 
@@ -650,19 +651,19 @@ function doConnect() {
   });
 
   mqttClient.on('error', function(err) {
-    setStatus('disconnected', '連線錯誤');
-    sysMsg('&#10007; 錯誤：' + err.message);
+    setStatus('disconnected', 'Connection Error');
+    sysMsg('&#10007; Error:' + err.message);
     isConnected = false;
     document.getElementById('sendBtn').disabled = true;
   });
 
   mqttClient.on('close', function() {
     if (isConnected) {
-      setStatus('disconnected', '已斷線');
-      sysMsg('&#9675; 連線已關閉');
+      setStatus('disconnected', 'Disconnected');
+      sysMsg('&#9675; Connection Closed');
       isConnected = false;
       document.getElementById('sendBtn').disabled = true;
-      document.getElementById('btnConnect').textContent = '連線';
+      document.getElementById('btnConnect').textContent = 'Connect';
       document.getElementById('btnConnect').className = 'btn btn-connect';
     }
   });
@@ -674,9 +675,9 @@ function doDisconnect() {
     mqttClient = null;
   }
   isConnected = false;
-  setStatus('disconnected', '已斷線');
+  setStatus('disconnected', 'Disconnected');
   document.getElementById('sendBtn').disabled = true;
-  sysMsg('已手動斷線');
+  sysMsg('Manually disconnected');
 }
 
 // simple wildcard match for # and +
@@ -697,7 +698,7 @@ function renderTopics() {
     item.innerHTML =
       '<span class="topic-name">' + escHtml(t.name) + '</span>' +
       '<span class="topic-fmt ' + fmtClass[t.format] + '">' + fmtLabels[t.format] + '</span>' +
-      '<button class="topic-del" onclick="removeTopic(' + i + ')" title="刪除">&#10005;</button>';
+      '<button class="topic-del" onclick="removeTopic(' + i + ')" title="Delete">&#10005;</button>';
     list.appendChild(item);
   });
 }
@@ -707,7 +708,7 @@ function addTopic() {
   var fmt  = document.getElementById('newTopicFmt').value;
   if (!name) return;
   if (topics.find(function(t) { return t.name === name; })) {
-    sysMsg('頻道已存在：' + name); return;
+    sysMsg('Topic already exists:' + name); return;
   }
   topics.push({ name: name, format: fmt });
   renderTopics();
@@ -716,7 +717,7 @@ function addTopic() {
   // Subscribe if already connected
   if (isConnected && mqttClient) {
     mqttClient.subscribe(name, function(err) {
-      if (!err) sysMsg('&#128229; 新增訂閱：' + name + ' [' + fmt + ']');
+      if (!err) sysMsg('&#128229; Added subscription:' + name + ' [' + fmt + ']');
     });
   }
 }
@@ -725,7 +726,7 @@ function removeTopic(i) {
   var t = topics[i];
   if (isConnected && mqttClient) {
     mqttClient.unsubscribe(t.name);
-    sysMsg('&#128683; 取消訂閱：' + t.name);
+    sysMsg('&#128683; Unsubscribed:' + t.name);
   }
   topics.splice(i, 1);
   renderTopics();
@@ -818,7 +819,7 @@ function sendMsg() {
   if (!text) return;
 
   var pubTopic = document.getElementById('cfg_pubTopic').value.trim();
-  if (!pubTopic) { sysMsg('請設定 Publish Topic'); return; }
+  if (!pubTopic) { sysMsg('Please set the Publish Topic'); return; }
 
   mqttClient.publish(pubTopic, text);
   appendMsg('outgoing', escHtml(text), null, false);
