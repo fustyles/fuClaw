@@ -117,6 +117,7 @@ Supported Tools
 /reset <br>          Reset conversation state<br>
 /chat <br>           Natural language reply<br>
 /reboot <br>         Reboot the device
+/schedule <br>       schedule tasks
 
 ------------------------------------------------------------
 Persistent Files
@@ -136,6 +137,9 @@ soul.md
 
 memory.md
   <br>Conversation history persistence
+
+schedule.json
+  <br>schedule tasks  
 
 index.html
   <br>fuClaw configuration web page
