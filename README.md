@@ -176,6 +176,14 @@ Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
 
 ------------------------------------------------------------
+SoC: Realtek AmebaPro2 (RTL8735B)
+------------------------------------------------------------
+
+Memory:
+- RAM  : 128 MB DDR2 (internal, on SoC)
+- Flash: 16 MB SPI NOR (external, on Dev. Board)
+
+------------------------------------------------------------
 Software Stack
 ------------------------------------------------------------
 
