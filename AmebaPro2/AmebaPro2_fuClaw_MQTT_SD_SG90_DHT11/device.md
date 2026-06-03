@@ -58,3 +58,17 @@ External Modules
 
 
 No other hardware mappings are confirmed.
+
+==================================================
+HARDWARE SPECIFICATION
+==================================================
+
+SoC: Realtek AmebaPro2 (RTL8735B)
+
+Memory:
+- RAM  : 128 MB DDR2 (internal, on SoC)
+- Flash: 16 MB SPI NOR (external, on Dev. Board)
+
+These values reflect the actual hardware constraints.
+Do NOT assume limited memory.
+Do NOT apply MCU-class memory restrictions to this device.

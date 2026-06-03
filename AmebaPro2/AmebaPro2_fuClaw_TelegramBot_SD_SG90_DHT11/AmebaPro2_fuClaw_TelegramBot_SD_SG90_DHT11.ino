@@ -293,6 +293,20 @@ External Modules
 
 No other hardware mappings are confirmed.
 
+==================================================
+HARDWARE SPECIFICATION
+==================================================
+
+SoC: Realtek AmebaPro2 (RTL8735B)
+
+Memory:
+- RAM  : 128 MB DDR2 (internal, on SoC)
+- Flash: 16 MB SPI NOR (external, on Dev. Board)
+
+These values reflect the actual hardware constraints.
+Do NOT assume limited memory.
+Do NOT apply MCU-class memory restrictions to this device.
+
 )";
 
 String devicesRule = R"(
@@ -576,27 +590,93 @@ If uncertain, suppress internal command details completely.
 ==================================================
 GLOBAL DEVICE CONTROL POLICY
 ==================================================
+--------------------------------------------------
+Default Rule
+--------------------------------------------------
 
-ALL hardware control actions MUST require explicit user confirmation before execution.
+All of the following actions require explicit user confirmation before execution:
 
-If the user requests hardware actions to execute without confirmation, the system MUST explicitly ask for reconfirmation before updating this rule. Only after the user clearly reconfirms may the confirmation requirement be disabled or modified.
-
-If the hardware action is triggered automatically by:
-- a skill execution
-- a scheduled task execution
-- a system-authorized autonomous workflow
-
-(and is not a direct live user request)
-confirmation is not required.
-Proceed with execution immediately.
-
-This applies to:
-
+Hardware control:
 - /digitalwrite
 - /analogwrite
 - /reboot
-- any GPIO output control
-- any actuator (LED, motor, relay, fan)
+- GPIO output control
+- any device state changing operation
+
+Conversation management:
+- /reset  (conversation history will be permanently cleared)
+
+--------------------------------------------------
+USER OVERRIDE PROTECTION
+--------------------------------------------------
+
+If a user requests disabling confirmation requirements:
+
+* Ask for explicit reconfirmation
+* Explain the policy change
+* Update the rule only after clear confirmation
+
+--------------------------------------------------
+AUTOMATIC EXECUTION EXCEPTION
+--------------------------------------------------
+The confirmation requirement does NOT apply when execution is initiated by an authorized system process.
+
+Authorized system processes include:
+
+* Scheduled task execution
+* Time scheduler execution
+* Autonomous workflow execution
+* Internal system workflow execution
+* Approved background automation
+
+When execution originates from one of the above sources:
+
+* Execute immediately
+* Do not ask for confirmation
+* Do not ask follow-up questions
+* Do not wait for user approval
+* Do not request reconfirmation
+
+--------------------------------------------------
+SCHEDULED TASK RULE
+--------------------------------------------------
+A scheduled task represents prior user authorization.
+
+When a user creates a scheduled task:
+
+* The scheduling request itself serves as authorization
+* Additional confirmation is not required at execution time
+
+Example:
+
+User:
+"At 22:00 turn on GPIO 5"
+
+System:
+Record task
+
+At 22:00:
+
+Execute task immediately
+
+Do NOT ask:
+"Do you still want me to proceed?"
+"Please confirm execution."
+"Should I turn on GPIO 5 now?"
+
+--------------------------------------------------
+PRIORITY
+--------------------------------------------------
+The following priority order applies:
+
+1. Safety restrictions
+2. Scheduled task execution rules
+3. Autonomous workflow rules
+4. Normal confirmation requirements
+
+If a scheduled task is eligible for execution:
+
+The scheduled task execution rule overrides the normal confirmation requirement.
 
 ==================================================
 TOOL ROUTING
@@ -901,8 +981,10 @@ After /search returns:
 4. Check whether requested condition is satisfied
 5. Never assume hardware action already happened
 6. Never claim execution unless tool_call actually returned
-7. If a hardware action is required, it MUST go through user confirmation.
-8. Only after confirmation → tool_call JSON
+7. If a hardware action is required, it MUST go through user confirmation,
+   UNLESS execution is initiated by an authorized system process
+   (scheduled task, scheduler execution, autonomous workflow, or approved automation).
+8. Only after confirmation or authorized automatic execution → tool_call JSON
 
 ==================================================
 VISION FOLLOW-UP RULES
@@ -913,8 +995,9 @@ After /vision returns:
 1. Analyze observation result
 2. Combine with user task
 3. Do NOT directly execute hardware
-4. If a hardware action is required, it MUST go through user confirmation.
-5. Only after confirmation → tool_call JSON
+4. If a hardware action is required, it MUST go through user confirmation,
+   UNLESS execution is initiated by an authorized system process.
+5. Only after confirmation or authorized automatic execution → tool_call JSON
 
 ==================================================
 IMAGE TOOL ROUTING RULES
@@ -960,7 +1043,7 @@ SCHEDULE TASK CREATION RULES
 
 Schedule params schema:
 
-params.tasks MUST be a JSON array of task objects.
+params.task MUST be a JSON array of task objects.
 
 Each task object:
 
@@ -1001,7 +1084,6 @@ Examples:
 - "in 10 minutes" → current time + 10 minutes
 - "at 15:30" → today 15:30
 - "tomorrow 9am" → next day 09:00
-
 
 --------------------------------------------------
 DEFAULT VALUE RULES
@@ -1057,7 +1139,7 @@ Strict execution order:
 4. /vision (if needed)
 5. /search (if needed)
 6. planner decision
-7. confirm (if hardware action)
+7. confirm (if hardware action AND not authorized automatic execution)
 8. execution
 
 Never:
@@ -1066,6 +1148,215 @@ Never:
 - fabricate execution
 - bypass confirmation
 - directly control hardware from vision/search
+
+==================================================
+TIME　SCHEDULE (BUILT-IN SYSTEM CAPABILITY)
+==================================================
+Purpose
+Execute scheduled actions using the device RTC local time.
+
+Scheduler evaluation is execution-only.
+
+Do NOT:
+- re-plan tasks
+- redesign tasks
+- optimize tasks
+- reinterpret user intent
+- modify scheduled actions
+
+Execute exactly the stored task.
+Do not reinterpret user intent.
+The number of returned tool_calls MUST equal the number of eligible tasks.
+
+--------------------------------------------------
+TIME　SCHEDULE TOOL RULES
+--------------------------------------------------
+
+Use /schedule when user explicitly requests:
+- create a schedule
+- add a scheduled task
+- remind me at a specific time
+- set a timer or alarm
+- automate an action at a future time
+- repeat an action daily / monthly / yearly
+
+Use /updateSchedule when:
+- a scheduled task has just been successfully executed
+- the system needs to sync execution state back to the schedule
+- called automatically by the scheduler after tool execution completes
+
+Use /clearSchedule when:
+- clear scheduled tasks
+
+Schedule actions require explicit user confirmation before execution.
+* /updateSchedule
+* /clearSchedule
+--------------------------------------------------
+TIME　SCHEDULE INPUT
+--------------------------------------------------
+The runtime system provides:
+
+* Current RTC local time
+* Scheduled task list
+* Task execution state
+
+Each scheduled task contains:
+
+* Scheduled execution time
+* Action to execute
+* Executed flag
+
+--------------------------------------------------
+TIME　SCHEDULE REPEAT RULES
+--------------------------------------------------
+
+Recurring tasks are identified by the value of the "year" field in the schedule object.
+
+year = 0 → recurring task. Do NOT set "executed" to true after execution.
+year > 0 → one-time task. Set "executed" to true after successful execution.
+
+Repeat semantics by field combination:
+
+| year | month | day | Repeat type              |
+|------|-------|-----|--------------------------|
+|  0   |   0   |  0  | Daily                    |
+|  0   |   0   |  N  | Monthly (day N)          |
+|  0   |   M   |  N  | Yearly (month M, day N)  |
+|  Y   |   M   |  N  | One-time (specific date) |
+
+Examples:
+
+Daily at 07:00:
+{
+  "task": "Turn on the light",
+  "schedule": { "year": 0, "month": 0, "day": 0, "hour": 7, "minute": 0, "second": 0 },
+  "executed": false
+}
+
+Monthly on day 1 at 00:00:
+{
+  "task": "Reset counter",
+  "schedule": { "year": 0, "month": 0, "day": 1, "hour": 0, "minute": 0, "second": 0 },
+  "executed": false
+}
+
+Yearly on January 1 at 00:00:
+{
+  "task": "Send new year greeting",
+  "schedule": { "year": 0, "month": 1, "day": 1, "hour": 0, "minute": 0, "second": 0 },
+  "executed": false
+}
+
+One-time on 2026/7/1 at 15:00:
+{
+  "task": "Capture image",
+  "schedule": { "year": 2026, "month": 7, "day": 1, "hour": 15, "minute": 0, "second": 0 },
+  "executed": false
+}
+
+EXECUTION STATE RULE
+
+Every new task MUST include:
+"executed": false
+
+Recurring tasks (year = 0) MUST NOT have "executed" set to true,
+even after the action has been performed.
+
+One-time tasks (year > 0) MUST have "executed" set to true
+after successful execution, to prevent re-execution.
+
+--------------------------------------------------
+TIME　SCHEDULE EVALUATION
+--------------------------------------------------
+Evaluate every scheduled task independently.
+
+For each task:
+
+IF executed == true
+Ignore task
+
+IF current_time < scheduled_time
+Ignore task
+
+IF current_time >= scheduled_time AND executed == false
+Task is eligible for immediate execution
+
+--------------------------------------------------
+MULTIPLE TASKS
+--------------------------------------------------
+More than one task may be eligible simultaneously.
+
+When multiple eligible tasks exist:
+
+* Execute ALL eligible tasks
+* Do not stop after the first task
+* Generate one tool_call for each eligible task
+* The number of tool_calls must equal the number of eligible tasks
+
+--------------------------------------------------
+OUTPUT RULES
+--------------------------------------------------
+If no eligible task exists:
+
+Return exactly:
+NONE
+
+If one or more eligible tasks exist:
+Return tool_call JSON for ALL eligible tasks.
+The number of returned tool_calls MUST equal the number of eligible tasks.
+Do not stop after the first eligible task.
+
+Do not return explanations.
+Do not return markdown.
+Do not return natural language.
+Do not return partial results.
+
+--------------------------------------------------
+TIME SOURCE
+--------------------------------------------------
+
+Always use the RTC local time supplied by the runtime system.
+
+Never:
+
+Ask the user for the current time
+Ask the user for timezone information
+Infer timezone
+Retrieve time using external tools
+Use web search for time lookup
+
+--------------------------------------------------
+EXECUTION RULES
+--------------------------------------------------
+Do not execute tasks before their scheduled time.
+A task remains executable after its scheduled time has passed until it is marked executed=true.
+Do not re-execute completed tasks.
+Do not assume execution success.
+A task is considered completed only after a successful tool response has been received and the task has been marked executed=true.
+
+--------------------------------------------------
+TASK CREATION
+--------------------------------------------------
+When a user creates a scheduled task:
+* Store the task
+* Mark executed=false
+* Confirm task registration
+* Do not execute immediately
+
+--------------------------------------------------
+PRIORITY
+--------------------------------------------------
+Scheduled task execution takes precedence over:
+- confirmation workflows
+- search follow-up rules
+- vision follow-up rules
+- normal conversation behavior
+
+During scheduler evaluation:
+* Never ask follow-up questions
+* Never request confirmation
+* Never explain decisions
+* Only determine eligibility and execute eligible tasks
 
 ==================================================
 FALLBACK
@@ -1158,107 +1449,6 @@ FALLBACK
 --------------------------------------------------
 
 If uncertain → return natural conversational response.
-
-==================================================
-SKILL: skill_time_scheduling
-==================================================
-
-Goal:
-Execute scheduled hardware actions at correct time using device RTC local time.
-
---------------------------------------------------
-SKILL EXECUTION
---------------------------------------------------
-
-MUST OUTPUT EXACT JSON ARRAY ONLY:
-
---------------------------------------------------
-Step 0: Parse scheduled task
---------------------------------------------------
-
-Extract from conversation:
-
-execution time
-hardware action
-execution state
-
-If no valid scheduled task exists:
-RETURN EXACTLY:
-NONE
-
---------------------------------------------------
-Step 1: Use device RTC local time
---------------------------------------------------
-
-The device timezone is already provided by the runtime system.
-
-Current local RTC time is already provided by the runtime system.
-
-NEVER:
-
-ask user for timezone
-ask user for current time
-use /search for time retrieval
-
---------------------------------------------------
-Step 2: Compare scheduled task
---------------------------------------------------
-
-Compare:
-
-current RTC local time
-scheduled execution time
-
---------------------------------------------------
-Step 3: Decision logic
---------------------------------------------------
-
-IF current_time < scheduled_time:
-RETURN EXACTLY:
-NONE
-
-IF current_time >= scheduled_time AND task not executed:
-RETURN ONLY valid tool_call JSON
-
-IF task already executed:
-RETURN EXACTLY:
-NONE
-
---------------------------------------------------
-CRITICAL RULES
---------------------------------------------------
-
-Scheduled tasks override normal confirmation rules
-Do NOT ask user for current time
-Do NOT ask user for timezone
-Do NOT execute before scheduled time
-Do NOT simulate execution success
-Execution success only valid after tool response
-Time check MUST always include task context
-NEVER use /search for scheduling
-ALWAYS use device RTC local time
-NEVER re-execute completed scheduled tasks
-
---------------------------------------------------
-TASK REGISTRATION RULE
---------------------------------------------------
-
-When user gives schedule (e.g. "10:56 turn on green LED"):
-
-Store task in memory
-Confirm task recorded
-Inform scheduler must be enabled
-Do NOT execute immediately
-
-Example:
-"I've recorded your scheduled task. It will execute when system scheduler is active."
-
---------------------------------------------------
-FALLBACK
---------------------------------------------------
-
-If no scheduled task exists:
-Return natural conversational response only.
 
 )";
 
@@ -1671,26 +1861,11 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 
 void replyUserMessage(String workId, String text, String keyboard = "") {
 	if (text.startsWith("NONE") || text == "") return;
-	
+  
 	if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
 		if (text.indexOf("<PAGE>") != -1)
 			text = text.substring(0, text.indexOf("<PAGE>"));
-		mainPageHTML += text;
-	}
-	else if (workId.startsWith("<BOT>") && !text.startsWith("<BOT>")) {
-		if (text.indexOf("<BOT>") != -1)
-		  text = text.substring(0, text.indexOf("<BOT>"));
-		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
-	}
-	else if (workId.startsWith("<THEFT_DETECTION>") && !text.startsWith("<THEFT_DETECTION>")) {
-		if (text.indexOf("<THEFT_DETECTION>") != -1)
-		  text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
-		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
-	}
-	else if (workId.startsWith("<TIME_SCHEDULING>") && !text.startsWith("<TIME_SCHEDULING>")) {
-		if (text.indexOf("<TIME_SCHEDULING>") != -1)
-		  text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
-		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+		mainPageHTML += text +"\n";
 	}
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
@@ -2390,7 +2565,15 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         else
           scheduleTasks += ", " + task;
 
-        String jsonArray = geminiChatRequest(workId, "Merge all given JSON arrays into a single valid JSON array. Output ONLY the merged array. Ensure the result is valid JSON starting with [ and ending with ]. For every object in the arrays, set the field \"executed\" to true while keeping all other fields unchanged.\n\n" + scheduleTasks, -1);
+        String prompt = 
+          "Merge all given JSON arrays into a single valid JSON array."
+          "Output ONLY the merged array."
+          "Ensure the result is valid JSON starting with [ and ending with ]."
+          "For every object in the arrays, set the field \"executed\" to false while keeping all other fields unchanged.\n\n"
+          + scheduleTasks;
+          
+        String jsonArray = geminiChatRequest(workId, prompt, -1);
+        
         if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
           jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
           scheduleTasks = jsonArray;
@@ -2410,14 +2593,67 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   	  }   
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", task + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";
 
       evaluateWorkflowContinuation(workId, reCheck);
+Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");      
   	}	
+    else if (command == "/updateSchedule") {
+      String response = "";
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a tool execution history. "
+          "For each task: "
+          "- If the task's schedule has \"year\" equal to 0, it is a recurring task. Do NOT change its \"executed\" field. "
+          "- Otherwise, set \"executed\" to true ONLY if the task's corresponding action appears in the execution history as successfully completed, otherwise Do NOT change its \"executed\" field. "
+          "Output ONLY the updated JSON array. "
+          "The result MUST start with [ and end with ]. "
+          "Do NOT change any other fields.\n\n"
+          + scheduleTasks;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+        scheduleTasks = jsonArray;
+Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");   
+        storeDataToFile(scheduleFilename, scheduleTasks);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/schedule\"}";
+      }
+      else {
+        response =
+        "{\"status\":\"success\","
+        "\"method\":\"/still\","
+        "\"reason\":\"Invalid JSON array format.\"}";   
+      }  
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }
+    else if (command == "/clearSchedule") {
+      scheduleTasks = ""; 
+      storeDataToFile(scheduleFilename, scheduleTasks);
+      
+      replyUserMessage(workId, "Scheduled tasks have been cleared.");
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", "Scheduled tasks have been cleared." + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";           
+    }
     else if (command == "/reset") {
       geminiChatReset();
+      
       replyUserMessage(workId, "New chat started.");
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -3226,6 +3462,68 @@ void task_theft_detection(void *param) {
   
 }
 
+String twoDigits(int value) {
+  if (value < 10)
+    return "0" + String(value);
+  return String(value);
+
+}
+
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+  
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+Serial.println("\nexecuted: \n" + String(executed) +"\n");       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+
+      int resolvedYear  = (year  == 0) ? (now->tm_year + 1900) : year;
+      int resolvedMonth = (month == 0) ? (now->tm_mon  + 1)    : month;
+      int resolvedDay   = (day   == 0) ? (now->tm_mday)        : day;
+
+      struct tm tmTask = {};
+      tmTask.tm_year = resolvedYear  - 1900;
+      tmTask.tm_mon  = resolvedMonth - 1;
+      tmTask.tm_mday = resolvedDay;
+      tmTask.tm_hour = hour;
+      tmTask.tm_min  = minute;
+      tmTask.tm_sec  = sec;
+  
+      if (mktime(&tmTask) <= rawtime) {
+          JsonObject item = resultArray.createNestedObject();
+          item["task"] = task["task"].as<String>();
+          item["schedule"] = schedule;
+      }
+  }
+
+  String result;
+  serializeJson(resultDoc, result);
+  return result;
+}
+
 // Periodic system scheduling check task
 void task_time_scheduling(void *param) {
   (void)param;
@@ -3237,47 +3535,92 @@ void task_time_scheduling(void *param) {
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
+    String workId = "<TIME_SCHEDULING> " + rtcFormatTime;
+
     if (rtcYear == 0) {
       Serial.println("[DEBUG] RTC time is not initialized.");
-      continue;
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
     }
 
-    Serial.println("\n\nExecuting Skill: skill_time_scheduling\n\n");
-
     rtcFormatTime = getRtcTimeString();
-    
-    Serial.println("Current Time: "+ rtcFormatTime);
 
-    String workId = "<TIME_SCHEDULING> " + rtcFormatTime;
-    
-    evaluateWorkflowContinuation(
-	  workId, 
-      true,
+    if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
+      scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+ 
+      String unfinishedScheduleTasksJson = getUnfinishedScheduleTasksJson(scheduleTasks);
 
-      "Invoke skill: skill_time_scheduling. "
-      "This is a deterministic scheduling evaluation step. "
+      if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
 
-      "Current local time: " +
-      rtcFormatTime +
+        unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
 
-      "in the user's confirmed timezone if the time is unknown. "
+        String unfinishedScheduleTask = "";
+        String prompt = "";
+        String response = "";
+        String item = "";
+        String schedule = ""; 
 
-      "Then compare the current time with ALL scheduled tasks in the conversation history. "
-      "Each task includes BOTH an execution time and a hardware action. "
+        DynamicJsonDocument doc(8192);
+      
+        DeserializationError err = deserializeJson(doc, unfinishedScheduleTasksJson);
+        if (err) {
+          Serial.println("[DEBUG] JSON parse failed: (task_time_scheduling)\n" + unfinishedScheduleTasksJson);
+          return;
+        }  
 
-      "Output rules: "
-      "1. If NO task has reached its execution time, return EXACTLY: NONE. "
-      "2. If a task's scheduled time has been reached or exceeded and it has not been executed, "
-      "return ONLY valid tool_call JSON for that task action. "
-      "3. NEVER output natural language. "
-      "4. NEVER claim success without a tool execution result. "
-      "5. NEVER ask the user for the time. "
-      "6. NEVER infer the timezone. "
-      "7. NEVER execute outside the scheduled window."
-    );
+        JsonArray tasks = doc.as<JsonArray>();
+        
+        for (JsonObject obj : tasks) {
 
-    storeDataToFile(memoryFilename, historicalMessages);
-    
+          schedule = obj["schedule"].as<String>();
+          item = obj["task"].as<String>();
+          unfinishedScheduleTask = schedule + item;
+          
+Serial.println("\nunfinishedScheduleTasks: \n" + unfinishedScheduleTask +"\n"); 
+             
+
+          prompt =
+            "This is a deterministic scheduling execution step. "
+          
+            "RTC Current local time: " +
+            rtcFormatTime +
+          
+            "\n\nUnfinished scheduled tasks:\n" +
+            unfinishedScheduleTask +
+          
+            "\n\nThe task list above already contains ONLY tasks that have not been executed. "
+            "Evaluate EVERY task in this list independently. "
+            "If a task's scheduled time is less than or equal to the current time, "
+            "it MUST be executed immediately. "
+            "Do NOT skip any eligible task. "
+            "More than one task may be eligible at the same time. "
+            "If multiple tasks are eligible, execute ALL of them in the same response. "
+            "Tasks whose scheduled time is still in the future must be ignored. "
+          
+            "Output rules: "
+            "1. If no task is eligible for execution, return EXACTLY: NONE. "
+            "2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
+            "3. Never return natural language. "
+            "4. Never explain. "
+            "5. Never summarize. "
+            "6. Never ask questions. "
+            "7. Never claim success without tool execution results. "
+            "8. Process every task in the provided task list. "
+            "9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
+            "10. Do not stop after the first eligible task.";
+
+          response = geminiChatRequest(workId, prompt);
+Serial.println("\nresponse: \n" + response +"\n"); 
+          handleAgentResponse(workId, response);
+          
+        }
+      }
+
+      executeTool(workId, "/updateSchedule", JsonObject(), false);
+      
+      storeDataToFile(memoryFilename, historicalMessages);
+    }
   }
 }
 
@@ -3407,21 +3750,9 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_getTelegramMessage failed");
-  }   
-  
-/*
- 
-  if (xTaskCreate(
-        task_theft_detection,
-        (const char *)"task_theft_detection",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_theft_detection failed");
   } 
+
+/*
 
   if (xTaskCreate(
         task_time_scheduling,
@@ -3433,6 +3764,18 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_time_scheduling failed");
+  }     
+
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
   }   
 
 */   
