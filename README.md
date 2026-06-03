@@ -139,7 +139,7 @@ memory.md
   <br>Conversation history persistence
 
 schedule.json
-  <br>schedule tasks  
+  <br>Schedule tasks  
 
 index.html
   <br>fuClaw configuration web page
