@@ -580,7 +580,13 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 ## Summary
 
-What makes this framework truly impressive is that it implements a complete AI Agent architecture — one that would ordinarily require a cloud server — on a device where memory is measured in kilobytes and there is no OS abstraction layer. The dual communication modes (Telegram Bot and MQTT) serve distinct deployment scenarios while sharing identical reasoning and execution engines. Voice input, hardware RTC synchronization, servo and environmental sensor support, a multi-task scheduling architecture, and an integrated web configuration and chat interface all coexist without compromising the core design principles of prompt-driven routing, atomic execution, and layered hardware safety. Every design decision has a clear engineering rationale, and the system as a whole demonstrates that thoughtful prompt engineering and careful embedded systems design can produce something far greater than the sum of its parts.
+fuClaw demonstrates one thing clearly: **a complete AI Agent does not require a cloud server**.
+
+Running on a bare-metal embedded board with no OS and kilobytes of addressable memory, fuClaw implements a full Agent Loop — perception, reasoning, tool execution, and persistent memory — entirely on-device. Latency is bounded by the network, not the hardware.
+
+The core architectural insight is **replacing native function calling with prompt engineering**: a strict JSON schema constrains LLM output, which the firmware layer validates and executes. No vendor-specific API extensions. The reasoning engine is fully portable across LLM providers.
+
+If you are looking for an **edge AI Agent framework that works out of the box and scales with your ambitions** — whether for smart home automation, industrial monitoring, or a personal AI assistant device — fuClaw's architecture and dual-mode example code provide a rare production-ready reference in the embedded AIoT space. Adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
 
 ---
 
@@ -938,6 +944,18 @@ MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 W
 
 ## 總結
 
-這個框架真正令人印象深刻之處在於，它在一個記憶體以千位元組計量、沒有 OS 抽象層的設備上，實現了通常需要雲端伺服器才能完成的完整 AI Agent 架構。雙通訊模式（Telegram Bot 和 MQTT）服務於不同的部署場景，同時共享相同的推理和執行引擎。語音輸入、硬體 RTC 同步、伺服和環境感測器支援、多工排程架構，以及整合的 Web 設定和聊天介面，全部共存而不影響提示詞驅動路由、原子執行和分層硬體安全的核心設計原則。每個設計決策都有清晰的工程理由，整個系統證明了深思熟慮的提示詞工程和謹慎的嵌入式系統設計可以產生遠超部分之和的成果。
+fuClaw 證明了一件事：**完整的 AI Agent 不需要雲端伺服器**。
+
+在一塊沒有作業系統、記憶體以 KB 計算的嵌入式開發板上，fuClaw 實現了完整的 Agent Loop——感知、推理、工具執行、記憶持久化——全部在板端完成，延遲由網路決定，而非運算能力。
+
+核心突破在於以 **Prompt Engineering 取代 Native Function Calling**：透過嚴格的 JSON schema 約束 LLM 輸出，再由韌體層驗證並執行，不依賴任何特定 LLM 廠商的 API 擴充，使整個推理引擎具備高度可移植性。
+
+設計上刻意遵守兩條鐵則：
+- **ATOMIC EXECUTION**：工具呼叫不可中斷，防止硬體狀態競爭
+- **Layered Hardware Safety**：只允許已登記的設備執行指令，LLM 幻覺無法觸發未定義行為
+
+雙通訊模式（Telegram / MQTT）共享同一推理與執行引擎，`soul.md` / `device.md` / `skill.md` 模組化設計讓 Agent 行為可在不重新燒錄韌體的情況下現場調整。
+
+如果你正在尋找一個**可以直接部署、也可以作為起點深度客製化**的邊緣 AI Agent 框架，fuClaw 的架構設計與完整的雙模式範例程式碼，是目前嵌入式 AIoT 領域少見的實戰參考。無論是智慧家庭、工業監控、還是個人 AI 助理裝置，只需修改 `soul.md` 與 `device.md` 即可快速適配新場景，無需重新設計核心架構。
 
 ---
