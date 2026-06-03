@@ -106,8 +106,8 @@ Supported Tools
 /analogwrite <br>    GPIO analog output<br>
 /digitalread <br>    GPIO digital input<br>
 /analogread <br>     GPIO analog input<br>
-/syncrtc <br>        update the hardware RTC<br>
-/getrtc <br>         get the hardware RTC current time<br>
+/syncrtc <br>        Update the hardware RTC<br>
+/getrtc <br>         Get the hardware RTC current time<br>
 /still <br>          Capture image<br>
 /vision <br>         Capture + multimodal analysis<br>
 /search <br>         Grounded web search<br>
@@ -117,7 +117,7 @@ Supported Tools
 /reset <br>          Reset conversation state<br>
 /chat <br>           Natural language reply<br>
 /reboot <br>         Reboot the device
-/schedule <br>       schedule tasks
+/schedule <br>       Set schedule tasks
 
 ------------------------------------------------------------
 Persistent Files
@@ -206,7 +206,7 @@ Claude Evaluation
 # fuClaw AI Framework
 
 > An embedded multimodal AI agent running on Realtek Ameba Pro2 devices,  
-> combining Telegram / MQTT, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
+> combining Telegram / MQTT / Web chat, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
 
 ---
 
@@ -218,13 +218,6 @@ Claude Evaluation
 ---
 
 <a name="english"></a>
-
-# fuClaw AI Framework — In-Depth Analysis of Strengths (English)
-
-> An embedded multimodal AI agent running on devices,  
-> combining Telegram / MQTT, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
-
----
 
 ## Table of Contents
 
@@ -408,8 +401,10 @@ file.println(data.c_str());             // Write new state
 | `skill.md` | Skill workflow scripts |
 | `env.json` | Authentication credentials |
 | `memory.md` | Persistent conversation history |
+| `schedule.json` | Schedule tasks | 
 | `index.html` | Web configuration interface |
 | `index_chat.html` | Web chat interface |
+| `index_mqtt_chat.html` | Web chat interface fot MQTT | 
 
 All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
@@ -561,6 +556,17 @@ The chat page communicates with the device via `GET /message?<text>` — a pure 
 - **Inline image rendering**: When the response contains `data:image`, the bubble switches to HTML render mode, displaying the captured frame directly inside the chat.
 - **Error toast**: Network failures surface as a timed overlay rather than breaking the UI state.
 - **Markdown stripping for web context**: `handleAgentResponse()` applies a separate stripping path for `<PAGE>` workIds, converting `*` list markers to `•` bullets and removing fenced code block markers, producing clean readable output without raw Markdown syntax.
+
+### Web MQTT Chat Interface (`index_mqtt_chat.html`)
+
+The MQTT chat interface is designed for scenarios requiring **continuous bidirectional streaming**. It connects directly to an MQTT Broker over WebSocket, establishing a real-time publish/subscribe channel between the browser and fuClaw — no polling required. Key highlights:
+
+- **Sidebar configuration panel**: Broker address, port, username, and password can be entered at runtime without modifying any code; collapsible sections keep the interface uncluttered.
+- **Live connection status indicator**: A color-coded pill badge in the top bar reflects the current connection state — a pulsing green light (connected), amber flash (connecting), and red (disconnected) — all at a glance.
+- **Dynamic topic management**: Topics can be subscribed or unsubscribed while the client is running. Each topic can be assigned an independent message format (TEXT / HTML / BASE64 / BIN), taking effect immediately upon connection. The topic list uses color-coded format badges for quick identification.
+- **Multi-format message rendering**: Incoming payloads are automatically processed according to each topic's format — plain text is displayed as-is, HTML is rendered natively, and both Base64 strings and binary Buffers are decoded into inline images, allowing camera frames to appear directly inside chat bubbles.
+- **Per-message topic labels**: Each incoming message is tagged with its source topic name above the bubble, keeping multi-topic conversations clearly organized.
+- **MQTT wildcard support**: The topic matching logic implements both `+` (single-level) and `#` (multi-level) wildcard patterns, fully compliant with the MQTT specification.
 
 ---
 
@@ -752,8 +758,11 @@ file.println(data.c_str());             // 寫入新狀態
 | `skill.md` | 技能工作流腳本 |
 | `env.json` | 認證憑證 |
 | `memory.md` | 持久對話歷史 |
+| `memory.md` | 持久對話歷史 |
+| `schedule.json` | 時間排程任務 |
 | `index.html` | Web 設定介面 |
 | `index_chat.html` | Web 聊天介面 |
+| `index_mqtt_chat.html` | Web MQTT 聊天介面 |
 
 所有五個檔案完全解耦。其中任何一個都可以獨立修改而無需重新燒錄韌體。存儲在 `env.json` 中的憑證在啟動時首先載入，允許相同的韌體二進制檔案在多個具有不同配置的設備上部署。
 
@@ -905,6 +914,17 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 - **內聯圖像渲染**：當回應包含 `data:image` 時，氣泡切換到 HTML 渲染模式，直接在聊天中顯示擷取的幀。
 - **錯誤提示**：網路失敗以計時覆蓋層呈現，而不是破壞 UI 狀態。
 - **Web 情境的 Markdown 清除**：`handleAgentResponse()` 對 `<PAGE>` workId 應用單獨的清除路徑，將 `*` 列表標記轉換為 `•` 項目符號並刪除圍欄程式碼塊標記，產生乾淨可讀的輸出，不含原始 Markdown 語法。
+
+### Web MQTT 聊天介面（`index_mqtt_chat.html`）
+
+MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 WebSocket 直接連接 MQTT Broker，讓瀏覽器與 fuClaw 之間建立即時的發布／訂閱通道，無需輪詢。設計亮點：
+
+- **側邊欄設定面板**：Broker 位址、連接埠、帳號密碼可在執行期填寫，無需修改程式碼；設定區塊支援折疊，保持介面整潔。
+- **連線狀態指示器**：頂欄的彩色膠囊徽章即時反映連線狀態——綠色呼吸燈（已連線）、琥珀色快閃（連線中）、紅色（斷線），一目了然。
+- **動態 Topic 管理**：使用者可在執行中新增或移除訂閱主題，並為每個 Topic 獨立指定訊息格式（TEXT / HTML / BASE64 / BIN），連線後即時生效，訂閱清單以標籤色碼區分格式類型。
+- **多格式訊息渲染**：收到的 Payload 依 Topic 格式設定自動處理——純文字直接顯示、HTML 原生渲染、Base64 與二進位 Buffer 均自動解碼為內聯圖片，攝影機串流畫面可直接呈現於對話氣泡中。
+- **Topic 標籤標注**：每則收到的訊息上方標注來源 Topic 名稱，多主題同時訂閱時訊息來源清晰可辨。
+- **MQTT 萬用字元支援**：Topic 篩選邏輯實作 `+` 單層與 `#` 多層萬用字元比對，與標準 MQTT 規範相容。
 
 ---
 
