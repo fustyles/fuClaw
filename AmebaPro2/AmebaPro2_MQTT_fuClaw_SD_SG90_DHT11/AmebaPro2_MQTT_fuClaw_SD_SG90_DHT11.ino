@@ -157,6 +157,9 @@ index.html
 
 index_chat.html
   Gemini talk web page (Web Chat Interface)
+  
+index_mqtt_chat.html
+  Gemini talk web page for MQTT (Web Chat Interface for MQTT)  
 
 Conversation state is restored automatically on boot.
 ------------------------------------------------------------
