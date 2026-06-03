@@ -26,7 +26,6 @@ String telegramBot_chatID = "xxxxxxxxxx";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-
 String geminiModel = "gemini-3-flash-preview";
 
 // ============================================================

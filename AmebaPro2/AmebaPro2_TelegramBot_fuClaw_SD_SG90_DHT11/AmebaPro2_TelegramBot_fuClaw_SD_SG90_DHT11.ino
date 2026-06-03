@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-03 01:30
+Build Date: 2026-06-03 12:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -209,8 +209,8 @@ String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-
 String geminiModel = "gemini-3-flash-preview";
+
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
@@ -3326,6 +3326,7 @@ void setEnvironmentSettings(String jsonString) {
   telegrambotToken =  obj["telegramBot_token"].as<String>();
   telegrambotChatId =  obj["telegramBot_chatID"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
+  geminiModel =  obj["gemini_model"].as<String>();
   timeZone = obj["timezone"].as<String>();  
   
 }

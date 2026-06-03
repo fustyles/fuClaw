@@ -35,8 +35,8 @@ String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-
 String geminiModel = "gemini-3-flash-preview";
+
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 

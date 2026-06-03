@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-02 16:30
+Build Date: 2026-06-03 12:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -251,8 +251,8 @@ String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound J
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-
 String geminiModel = "gemini-3-flash-preview";
+
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
@@ -2950,6 +2950,7 @@ void setEnvironmentSettings(String jsonString) {
   mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
   mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
+  geminiModel =  obj["gemini_model"].as<String>();  
   timeZone = obj["timezone"].as<String>(); 
   
 }
