@@ -16,10 +16,11 @@ String systemCommand =
   "/help command list\n"
   "/still capture and send a camera image\n"
   "/syncrtc update the hardware RTC\n" 
-  "/getrtc get the hardware RTC current time\n"                           
-  "/memory show system memory usage\n"
-  "/log show tool execution history\n"
-  "/reset start a new conversation\n\n"
+  "/getrtc get the hardware RTC current time\n"
+  "/getSchedule Get all scheduled tasks\n"
+  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
+  "/getMemory show system memory usage\n"
+  "/getLog show tool execution history\n"
   "Hardware control supported:\n"
   "- Digital output (0 or 1)\n"
   "- Analog output (0–255)\n"
@@ -31,7 +32,7 @@ String systemCommand =
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 
-String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";

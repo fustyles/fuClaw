@@ -513,8 +513,9 @@ timestamps
 
 Example:
 
+<BOT> 2026/5/31 17:35:44
 <PAGE> 2026/5/31 17:35:44 
-<BOT> 2026/5/31 17:35:44 
+<MQTT> 2026/5/31 17:35:44
 
 These values are NOT part of the conversation.
 
@@ -1493,12 +1494,14 @@ String envFilename = "env.json";
   
 /*
 {
-  "wifi_ssid": "",
-  "wifi_pass": "",
-  "telegramBot_token": "",
-  "telegramBot_chatID": "",
-  "gemini_apikey": "",
-  "timezone": ""   
+	"wifi_ssid": "xxxxx",
+	"wifi_pass": "xxxxx",
+	"telegramBot_token": "xxxxx",
+	"telegramBot_chatID": "xxxxx",
+	"gemini_apikey": "xxxxx",
+	"gemini_model": "xxxxx",
+	"schedule_timeout": 10,
+	"timezone": "Asia/Taipei"
 }
 */
 
@@ -2820,6 +2823,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
 void handleAgentResponse(String workId, String message) {
+  message.replace("\n" + workId, "");
+  message.replace(workId, "");
 
   String rawMessage = message;
   

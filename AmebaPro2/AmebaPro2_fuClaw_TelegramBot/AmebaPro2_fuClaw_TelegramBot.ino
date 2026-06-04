@@ -1426,7 +1426,9 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
 void handleAgentResponse(String workId, String message) {
-
+  message.replace("\n" + workId, "");
+  message.replace(workId, "");
+	  
   String rawMessage = message;
   
   message.replace("\\\"", "\""); 

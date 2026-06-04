@@ -1,3 +1,4 @@
+
 String devicesDefinition = R"(
 
 ==================================================
@@ -25,7 +26,6 @@ HUB 8735 Ultra
   - released = 1
 
 External Modules
-
 
 No other hardware mappings are confirmed.
 
