@@ -681,9 +681,9 @@ The scheduled task execution rule overrides the normal confirmation requirement.
 ==================================================
 TOOL ROUTING
 ==================================================
-
+--------------------------------------------------
 Digital output control
-
+--------------------------------------------------
 Request:
 
 {
@@ -701,20 +701,21 @@ Success response:
 {
   "status":"success",
   "method":"digitalwrite",
-  "pin":24,
-  "value":1
+  "workId":"<system-provided>"
 }
 
 Error response:
 
 {
   "status":"error",
-  "reason":"invalid_digital_value",
-  "pin":24
+  "method":"digitalwrite",  
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
 }
 
+--------------------------------------------------
 Analog output control
-
+--------------------------------------------------
 Request:
 
 {
@@ -732,20 +733,20 @@ Success response:
 {
   "status":"success",
   "method":"analogwrite",
-  "pin":13,
-  "value":128
+  "workId":"<system-provided>"
 }
 
 Error response:
 
 {
   "status":"error",
-  "reason":"invalid_output_mode",
-  "pin":13
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
 }
 
+--------------------------------------------------
 Digital input read
-
+--------------------------------------------------
 Request:
 
 {
@@ -762,20 +763,22 @@ Success response:
 {
   "status":"success",
   "method":"digitalread",
-  "pin":12,
-  "value":0
+  "value":<digitalread value>,  
+  "workId":"<system-provided>"
 }
 
 Error response:
 
 {
   "status":"error",
-  "reason":"invalid_input_mode",
-  "pin":12
+  "method":"digitalread",  
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
 }
 
+--------------------------------------------------
 Analog input read
-
+--------------------------------------------------
 Request:
 
 {
@@ -792,21 +795,22 @@ Success response:
 {
   "status":"success",
   "method":"analogread",
-  "pin":34,
-  "value":723
+  "value":<analogread value>, 
+  "workId":"<system-provided>"
 }
 
 Error response:
 
 {
   "status":"error",
-  "reason":"invalid_input_mode",
-  "pin":34
+  "method":"analogread",  
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
 }
 
-
+--------------------------------------------------
 Capture image from device camera:
-   
+--------------------------------------------------  
 {
   "type":"tool_call",
   "method":"/still",
@@ -816,8 +820,21 @@ Capture image from device camera:
   }
 }
 
-Device camera vision analysis:
+--------------------------------------------------
+Recent information query:
+--------------------------------------------------
+{
+  "type":"tool_call",
+  "method":"/search",
+  "params":{
+    "query":"<what to search>",
+    "task":"<what to do after search result, leave empty if none>"
+  }
+}
 
+--------------------------------------------------
+Device camera vision analysis:
+--------------------------------------------------
 {
   "type": "tool_call",
   "method": "/vision",
@@ -828,19 +845,9 @@ Device camera vision analysis:
   }
 }
 
-Recent information query:
-
-{
-  "type":"tool_call",
-  "method":"/search",
-  "params":{
-    "query":"<what to search>",
-    "task":"<what to do after search result, leave empty if none>"
-  }
-}
-
+--------------------------------------------------
 Pause execution for a specified duration (0–10000 ms maximum):
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/delay",
@@ -849,32 +856,36 @@ Pause execution for a specified duration (0–10000 ms maximum):
   }
 }
 
+--------------------------------------------------
 Memory status:
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/memory",
   "params":{}
 }
 
+--------------------------------------------------
 Show tool execution history:
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/log",
   "params":{}
 }
 
+--------------------------------------------------
 Reset conversation:
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/reset",
   "params":{}
 }
 
+--------------------------------------------------
 Normal conversational reply:
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/chat",
@@ -883,17 +894,18 @@ Normal conversational reply:
   }
 }
 
+--------------------------------------------------
 Reboot the device:
-
+--------------------------------------------------
 {
   "type":"tool_call",
   "method":"/reboot",
   "params":{}
 }
 
-
+--------------------------------------------------
 Schedule task creation:
-
+--------------------------------------------------
 {
   "type": "tool_call",
   "method": "/schedule",
@@ -906,7 +918,8 @@ Success response:
 
 {
   "status": "success",
-  "method": "/schedule"
+  "method": "/schedule",
+  "workId":"<system-provided>"
 }
 
 Error response:
@@ -914,10 +927,13 @@ Error response:
 {
   "status": "error",
   "method": "/schedule",
-  "reason": "<Error message>"
+  "reason":"<error reason>",  
+  "workId":"<system-provided>"
 }
 
+--------------------------------------------------
 Servo motor control:
+--------------------------------------------------
 {
   "type": "tool_call",
   "method": "/servo",
@@ -931,19 +947,20 @@ Success response:
 {
   "status": "success",
   "method": "/servo",
-  "pin": 2,
-  "angle": 90
+  "workId":"<system-provided>"
 }
 
 Error response:
 {
   "status": "error",
-  "method": "/servo",  
-  "reason": "undefined_servo_pin",
-  "pin": 3
+  "method": "/servo",
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
 }
 
+--------------------------------------------------
 Reading the DHT11 temperature and humidity sensor:
+--------------------------------------------------
 {
   "type": "tool_call",
   "method": "/dht11",
@@ -956,17 +973,17 @@ Success response:
 {
   "status": "success",
   "method": "/dht11",
-  "pin": 20,
-  "temperature": 26,
-  "humidity": 65
+  "temperature: <temperature value>,
+  "humidity: <humidity value>,
+  "workId":"<system-provided>"
 }
 
 Error response:
 {
   "status": "error",
-  "method": "/dht11",  
-  "reason": "dht11_read_failed",
-  "pin": 20
+  "method": "/dht11", 
+  "reason":"<error reason>",  
+  "workId":"<system-provided>"
 }
 
 ==================================================
@@ -1891,10 +1908,11 @@ String replyUserImage(String workId, bool frames) {
           if (i % 3 == 0) imageFile += String(output);
       }
       mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+	  
+	  return "Image file created.";
   }
-  else if (workId.startsWith("<BOT>")) {
+  else
     return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
-  }
 
   return "";
 }
@@ -2330,7 +2348,7 @@ String getMemoryInfo() {
 
 // Control device output using digital or analog mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
-String toolPinOutput(int pin, String mode, int value) {
+String toolPinOutput(int pin, String mode, int value, String workId) {
 
     pinMode(pin, OUTPUT);
 
@@ -2339,44 +2357,50 @@ String toolPinOutput(int pin, String mode, int value) {
     if (mode == "digitalwrite") {
 
         if (value != 0 && value != 1) {
-            return "{\"status\":\"error\",\"reason\":\"invalid_digital_value\",\"pin\":" + String(pin) + "}";
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/digitalwrite\","				
+				"\"reason\":\"invalid_digital_value\","
+				"\"workId\":\"" + workId + "\"}";
         }
 
         digitalWrite(pin, value);
 
         return
             "{\"status\":\"success\","
-            "\"method\":\"digitalwrite\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
+            "\"method\":\"/digitalwrite\","
+			"\"workId\":\"" + workId + "\"}";
 
     }
     else if (mode == "analogwrite") {
 
-        value = constrain(value, 0, 255);
+        if (value < 0 || value > 255) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/analogwrite\","				
+				"\"reason\":\"invalid_analog_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
 
         analogWrite(pin, value);
 
         return
             "{\"status\":\"success\","
-            "\"method\":\"analogwrite\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
+            "\"method\":\"/analogwrite\","
+			"\"workId\":\"" + workId + "\"}";
 
     }
 
     return
         "{\"status\":\"error\","
+        "\"method\":\"/analogwrite\","		
         "\"reason\":\"invalid_output_mode\","
-        "\"pin\":" + String(pin) +
-        "}";
+		"\"workId\":\"" + workId + "\"}";
 }
 
 // Read device input using digital or analog mode.
 // This function supports general-purpose sensors such as buttons and analog sensors connected to GPIO pins.
-String toolPinInput(int pin, String mode) {
+String toolPinInput(int pin, String mode, String workId) {
 
     pinMode(pin, INPUT);
 
@@ -2388,10 +2412,9 @@ String toolPinInput(int pin, String mode) {
 
         return
             "{\"status\":\"success\","
-            "\"method\":\"digitalread\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
+            "\"method\":\"/digitalread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
 
     }
     else if (mode == "analogread") {
@@ -2400,39 +2423,45 @@ String toolPinInput(int pin, String mode) {
 
         return
             "{\"status\":\"success\","
-            "\"method\":\"analogread\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
+            "\"method\":\"/analogread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
 
     }
 
     return
         "{\"status\":\"error\","
+        "\"method\":\"/analogread\","		
         "\"reason\":\"invalid_input_mode\","
-        "\"pin\":" + String(pin) +
-        "}";
+		"\"workId\":\"" + workId + "\"}";
 }
 
 // Control a servo motor's position by specifying a target angle.
 // This function supports precise physical movement for actuators
 // like the SG90 servo connected to GPIO pins.
-String tool_servo(AmebaServo &servo, int pin, int angle) {
+String tool_servo(AmebaServo &servo, int pin, int angle, String workId) {
     if (!servo.attached())
         servo.attach(pin);
-    angle = constrain(angle, 0, 180);
+	
+	if (angle < 0 || angle > 180) {
+		return 
+			"{\"status\":\"error\","
+			"\"method\":\"/servo\","				
+			"\"reason\":\"invalid_servo_angle\","
+			"\"workId\":\"" + workId + "\"}";
+	}
+		
     servo.write(angle);
-
+		
     return
         "{\"status\":\"success\","
-        "\"method\":\"servo\","
-        "\"pin\":" + String(pin) + ","
-        "\"angle\":" + String(angle) + "}";
+        "\"method\":\"/servo\","
+		"\"workId\":\"" + workId + "\"}";		
 }
 
 // Read temperature and humidity from a DHT11 sensor.
 // Returns a JSON result string for the agent workflow.
-String tool_dht11(int pin) {
+String tool_dht11(int pin, String workId) {
   float h = dht.readHumidity();
   // Read temperature as Celsius (the default)
   float t = dht.readTemperature();
@@ -2440,17 +2469,18 @@ String tool_dht11(int pin) {
   // Check if any reads failed and exit early (to try again).
   if (isnan(h) || isnan(t)) {
     return "{\"status\":\"error\","
+		   "\"method\":\"/dht11\","	
            "\"reason\":\"dht11_read_failed\","
-           "\"pin\":" + String(pin) + "}";
+		   "\"workId\":\"" + workId + "\"}";	
 
   }
 
   return
     "{\"status\":\"success\","
-    "\"method\":\"dht11\","
-    "\"pin\":"         + String(pin)  + ","
+    "\"method\":\"/dht11\","
     "\"temperature\":" + String(t) + ","
-    "\"humidity\":"    + String(h) + "}";
+    "\"humidity\":"    + String(h) + ","
+	"\"workId\":\"" + workId + "\"}";		
 }
 
 // Ask Gemini to re-check whether the current workflow is complete.
@@ -2488,7 +2518,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String pinmode = params["pinmode"].as<String>();
       int value = params["value"].as<int>();
       
-      String response = toolPinOutput(pin, pinmode, value);
+      String response = toolPinOutput(pin, pinmode, value, workId);
     
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -2502,7 +2532,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
 
-      String response = toolPinInput(pin, pinmode);
+      String response = toolPinInput(pin, pinmode, workId);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -2521,10 +2551,10 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       res.replace("\"", "\\\"");   
        
       String response =
-        "{\"status\":\"success\","
-        "\"method\":\"/still\","
-        "\"result\":\"" + res + "\"}";
-    
+        "{\"method\":\"/still\","
+        "\"result\":\"" + res + "\",";
+        "\"workId\":\"" + workId + "\"}";
+		
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
 
@@ -2535,11 +2565,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     } 
     else if (command == "/syncrtc") {
       rtcInitialTime(workId);
-      String rtcTime = getRtcTimeString();
-      replyUserMessage(workId, "RTC START: " + rtcTime);
+      String rtcTimeResponse = "RTC START: " + getRtcTimeString();
+      replyUserMessage(workId, rtcTimeResponse);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";
 
@@ -2560,36 +2590,39 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = "";
 	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
 		    task = task.substring(0, task.lastIndexOf("]") + 1);
-        if (scheduleTasks == "")
-          scheduleTasks = task;
-        else
-          scheduleTasks += ", " + task;
+			if (scheduleTasks == "")
+				scheduleTasks = task;
+			else {
+				scheduleTasks += ", " + task;
 
-        String prompt = 
-          "Merge all given JSON arrays into a single valid JSON array."
-          "Output ONLY the merged array."
-          "Ensure the result is valid JSON starting with [ and ending with ]."
-          "For every object in the arrays, set the field \"executed\" to false while keeping all other fields unchanged.\n\n"
-          + scheduleTasks;
-          
-        String jsonArray = geminiChatRequest(workId, prompt, -1);
-        
-        if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
-          jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-          scheduleTasks = jsonArray;
-        }
-        
-        storeDataToFile(scheduleFilename, scheduleTasks);
+				String prompt = 
+				  "Merge all given JSON arrays into a single valid JSON array."
+				  "Output ONLY the merged array."
+				  "Ensure the result is valid JSON starting with [ and ending with ]."
+				  "For every object in the arrays, keeping all fields unchanged.\n\n"
+				  + scheduleTasks;
+				  
+				String jsonArray = geminiChatRequest(workId, prompt, -1);
+				
+				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+				  scheduleTasks = jsonArray;
+				}
+			}
+			
+			storeDataToFile(scheduleFilename, scheduleTasks);
                 
     		response = 
-    			"{\"status\":\"success\","
-    			"\"method\":\"/schedule\"}";
+    			"{\"status\":\"success\","			
+    			"\"method\":\"/schedule\","
+    			"\"workId\":\""+workId+"\"}";				
     	}
     	else {
     		response =
-        "{\"status\":\"success\","
-        "\"method\":\"/still\","
-        "\"reason\":\"Invalid JSON array format.\"}";	  
+			"{\"status\":\"error\","
+			"\"method\":\"/schedule\","
+			"\"reason\":\"Invalid JSON array format.\","
+			"\"workId\":\""+workId+"\"}";	  
   	  }   
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -2617,19 +2650,22 @@ Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");
       
       if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+		
         scheduleTasks = jsonArray;
 Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");   
         storeDataToFile(scheduleFilename, scheduleTasks);
         
         response = 
           "{\"status\":\"success\","
-          "\"method\":\"/schedule\"}";
+          "\"method\":\"/schedule\","
+		  "\"workId\":\""+workId+"\"}";		  
       }
       else {
         response =
-        "{\"status\":\"success\","
+        "{\"status\":\"error\","
         "\"method\":\"/still\","
-        "\"reason\":\"Invalid JSON array format.\"}";   
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
       }  
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -2644,20 +2680,22 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
       scheduleTasks = ""; 
       storeDataToFile(scheduleFilename, scheduleTasks);
       
-      replyUserMessage(workId, "Scheduled tasks have been cleared.");
+	  String response = "Scheduled tasks have been cleared.";
+      replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", "Scheduled tasks have been cleared." + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";           
     }
     else if (command == "/reset") {
       geminiChatReset();
       
-      replyUserMessage(workId, "New chat started.");
+	  String response = "New chat started.";
+      replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", "New chat started." + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";	  
 
@@ -2741,11 +2779,11 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
 
         String response = "";
         if (pin == 12)
-            response = tool_servo(servo12, pin, angle);
+            response = tool_servo(servo12, pin, angle, workId);
         else
             response = "{\"status\":\"error\","
-                       "\"reason\":\"undefined_servo_pin\","
-                       "\"pin\":" + String(pin) + "}";
+                       "\"reason\":\"undefined_servo_pin: " + String(pin) + "\","
+					   "\"workId\":\"" + workId + "\"}";						   
 
         historicalMessages += buildGeminiMessage("user", command + timestamps);
         historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -2758,7 +2796,7 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
     else if (command == "/dht11") {
       int pin = params["pin"].as<int>();
   
-      String response = tool_dht11(pin);
+      String response = tool_dht11(pin, workId);
   
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -3489,7 +3527,7 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
-Serial.println("\nexecuted: \n" + String(executed) +"\n");       
+       
       if (executed) continue;
   
       JsonObject schedule = task["schedule"];
@@ -3615,9 +3653,11 @@ Serial.println("\nresponse: \n" + response +"\n");
           handleAgentResponse(workId, response);
           
         }
+        
+        if (tasks.size()>0)
+          executeTool(workId, "/updateSchedule", JsonObject(), false);
+        
       }
-
-      executeTool(workId, "/updateSchedule", JsonObject(), false);
       
       storeDataToFile(memoryFilename, historicalMessages);
     }
@@ -3753,7 +3793,7 @@ void setup() {
   } 
 
 /*
-
+ 
   if (xTaskCreate(
         task_time_scheduling,
         (const char *)"task_time_scheduling",
