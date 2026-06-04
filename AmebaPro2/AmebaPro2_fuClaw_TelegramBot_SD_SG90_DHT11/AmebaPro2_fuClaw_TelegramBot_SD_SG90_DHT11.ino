@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-04 17:30
+Build Date: 2026-06-04 20:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1556,7 +1556,7 @@ String scheduleFilename = "schedule.json";
 String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
 
 // Forward declarations
-String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type);
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson, bool type);
 String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String workId, String text, String keyboard);
@@ -2670,7 +2670,7 @@ Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
 		
         scheduleTasks = jsonArray;
-Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");   
+        // Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");   
         storeDataToFile(scheduleFilename, scheduleTasks);
         
         response = 
@@ -2698,7 +2698,7 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
       if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
             scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
             
-      String response = getUnfinishedScheduleTasksJson(scheduleTasks, false);
+      String response = getUnfinishedScheduleTasksJson(scheduleTasks);
       replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -3207,14 +3207,17 @@ void getTelegramMessage() {
   String voiceFileId = "";
   long   message_id  = 0;
 
-  if (lastMessageId == 0)
-    Serial.println("Connect to " + String(myDomain));
+  // Reuse existing connection if still alive; reconnect only when needed
+  if (!botClient.connected()) {
+    if (lastMessageId == 0)
+      Serial.println("Connect to " + String(myDomain));
 
-  if (!botClient.connect(myDomain, 443))
-    return;
+    if (!botClient.connect(myDomain, 443))
+      return;
 
-  if (lastMessageId == 0)
-    Serial.println("Connection successful");
+    if (lastMessageId == 0)
+      Serial.println("Connection successful");
+  }
 
   while (botClient.connected()) {
 
@@ -3232,9 +3235,10 @@ void getTelegramMessage() {
     botClient.println();
     botClient.print(request);
 
-    int           waitTime  = 5000;
-    unsigned long startTime = millis();
-    bool          state     = false;
+    int           waitTime    = 5000;
+    unsigned long startTime   = millis();
+    bool          state       = false;
+    bool          dataReceived = false;
 
     while ((startTime + waitTime) > millis()) {
       vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -3253,22 +3257,29 @@ void getTelegramMessage() {
         if (state) {
           getBody += String(c);
         } else {
-          if      (getTime.indexOf("Date:")        != -1)  getTime  = "";
-          else if (getTime.indexOf("Content-Type") != -1)  getTime += "";
-          else                                                 getTime += String(c);
+          if      (getTime.indexOf("Date:") != -1)
+            getTime  = "";
+          else if (getTime.indexOf("Content-Type") != -1)
+            getTime += "";
+          else
+            getTime += String(c);
         }
 
         startTime = millis();
       }
 
-      if (getBody.length() > 0) break;
+      // Break as soon as body is received
+      if (getBody.length() > 0) {
+        dataReceived = true;
+        break;
+      }
     }
 
     getTime.replace("Content-Type", "");
 
-    String workId = "<BOT> " + getTime;;
+    String workId = "<BOT> " + getTime;
 
-    if (getBody == "") return;
+    if (!dataReceived || getBody == "") return;
 
     DeserializationError err = deserializeJson(doc, getBody);
     if (err) {
@@ -3331,7 +3342,7 @@ void getTelegramMessage() {
           }
 
           if (voiceFile)
-            free(voiceFile);  // Always release the voice buffer
+            free(voiceFile);
 
           storeDataToFile(memoryFilename, historicalMessages);
         }
@@ -3556,6 +3567,7 @@ bool isExecutedToday(String task) {
     executedTodayTasks = "";
     executedTodayDate = today;
   }
+
   return executedTodayTasks.indexOf("|" + task + "|") != -1;
 }
 
@@ -3569,12 +3581,54 @@ void markExecutedToday(const String &task) {
   executedTodayTasks += "|" + task + "|";
 }
 
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "Unfinished Schedule Tasks:\n\n";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+                
+      String scheduleStr;
+      serializeJson(task["schedule"], scheduleStr);
+      String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+      if (year == 0 && isExecutedToday(compareTask))
+          continue;
+
+      result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
+  }
+
+  return result;
+}
+
 // Filters the full schedule JSON array and returns only tasks that are
 // due for execution based on the current RTC time.
 // Recurring tasks (year == 0) are excluded if already executed today.
 // One-time tasks (year > 0) are excluded if "executed" is true.
 // Returns a JSON array string of due tasks, or "[]" if none qualify.
-String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type = true) {
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, scheduleTasksJson);
   
@@ -3592,7 +3646,7 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type
   DynamicJsonDocument resultDoc(8192);
   JsonArray resultArray = resultDoc.to<JsonArray>();
 
-  String result = "";
+  String result = "Unfinished Schedule Tasks:\n\n";
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
@@ -3622,7 +3676,9 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type
       time_t taskTime = mktime(&tmTask);
       
       if (mktime(&tmTask) <= rawtime) {
-        if (scheduleTimeout > 0 && (rawtime - taskTime) > (time_t)(scheduleTimeout * 60))
+        time_t diff = rawtime - taskTime;
+        
+        if ((scheduleTimeout > 0 && rawtime > taskTime && diff > (time_t)(scheduleTimeout * 60)))
             continue;
                 
         String scheduleStr;
@@ -3632,19 +3688,14 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type
         if (year == 0 && isExecutedToday(compareTask))
             continue;
 
-        if (type == true) {
-          JsonObject item = resultArray.createNestedObject();
-          item["task"] = task["task"].as<String>();
-          item["schedule"] = schedule;
-        }
-        else {
-          result += "[ " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + "/" + String(minute) + "/" + String(sec) + "] " + task["task"].as<String>() + "\n";
-        }
+        JsonObject item = resultArray.createNestedObject();
+        item["task"] = task["task"].as<String>();
+        item["schedule"] = schedule;
+
       }
   }
 
-  if (type == true)
-    serializeJson(resultDoc, result);
+  serializeJson(resultDoc, result);
   return result;
 }
 
@@ -3674,7 +3725,7 @@ void task_time_scheduling(void *param) {
     if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
       scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
  
-      String unfinishedScheduleTasksJson = getUnfinishedScheduleTasksJson(scheduleTasks);
+      String unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(scheduleTasks);
 
       if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
         unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
@@ -3790,6 +3841,7 @@ void setEnvironmentSettings(String jsonString) {
   telegrambotChatId =  obj["telegramBot_chatID"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
   geminiModel =  obj["gemini_model"].as<String>();
+  scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>();  
   
 }
@@ -3841,7 +3893,6 @@ void setup() {
   Serial.println("scheduleTodayExecuted.md len: " + String(scheduleExecutedTodayTasks.length()));
   if (scheduleExecutedTodayTasks != "")
     executedTodayTasks = scheduleExecutedTodayTasks;
-Serial.println("executedTodayTasks: " + executedTodayTasks);
 
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
@@ -3851,60 +3902,6 @@ Serial.println("executedTodayTasks: " + executedTodayTasks);
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
     historicalMessages = memory;
-
-  server.begin();   
-
-  if (xTaskCreate(
-        task_getRequest,
-        (const char *)"task_getRequest",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_task_getRequest failed");
-  }        
-
-  if (xTaskCreate(
-        task_getTelegramMessage,
-        (const char *)"task_getTelegramMessage",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_getTelegramMessage failed");
-  } 
-     
-/*
-
-  if (xTaskCreate(
-        task_time_scheduling,
-        (const char *)"task_time_scheduling",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_time_scheduling failed");
-  }  
- 
-  if (xTaskCreate(
-        task_theft_detection,
-        (const char *)"task_theft_detection",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_theft_detection failed");
-  }   
-
-*/   
 
   Serial.println("\n");
   Serial.println("AP ssid : " + apSsid);
@@ -3938,6 +3935,61 @@ Serial.println("executedTodayTasks: " + executedTodayTasks);
   time_t rawtime = (time_t)epoch;
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
+
+
+  server.begin();   
+
+  if (xTaskCreate(
+        task_getRequest,
+        (const char *)"task_getRequest",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequest failed");
+  }        
+
+  if (xTaskCreate(
+        task_getTelegramMessage,
+        (const char *)"task_getTelegramMessage",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getTelegramMessage failed");
+  } 
+
+  if (xTaskCreate(
+        task_time_scheduling,
+        (const char *)"task_time_scheduling",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_time_scheduling failed");
+  }  
+     
+/* 
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
+  }   
+
+*/   
+  
   
 }
 
