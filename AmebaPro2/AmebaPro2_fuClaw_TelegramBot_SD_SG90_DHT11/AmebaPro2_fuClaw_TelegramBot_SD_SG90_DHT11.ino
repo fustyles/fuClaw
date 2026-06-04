@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-04 20:30
+Build Date: 2026-06-04 21:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -99,8 +99,10 @@ Supported Tools
 /chat                     Natural language reply
 /reboot                   Reboot the device
 /schedule                 Add scheduled tasks
+/getSchedule              Get all scheduled tasks
 /getUnfinishedSchedule    Get unfinished scheduled tasks
-/updateSchedule           Update the executed status of scheduled tasks
+/updateScheduleStatus     Update the executed status of scheduled tasks
+/modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
 ------------------------------------------------------------
 Persistent Files
@@ -197,10 +199,10 @@ String systemCommand =
   "/still capture and send a camera image\n"
   "/syncrtc update the hardware RTC\n" 
   "/getrtc get the hardware RTC current time\n"
-  "/getUnfinishedSchedule get the finished Schedule tasks\n"
+  "/getSchedule Get all scheduled tasks\n"
+  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
   "/getMemory show system memory usage\n"
   "/getLog show tool execution history\n"
-  "/reset start a new conversation\n\n"
   "Hardware control supported:\n"
   "- Digital output (0 or 1)\n"
   "- Analog output (0–255)\n"
@@ -212,7 +214,7 @@ String systemCommand =
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 
-String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"},{\"text\":\"/reset\"}],[{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getUnfinishedSchedule\"},{\"text\":\"/getMemory\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -708,7 +710,7 @@ Success response:
 {
   "status":"success",
   "method":"digitalwrite",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -717,7 +719,7 @@ Error response:
   "status":"error",
   "method":"digitalwrite",  
   "reason":"<error reason>",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 --------------------------------------------------
@@ -740,7 +742,7 @@ Success response:
 {
   "status":"success",
   "method":"analogwrite",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -748,7 +750,7 @@ Error response:
 {
   "status":"error",
   "reason":"<error reason>",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 --------------------------------------------------
@@ -771,7 +773,7 @@ Success response:
   "status":"success",
   "method":"digitalread",
   "value":<digitalread value>,  
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -780,7 +782,7 @@ Error response:
   "status":"error",
   "method":"digitalread",  
   "reason":"<error reason>",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 --------------------------------------------------
@@ -803,7 +805,7 @@ Success response:
   "status":"success",
   "method":"analogread",
   "value":<analogread value>, 
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -812,7 +814,7 @@ Error response:
   "status":"error",
   "method":"analogread",  
   "reason":"<error reason>",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 --------------------------------------------------
@@ -835,7 +837,7 @@ Recent information query:
   "method":"/search",
   "params":{
     "query":"<what to search>",
-    "task":"<what to do after search result, leave empty if none>"
+    "task":"<what to do after search result, If none, return NONE."
   }
 }
 
@@ -882,7 +884,7 @@ Show tool execution history:
 }
 
 --------------------------------------------------
-Reset conversation:
+Clear conversation history and start a new chat:
 --------------------------------------------------
 {
   "type":"tool_call",
@@ -926,7 +928,7 @@ Success response:
 {
   "status": "success",
   "method": "/schedule",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -935,7 +937,62 @@ Error response:
   "status": "error",
   "method": "/schedule",
   "reason":"<error reason>",  
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
+}
+
+--------------------------------------------------
+Get all scheduled tasks:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/getSchedule",
+  "params":{}
+}
+
+--------------------------------------------------
+Get unfinished scheduled tasks:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/getUnfinishedSchedule",
+  "params":{}
+}
+
+--------------------------------------------------
+Modify or delete scheduled tasks:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/modifySchedule",
+  "params": {
+    "task": "<scheduled task identifier including execution time and task description>"
+  }
+}
+
+Success response:
+
+{
+  "status": "success",
+  "method": "/modifySchedule",
+  "workId": "<system-provided>"
+}
+
+Error response:
+
+{
+  "status": "error",
+  "method": "/modifySchedule",
+  "reason":"<error reason>",  
+  "workId": "<system-provided>"
+}
+
+--------------------------------------------------
+Clear scheduled tasks:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/clearSchedule",
+  "params":{}
 }
 
 --------------------------------------------------
@@ -954,7 +1011,7 @@ Success response:
 {
   "status": "success",
   "method": "/servo",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -962,7 +1019,7 @@ Error response:
   "status": "error",
   "method": "/servo",
   "reason":"<error reason>",
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 --------------------------------------------------
@@ -982,7 +1039,7 @@ Success response:
   "method": "/dht11",
   "temperature: <temperature value>,
   "humidity: <humidity value>,
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 Error response:
@@ -990,7 +1047,7 @@ Error response:
   "status": "error",
   "method": "/dht11", 
   "reason":"<error reason>",  
-  "workId":"<system-provided>"
+  "workId": "<system-provided>"
 }
 
 ==================================================
@@ -1073,7 +1130,7 @@ Each task object:
 
 [
   {
-    "task": "<Task description>",
+    "task": "<Task description. MUST use the same language as the user's request. NEVER translate the task into another language.>",
     "schedule": {
       "year": <4-digit year>,
       "month": <1-12>,
@@ -1204,7 +1261,7 @@ Use /schedule when user explicitly requests:
 - automate an action at a future time
 - repeat an action daily / monthly / yearly
 
-Use /updateSchedule when:
+Use /updateScheduleStatus when:
 - a scheduled task has just been successfully executed
 - the system needs to sync execution state back to the schedule
 - called automatically by the scheduler after tool execution completes
@@ -1213,7 +1270,7 @@ Use /clearSchedule when:
 - clear scheduled tasks
 
 Schedule actions require explicit user confirmation before execution.
-* /updateSchedule
+* /updateScheduleStatus
 * /clearSchedule
 --------------------------------------------------
 TIME　SCHEDULE INPUT
@@ -1556,7 +1613,8 @@ String scheduleFilename = "schedule.json";
 String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
 
 // Forward declarations
-String getExecuteScheduleTasksJson(const String &scheduleTasksJson, bool type);
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
 String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String workId, String text, String keyboard);
@@ -2608,27 +2666,30 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = "";
 	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
 		    task = task.substring(0, task.lastIndexOf("]") + 1);
-			if (scheduleTasks == "")
-				scheduleTasks = task;
-			else {
-				scheduleTasks += ", " + task;
-
-				String prompt = 
-				  "Merge all given JSON arrays into a single valid JSON array."
-				  "Output ONLY the merged array."
-				  "Ensure the result is valid JSON starting with [ and ending with ]."
-				  "For every object in the arrays, keeping all fields unchanged.\n\n"
-				  + scheduleTasks;
-				  
-				String jsonArray = geminiChatRequest(workId, prompt, -1);
-				
-				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
-				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-				  scheduleTasks = jsonArray;
-				}
-			}
-			
-			storeDataToFile(scheduleFilename, scheduleTasks);
+  			if (scheduleTasks == "")
+  				scheduleTasks = task;
+  			else {
+  				scheduleTasks += ", " + task;
+  
+        String prompt = 
+          "Merge all given JSON arrays into a single valid JSON array. "
+          "Output ONLY the merged array. "
+          "Ensure the result is valid JSON starting with [ and ending with ]. "
+          "For every object in the arrays, keep all fields unchanged. "
+          "The value of the task field MUST remain exactly as provided. "
+          "Never translate, rewrite, summarize, localize, or modify task descriptions. "
+          "Task descriptions MUST remain in the original user language.\n\n"
+          + scheduleTasks;
+  				  
+  				String jsonArray = geminiChatRequest(workId, prompt, -1);
+  				
+  				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+  				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+  				  scheduleTasks = jsonArray;
+  				}
+  			}
+  			
+  			storeDataToFile(scheduleFilename, scheduleTasks);
                 
     		response = 
     			"{\"status\":\"success\","			
@@ -2649,9 +2710,68 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + "\n";
 
       evaluateWorkflowContinuation(workId, reCheck);
-Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");      
+    
   	}	
-    else if (command == "/updateSchedule") {
+    else if (command == "/modifySchedule") {
+      String task = params["task"].as<String>();
+            
+      String response = "";
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a user-approved schedule modification request. "
+          "Apply the requested modification or deletion to the scheduled tasks. "
+          "Rules: "
+          "- Match tasks using both schedule time and task description. "
+          "- If the request is to modify a task, update only the requested fields. "
+          "- Modifying a task includes changing the task description, schedule time, or recurrence settings. "
+          "- Any modified task MUST have its executed field set to false. "
+          "- If the request is to delete a task, remove the matching task from the array. "
+          "- Do NOT modify unrelated tasks. "
+          "- Preserve all fields of unaffected tasks. "
+          "- Preserve the executed field of unaffected tasks. "
+          "- Do NOT add new fields. "
+          "- Do NOT remove existing fields except when deleting a task. "
+          "- Preserve the original JSON schema. "
+          "- If no matching task exists, return the original array unchanged. "
+          "- Output ONLY the updated JSON array. "
+          "- The result MUST start with [ and end with ]. "
+          "- Do NOT output explanations, markdown, code fences, or natural language.\n\n"
+          "Current scheduled tasks:\n" +
+          scheduleTasks +
+          "\n\nUser-approved modification request:\n" +
+          task;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+    
+        scheduleTasks = jsonArray;
+        
+        storeDataToFile(scheduleFilename, scheduleTasks);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/modifySchedule\","
+          "\"workId\":\""+workId+"\"}";     
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/modifySchedule\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }    
+    else if (command == "/updateScheduleStatus") {
       String response = "";
       
       String prompt =
@@ -2670,18 +2790,18 @@ Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
 		
         scheduleTasks = jsonArray;
-        // Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");   
+          
         storeDataToFile(scheduleFilename, scheduleTasks);
         
         response = 
           "{\"status\":\"success\","
-          "\"method\":\"/schedule\","
+          "\"method\":\"/updateScheduleStatus\","
 		  "\"workId\":\""+workId+"\"}";		  
       }
       else {
         response =
         "{\"status\":\"error\","
-        "\"method\":\"/still\","
+        "\"method\":\"/updateScheduleStatus\","
         "\"reason\":\"Invalid JSON array format.\","
         "\"workId\":\""+workId+"\"}";
       }  
@@ -2694,6 +2814,21 @@ Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");
       evaluateWorkflowContinuation(workId, reCheck);
      
     }
+    else if (command == "/getSchedule") {
+      String prompt =
+        "Please organize the following scheduled tasks and respond in the user's current language. "
+        "Present the information in a clear and well-structured bullet-point format for better readability: "
+        + scheduleTasks;
+
+      String response = geminiChatRequest(workId, prompt);
+      replyUserMessage(workId, response); 
+          
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+     
+    }    
     else if (command == "/getUnfinishedSchedule") {
       if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
             scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
@@ -2714,7 +2849,7 @@ Serial.println("\nscheduleTasks: \n"+scheduleTasks+"\n");
       storeDataToFile(scheduleFilename, scheduleTasks);
       storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
       
-	  String response = "Scheduled tasks have been cleared.";
+	    String response = "Scheduled tasks have been cleared.";
       replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -3595,7 +3730,7 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument resultDoc(8192);
   JsonArray resultArray = resultDoc.to<JsonArray>();
 
-  String result = "Unfinished Schedule Tasks:\n\n";
+  String result = "";
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
@@ -3701,7 +3836,7 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
 
 // FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
 // For each due task, constructs a prompt and sends it to Gemini for execution.
-// After all due tasks are processed, triggers /updateSchedule to sync
+// After all due tasks are processed, triggers /updateScheduleStatus to sync
 // execution state, and persists daily execution records and chat history to SD card.
 void task_time_scheduling(void *param) {
   (void)param;
@@ -3784,7 +3919,7 @@ void task_time_scheduling(void *param) {
         }
         
         if (tasks.size()>0) {
-          executeTool(workId, "/updateSchedule", JsonObject(), false);
+          executeTool(workId, "/updateScheduleStatus", JsonObject(), false);
 
           storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
           storeDataToFile(memoryFilename, historicalMessages);
@@ -3928,7 +4063,7 @@ void setup() {
   dht.begin();
 
   rtcInitialTime("<BOT>");
-  replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+  replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
   long long epoch = rtc.Read();
@@ -3989,7 +4124,6 @@ void setup() {
   }   
 
 */   
-  
   
 }
 
