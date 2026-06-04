@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-04 21:30
+Build Date: 2026-06-04 22:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -25,6 +25,7 @@ on Realtek Ameba Pro2 devices:
 
 It combines:
 - Telegram Bot API (HTTPS long polling)
+- Gemini Chat Web Interface
 - Google Gemini generateContent API
 - Gemini grounded web search
 - Gemini multimodal vision reasoning
@@ -39,9 +40,10 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
-Telegram User
-      ↓
-Telegram Polling Task
+Telegram / MQTT / Web Chat User
+↓
+Communication Task
+(Telegram Long Polling / MQTT / Web Chat)
       ↓
 Message Router
       ↓
