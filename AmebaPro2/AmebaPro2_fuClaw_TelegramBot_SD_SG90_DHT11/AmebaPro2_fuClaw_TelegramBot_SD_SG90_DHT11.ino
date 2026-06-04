@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-03 12:30
+Build Date: 2026-06-04 17:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -83,22 +83,25 @@ Multi-step workflows are executed step-by-step.
 ------------------------------------------------------------
 Supported Tools
 ------------------------------------------------------------
-/digitalwrite   GPIO digital output
-/analogwrite    GPIO analog output
-/digitalread    GPIO digital input
-/analogread     GPIO analog input
-/syncrtc        Update the hardware RTC
-/getrtc         Get the hardware RTC current time
-/still          Capture image
-/vision         Capture + multimodal analysis
-/search         Grounded web search
-/delay          Pause execution for specified milliseconds
-/memory         Runtime memory diagnostics
-/log            Show tool execution history
-/reset          Reset conversation state
-/chat           Natural language reply
-/reboot         Reboot the device
-/schedule       schedule tasks
+/digitalwrite             GPIO digital output
+/analogwrite              GPIO analog output
+/digitalread              GPIO digital input
+/analogread               GPIO analog input
+/syncrtc                  Update the hardware RTC
+/getrtc                   Get the hardware RTC current time
+/still                    Capture image
+/vision                   Capture + multimodal analysis
+/search                   Grounded web search
+/delay                    Pause execution for specified milliseconds
+/getMemory                Runtime memory diagnostics
+/getLog                   Show tool execution history
+/reset                    Reset conversation state
+/chat                     Natural language reply
+/reboot                   Reboot the device
+/schedule                 Add scheduled tasks
+/getUnfinishedSchedule    Get unfinished scheduled tasks
+/updateSchedule           Update the executed status of scheduled tasks
+/clearSchedule            Clear scheduled tasks
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
@@ -119,6 +122,9 @@ memory.md
 
 schedule.json
   schedule tasks
+
+scheduleTodayExecuted.md
+  Stores scheduled tasks executed today
 
 index.html
   fuClaw configuration web page
@@ -190,9 +196,10 @@ String systemCommand =
   "/help command list\n"
   "/still capture and send a camera image\n"
   "/syncrtc update the hardware RTC\n" 
-  "/getrtc get the hardware RTC current time\n"                           
-  "/memory show system memory usage\n"
-  "/log show tool execution history\n"
+  "/getrtc get the hardware RTC current time\n"
+  "/getUnfinishedSchedule get the finished Schedule tasks\n"
+  "/getMemory show system memory usage\n"
+  "/getLog show tool execution history\n"
   "/reset start a new conversation\n\n"
   "Hardware control supported:\n"
   "- Digital output (0 or 1)\n"
@@ -205,7 +212,7 @@ String systemCommand =
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 
-String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"},{\"text\":\"/reset\"}],[{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getUnfinishedSchedule\"},{\"text\":\"/getMemory\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -861,7 +868,7 @@ Memory status:
 --------------------------------------------------
 {
   "type":"tool_call",
-  "method":"/memory",
+  "method":"/getMemory",
   "params":{}
 }
 
@@ -870,7 +877,7 @@ Show tool execution history:
 --------------------------------------------------
 {
   "type":"tool_call",
-  "method":"/log",
+  "method":"/getLog",
   "params":{}
 }
 
@@ -1474,7 +1481,7 @@ String systemContent = "";
 String systemContentTools = "";
 String systemContentNoTools = "";
 
-// Logs each tool execution as a human-readable record for /log command
+// Logs each tool execution as a human-readable record for /getLog command
 String executeToolHistory = "";
   
 // Stores entire chat history in Gemini API JSON format
@@ -1483,6 +1490,9 @@ String historicalMessages = "";
 
 // Schedule Tasks
 String scheduleTasks = "";
+int scheduleTimeout = 5;    // minutes
+String executedTodayTasks = "";
+int executedTodayDate = 0;
 
 // Indicator LED output pin
 int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
@@ -1537,14 +1547,16 @@ String deviceFilename = "device.md";
 // Skills definition
 String skillFilename = "skill.md";
 
-// schedule tasks
-String scheduleFilename = "schedule.json";
-
 // Web page
 String mainpageFilename = "index.html";    // Configuration
 String chatpageFilename = "index_chat.html";    // Chat
 
+// schedule tasks
+String scheduleFilename = "schedule.json";
+String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
+
 // Forward declarations
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type);
 String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String workId, String text, String keyboard);
@@ -2009,6 +2021,8 @@ void geminiChatReset() {
 // Send request to Gemini and return response text
 String geminiChatRequest(String workId, String message, int tools = 1) {
   String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
@@ -2116,6 +2130,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
 // Send Gemini request with Google Search tool enabled
 String geminiSearchRequest(String workId, String message, int tools = 1) {
   String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();  
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
@@ -2217,6 +2233,8 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
 String geminiVisionRequest(String workId, String message, bool frames = true) {
   String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
@@ -2676,9 +2694,25 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
       evaluateWorkflowContinuation(workId, reCheck);
      
     }
+    else if (command == "/getUnfinishedSchedule") {
+      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+            scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+            
+      String response = getUnfinishedScheduleTasksJson(scheduleTasks, false);
+      replyUserMessage(workId, response);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+ 
+    }
     else if (command == "/clearSchedule") {
-      scheduleTasks = ""; 
+      scheduleTasks = "";
+      executedTodayTasks = "";
+      
       storeDataToFile(scheduleFilename, scheduleTasks);
+      storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
       
 	  String response = "Scheduled tasks have been cleared.";
       replyUserMessage(workId, response);
@@ -2700,7 +2734,7 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
       executeToolHistory += workId + " " + command + "\n";	  
 
     } 
-    else if (command == "/memory") {
+    else if (command == "/getMemory") {
       String msg = getMemoryInfo();
       replyUserMessage(workId, msg);
 
@@ -2712,7 +2746,7 @@ Serial.println("\nupdateScheduleTasks: \n"+scheduleTasks+"\n");
       evaluateWorkflowContinuation(workId, reCheck);          
 
     } 
-    else if (command == "/log") {
+    else if (command == "/getLog") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
       replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
 
@@ -3500,6 +3534,8 @@ void task_theft_detection(void *param) {
   
 }
 
+// Returns the given integer value as a zero-padded two-digit string.
+// Used for formatting timestamps (e.g., 9 → "09").
 String twoDigits(int value) {
   if (value < 10)
     return "0" + String(value);
@@ -3507,7 +3543,38 @@ String twoDigits(int value) {
 
 }
 
-String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+// Checks whether a recurring task (year == 0) has already been executed today.
+// Automatically resets the daily execution record when the calendar day changes.
+bool isExecutedToday(String task) {
+
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  int today = now->tm_mday;
+
+  if (executedTodayDate != today) {
+    executedTodayTasks = "";
+    executedTodayDate = today;
+  }
+  return executedTodayTasks.indexOf("|" + task + "|") != -1;
+}
+
+// Marks a recurring task as executed for today by appending its name
+// to the in-memory daily execution record.
+void markExecutedToday(const String &task) {
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
+  executedTodayTasks += "|" + task + "|";
+}
+
+// Filters the full schedule JSON array and returns only tasks that are
+// due for execution based on the current RTC time.
+// Recurring tasks (year == 0) are excluded if already executed today.
+// One-time tasks (year > 0) are excluded if "executed" is true.
+// Returns a JSON array string of due tasks, or "[]" if none qualify.
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson, bool type = true) {
   DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, scheduleTasksJson);
   
@@ -3524,6 +3591,8 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
 
   DynamicJsonDocument resultDoc(8192);
   JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "";
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
@@ -3549,20 +3618,40 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
       tmTask.tm_hour = hour;
       tmTask.tm_min  = minute;
       tmTask.tm_sec  = sec;
-  
+
+      time_t taskTime = mktime(&tmTask);
+      
       if (mktime(&tmTask) <= rawtime) {
+        if (scheduleTimeout > 0 && (rawtime - taskTime) > (time_t)(scheduleTimeout * 60))
+            continue;
+                
+        String scheduleStr;
+        serializeJson(task["schedule"], scheduleStr);
+        String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+        if (year == 0 && isExecutedToday(compareTask))
+            continue;
+
+        if (type == true) {
           JsonObject item = resultArray.createNestedObject();
           item["task"] = task["task"].as<String>();
           item["schedule"] = schedule;
+        }
+        else {
+          result += "[ " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + "/" + String(minute) + "/" + String(sec) + "] " + task["task"].as<String>() + "\n";
+        }
       }
   }
 
-  String result;
-  serializeJson(resultDoc, result);
+  if (type == true)
+    serializeJson(resultDoc, result);
   return result;
 }
 
-// Periodic system scheduling check task
+// FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
+// For each due task, constructs a prompt and sends it to Gemini for execution.
+// After all due tasks are processed, triggers /updateSchedule to sync
+// execution state, and persists daily execution records and chat history to SD card.
 void task_time_scheduling(void *param) {
   (void)param;
   while (1) {
@@ -3582,22 +3671,15 @@ void task_time_scheduling(void *param) {
         continue;
     }
 
-    rtcFormatTime = getRtcTimeString();
-
     if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
       scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
  
       String unfinishedScheduleTasksJson = getUnfinishedScheduleTasksJson(scheduleTasks);
 
       if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
-
         unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
 
-        String unfinishedScheduleTask = "";
-        String prompt = "";
         String response = "";
-        String item = "";
-        String schedule = ""; 
 
         DynamicJsonDocument doc(8192);
       
@@ -3611,21 +3693,16 @@ void task_time_scheduling(void *param) {
         
         for (JsonObject obj : tasks) {
 
-          schedule = obj["schedule"].as<String>();
-          item = obj["task"].as<String>();
-          unfinishedScheduleTask = schedule + item;
-          
-Serial.println("\nunfinishedScheduleTasks: \n" + unfinishedScheduleTask +"\n"); 
-             
+          String taskName = obj["task"].as<String>();
 
-          prompt =
+          String schedule = obj["schedule"].as<String>();
+          String item = obj["task"].as<String>();           
+
+          String prompt =
             "This is a deterministic scheduling execution step. "
           
-            "RTC Current local time: " +
-            rtcFormatTime +
-          
             "\n\nUnfinished scheduled tasks:\n" +
-            unfinishedScheduleTask +
+            item +
           
             "\n\nThe task list above already contains ONLY tasks that have not been executed. "
             "Evaluate EVERY task in this list independently. "
@@ -3649,17 +3726,20 @@ Serial.println("\nunfinishedScheduleTasks: \n" + unfinishedScheduleTask +"\n");
             "10. Do not stop after the first eligible task.";
 
           response = geminiChatRequest(workId, prompt);
-Serial.println("\nresponse: \n" + response +"\n"); 
+
           handleAgentResponse(workId, response);
-          
+
+          markExecutedToday(schedule + " " + item);
         }
         
-        if (tasks.size()>0)
+        if (tasks.size()>0) {
           executeTool(workId, "/updateSchedule", JsonObject(), false);
-        
+
+          storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
+          storeDataToFile(memoryFilename, historicalMessages);
+        }
       }
       
-      storeDataToFile(memoryFilename, historicalMessages);
     }
   }
 }
@@ -3757,6 +3837,12 @@ void setup() {
   if (schedule != "")
     scheduleTasks = schedule;
 
+  String scheduleExecutedTodayTasks = getStringFromFile(scheduleExecutedTodayTasksFilename);
+  Serial.println("scheduleTodayExecuted.md len: " + String(scheduleExecutedTodayTasks.length()));
+  if (scheduleExecutedTodayTasks != "")
+    executedTodayTasks = scheduleExecutedTodayTasks;
+Serial.println("executedTodayTasks: " + executedTodayTasks);
+
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
@@ -3791,9 +3877,9 @@ void setup() {
 
     Serial.println("Create task_getTelegramMessage failed");
   } 
-
+     
 /*
- 
+
   if (xTaskCreate(
         task_time_scheduling,
         (const char *)"task_time_scheduling",
@@ -3804,8 +3890,8 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_time_scheduling failed");
-  }     
-
+  }  
+ 
   if (xTaskCreate(
         task_theft_detection,
         (const char *)"task_theft_detection",
@@ -3846,6 +3932,12 @@ void setup() {
 
   rtcInitialTime("<BOT>");
   replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+
+  // IMPORTANT: Must be synced with RTC date immediately after loading
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
   
 }
 
