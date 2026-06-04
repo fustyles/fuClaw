@@ -102,27 +102,27 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite <br>             GPIO digital output
-/analogwrite <br>              GPIO analog output
-/digitalread <br>              GPIO digital input
-/analogread <br>              GPIO analog input
-/syncrtc <br>                  Update the hardware RTC
-/getrtc <br>                   Get the hardware RTC current time
-/still <br>                    Capture image
-/vision <br>                   Capture + multimodal analysis
-/search <br>                   Grounded web search
-/delay <br>                    Pause execution for specified milliseconds
-/getMemory <br>                Runtime memory diagnostics
-/getLog <br>                   Show tool execution history
-/reset <br>                    Reset conversation state
-/chat <br>                     Natural language reply
-/reboot <br>                   Reboot the device
-/schedule <br>                 Add scheduled tasks
-/getSchedule <br>              Get all scheduled tasks
-/getUnfinishedSchedule <br>    Get unfinished scheduled tasks
-/updateScheduleStatus <br>     Update the executed status of scheduled tasks
-/modifySchedule <br>           Modify or delete scheduled tasks
-/clearSchedule <br>            Clear scheduled tasks
+/digitalwrite              <br>GPIO digital output
+/analogwrite              <br>GPIO analog output
+/digitalread              <br>GPIO digital input
+/analogread              <br>GPIO analog input
+/syncrtc              <br>Update the hardware RTC
+/getrtc              <br>Get the hardware RTC current time
+/still              <br>Capture image
+/vision              <br>Capture + multimodal analysis
+/search              <br>Grounded web search
+/delay              <br>Pause execution for specified milliseconds
+/getMemory              <br>Runtime memory diagnostics
+/getLog              <br>Show tool execution history
+/reset              <br>Reset conversation state
+/chat              <br>Natural language reply
+/reboot              <br>Reboot the device
+/schedule              <br>Add scheduled tasks
+/getSchedule              <br>Get all scheduled tasks
+/getUnfinishedSchedule              <br>Get unfinished scheduled tasks
+/updateScheduleStatus              <br>Update the executed status of scheduled tasks
+/modifySchedule              <br>Modify or delete scheduled tasks
+/clearSchedule              <br>Clear scheduled tasks
 
 ------------------------------------------------------------
 Persistent Files
