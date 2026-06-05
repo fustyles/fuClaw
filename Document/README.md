@@ -70,8 +70,9 @@ SD 卡根目錄/
 ### 0.4 首次燒錄流程 SOP
 
 ```
-步驟 1　安裝 Arduino IDE ( 若使用 ![Blocklyduino F2 for AmebaPro2](https://drive.google.com/drive/folders/147wwNZMdMUHOuLkhm9z5w7ZW-C4UqzHm?usp=drive_link) 內建 Arduino IDE ，可省略步驟 1-3 )
+步驟 1　安裝 Arduino IDE ( 若使用 Blocklyduino F2 for AmebaPro2 內建 Arduino IDE ，可省略步驟 1-3 )
          https://www.arduino.cc/en/software
+         https://drive.google.com/drive/folders/147wwNZMdMUHOuLkhm9z5w7ZW-C4UqzHm?usp=drive_link
 
 步驟 2　安裝 Ameba Arduino Core
          Arduino IDE → 偏好設定 → 額外開發板管理員網址：
