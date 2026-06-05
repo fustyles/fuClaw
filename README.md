@@ -595,6 +595,22 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 ---
 
+## 14. Concerns & Known Limitations
+
+### Token Usage & System Prompt Cost
+
+Every call to `geminiChatRequest()` and `geminiSearchRequest()` sends the full `systemContentTools` prompt — which bundles the role definition, all confirmed device mappings, hardware safety rules, skill workflow scripts, and the complete tool routing schema — along with the entire conversation history accumulated since boot. On a device where memory is abundant but API budget is not, this has compounding consequences.
+
+- **Per-call overhead.**: The `systemContentTools` prompt alone can exceed several thousand tokens before the user's message or conversation history is counted. For a simple greeting or a factual question, this overhead is pure waste: no tool will be invoked, no device will be touched, yet the full hardware ruleset travels across the network on every turn.
+
+- **History growth.**: `historicalMessages` is append-only. Each tool execution injects its JSON result back into the conversation. A session involving several hardware actions, a vision analysis, and a scheduled task evaluation can accumulate thousands of tokens of history within a single uptime cycle. There is currently no sliding-window or summarization mechanism: the entire history is sent verbatim on every subsequent call.
+
+- **Cost amplification under autonomous workflows.**: `evaluateWorkflowContinuation()` triggers additional Gemini calls after each tool execution to assess whether the workflow is complete. In a multi-step workflow, a single user request can result in four to six API round-trips, each carrying the full system prompt and the growing history. The token bill for one user message can therefore be five to ten times what a naive count would suggest.
+
+- **No prompt-tier routing.**: The three compiled system prompts (`systemContent`, `systemContentNoTools`, `systemContentTools`) exist in the codebase, but the main message handler always selects `systemContentTools` regardless of whether the user's input has anything to do with hardware. A lightweight pre-classification call — using only the role prompt plus the last few history entries — could route simple conversational turns to `systemContent` and avoid sending the full tool schema on the majority of interactions. This optimization is architecturally straightforward but has not yet been implemented.
+
+---
+
 ## Summary
 
 fuClaw demonstrates one thing clearly: **a complete AI Agent does not require a cloud server**.
