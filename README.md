@@ -418,6 +418,7 @@ file.println(data.c_str());             // Write new state
 | `env.json` | Authentication credentials |
 | `memory.md` | Persistent conversation history |
 | `schedule.json` | Schedule tasks | 
+| `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
 | `index.html` | Web configuration interface |
 | `index_chat.html` | Web chat interface |
 | `index_mqtt_chat.html` | Web chat interface fot MQTT | 
@@ -440,7 +441,7 @@ Inside the `getTelegramMessage()` polling loop, the firmware extracts the `Date:
 `rtcInitialTime()` receives the GMT time string and calls `geminiChatRequest(workId, prompt, -1)` — the role-only system prompt — asking Gemini to convert the GMT time to the configured `timeZone` and add exactly 4 seconds of propagation compensation. The prompt enforces a strict pure-JSON response (no Markdown, no explanation, first character must be `{`, last must be `}`). Once parsed, individual fields are extracted and written to the hardware RTC via `rtc.SetEpoch()` and `rtc.Write()`.
 
 ### Scheduling Only Runs When RTC Is Ready
-The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task executes `continue` to **skip the current cycle entirely** — with no retry logic and no function calls. This "skip rather than misfire" strategy ensures scheduled tasks never trigger based on an unreliable clock state.
+The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task first attempts a self-repair by calling `executeTool("/syncrtc")` to re-synchronize the hardware clock automatically. Only if that synchronization attempt also fails — leaving rtcYear still 0 — does the task execute continue to skip the current cycle. This `self-repair before skip` strategy avoids missed scheduled tasks caused by a transient RTC initialization failure, while still guaranteeing that no scheduled task ever fires against an uninitialized clock state.
 
 ---
 
@@ -467,7 +468,7 @@ Before either background task executes, it calls `botClient.stop()` and waits 2 
 The MQTT client is configured with `wifiClient.setNonBlockingMode()` before initialization, preventing the TCP stack from stalling the RTOS scheduler during I/O. The `task_getMqttMessage` task receives a larger stack (32768 bytes) to accommodate the MQTT library's internal processing and JPEG image payload publishing.
 
 ### Opt-In Background Tasks
-The anti-theft and scheduling tasks are **disabled by default** via comment blocks in `setup()`. This is a thoughtful choice: enabling autonomous background hardware control is a significant behavioral change that users should consciously opt into, rather than something that activates unexpectedly on first flash.
+The `task_time_scheduling` task is enabled by default in setup(). Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. The `task_theft_detection` task remains disabled by default via a comment block in setup(). Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly on first flash.
 
 ---
 
@@ -782,6 +783,7 @@ file.println(data.c_str());             // 寫入新狀態
 | `memory.md` | 持久對話歷史 |
 | `memory.md` | 持久對話歷史 |
 | `schedule.json` | 時間排程任務 |
+| `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
 | `index.html` | Web 設定介面 |
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | Web MQTT 聊天介面 |
@@ -804,7 +806,7 @@ file.println(data.c_str());             // 寫入新狀態
 `rtcInitialTime()` 接收 GMT 時間字串，呼叫 `geminiChatRequest(workId, prompt, -1)`——使用僅角色系統提示詞——要求 Gemini 將 GMT 時間轉換為配置的 `timeZone` 並加上精確 4 秒的傳播補償。提示詞強制純 JSON 回應（無 Markdown，無說明文字，第一個字元必須是 `{`，最後一個必須是 `}`）。解析後，各欄位被提取並透過 `rtc.SetEpoch()` 和 `rtc.Write()` 寫入硬體 RTC。
 
 ### 排程僅在 RTC 就緒後運行
-`task_time_scheduling` 背景任務在每個評估週期前檢查 `rtcYear == 0`。如果 RTC 未初始化，任務執行 `continue` 來**完全跳過當前週期**——沒有重試邏輯，沒有函式呼叫。這種「跳過而非誤觸發」的策略確保排程任務永遠不會基於不可靠的時鐘狀態觸發。
+`task_time_scheduling` 背景任務在每個評估週期前檢查 **rtcYear == 0**。如果 RTC 未初始化，任務會先呼叫 `executeTool("/syncrtc")` 嘗試自動重新同步硬體時鐘，進行自我修復。只有在同步嘗試仍然失敗、rtcYear 依然為 0 的情況下，任務才執行 **continue** 跳過當前週期。這種「**先自我修復再跳過**」的策略避免了因 RTC 初始化短暫失敗而導致的排程任務遺漏，同時仍然保證排程任務永遠不會基於未初始化的時鐘狀態觸發。
 
 ---
 
@@ -831,7 +833,7 @@ file.println(data.c_str());             // 寫入新狀態
 MQTT 客戶端在初始化前以 `wifiClient.setNonBlockingMode()` 設定，防止 TCP 堆疊在 I/O 期間阻塞 RTOS 排程器。`task_getMqttMessage` 任務獲得更大的堆疊（32768 位元組），以容納 MQTT 函式庫的內部處理和 JPEG 圖像有效負載發布。
 
 ### 選擇性啟用的背景任務
-防盜和排程任務在 `setup()` 中通過注解塊**預設禁用**。這是個深思熟慮的選擇：啟用自主背景硬體控制是一個重大的行為改變，用戶應該有意識地選擇啟用，而不是在首次燒錄後意外激活。
+`task_time_scheduling` 排程任務在 setup() 中**預設啟用**。時間排程執行被視為核心執行期能力——建立了排程的用戶預期任務會自動觸發，無需額外設定。`task_theft_detection` 防盜任務則仍以注解塊在 setup() 中**預設禁用**。啟用自主視覺入侵偵測是一個具有直接硬體後果的重大行為改變，用戶應該有意識地選擇啟用，而不是在首次燒錄後意外激活。
 
 ---
 
