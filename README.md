@@ -803,7 +803,6 @@ file.println(data.c_str());             // 寫入新狀態
 | `skill.md` | 技能工作流腳本 |
 | `env.json` | 認證憑證 |
 | `memory.md` | 持久對話歷史 |
-| `memory.md` | 持久對話歷史 |
 | `schedule.json` | 時間排程任務 |
 | `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
 | `index.html` | Web 設定介面 |
