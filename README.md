@@ -613,13 +613,19 @@ Every call to `geminiChatRequest()` and `geminiSearchRequest()` sends the full `
 
 ## Summary
 
-fuClaw demonstrates one thing clearly: **a complete AI Agent does not require a cloud server**.
+fuClaw demonstrates one thing clearly: a complete AI Agent does not require a cloud server.
 
 Running on a bare-metal embedded board with no OS and kilobytes of addressable memory, fuClaw implements a full Agent Loop — perception, reasoning, tool execution, and persistent memory — entirely on-device. Latency is bounded by the network, not the hardware.
 
-The core architectural insight is **replacing native function calling with prompt engineering**: a strict JSON schema constrains LLM output, which the firmware layer validates and executes. No vendor-specific API extensions. The reasoning engine is fully portable across LLM providers.
+The core architectural insight is replacing native function calling with prompt engineering: a strict JSON schema constrains LLM output, which the firmware layer validates and executes. No vendor-specific API extensions. The reasoning engine is fully portable across LLM providers.
 
-If you are looking for an **edge AI Agent framework that works out of the box and scales with your ambitions** — whether for smart home automation, industrial monitoring, or a personal AI assistant device — fuClaw's architecture and dual-mode example code provide a rare production-ready reference in the embedded AIoT space. Adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
+**fuClaw is a working reference implementation, not a production-optimized product.** It is designed to demonstrate what is architecturally possible on constrained embedded hardware — and to give you a complete, running starting point rather than a blank page. The dual-mode example code (Telegram and MQTT) covers the full agent loop end-to-end, and adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
+
+That said, deploying fuClaw in a cost-sensitive or high-frequency environment requires careful consideration of the token economics described in [Section 14](#14-concerns--known-limitations). Every interaction currently sends the full system prompt and the complete conversation history to the Gemini API. For occasional personal use or a low-traffic prototype, the cost is negligible. For a device that processes dozens of interactions per day over many months, or for any deployment where the Gemini API free tier is exhausted, the cumulative token spend warrants attention before going live.
+
+The optimizations that would bring token usage under control — prompt-tier routing, history windowing, local keyword pre-filtering — are straightforward extensions of the existing architecture. They are left as deliberate next steps rather than included in the baseline, so that the reference implementation remains readable and the design intent remains clear.
+
+If you are evaluating fuClaw as a foundation for a larger project, treat Section 14 as a checklist of what to address before scaling up. The architecture is sound; the cost profile simply needs to be matched to your usage pattern.
 
 ---
 
@@ -994,18 +1000,16 @@ MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 W
 
 ## 總結
 
-fuClaw 證明了一件事：**完整的 AI Agent 不需要雲端伺服器**。
+fuClaw 清楚地證明了一件事：完整的 AI Agent 不需要雲端伺服器。
 
-在一塊沒有作業系統、記憶體以 KB 計算的嵌入式開發板上，fuClaw 實現了完整的 Agent Loop——感知、推理、工具執行、記憶持久化——全部在板端完成，延遲由網路決定，而非運算能力。
+在一塊沒有作業系統、記憶體以 KB 計算的嵌入式開發板上，fuClaw 實現了完整的 Agent Loop——感知、推理、工具執行、記憶體持久化——全部在板端完成，延遲由網路決定，而非運算能力。
 
-核心突破在於以 **Prompt Engineering 取代 Native Function Calling**：透過嚴格的 JSON schema 約束 LLM 輸出，再由韌體層驗證並執行，不依賴任何特定 LLM 廠商的 API 擴充，使整個推理引擎具備高度可移植性。
+核心架構突破在於以 Prompt Engineering 取代 Native Function Calling：透過嚴格的 JSON schema 約束 LLM 輸出，再由韌體層驗證並執行，不依賴任何特定 LLM 廠商的 API 擴充，使整個推理引擎具備高度可移植性。
 
-設計上刻意遵守兩條鐵則：
-- **ATOMIC EXECUTION**：工具呼叫不可中斷，防止硬體狀態競爭
-- **Layered Hardware Safety**：只允許已登記的設備執行指令，LLM 幻覺無法觸發未定義行為
+**fuClaw 是一個可運行的參考實作，而非經過生產優化的成品。** 它的設計目標是展示嵌入式硬體在架構層面的可能性，並提供一個完整、可直接執行的起點，而不是一張白紙。雙模式範例程式碼（Telegram 與 MQTT）端對端涵蓋了完整的 Agent Loop，適配新場景只需修改 `soul.md` 與 `device.md`，核心架構無需重新設計。
 
-雙通訊模式（Telegram / MQTT）共享同一推理與執行引擎，`soul.md` / `device.md` / `skill.md` 模組化設計讓 Agent 行為可在不重新燒錄韌體的情況下現場調整。
+然而，若要在成本敏感或高頻率使用的環境中部署 fuClaw，需要審慎評估[第 14 節](#14-隱憂與已知限制)所描述的 token 用量問題。目前每次互動都會將完整的系統提示詞與完整的對話歷史送至 Gemini API。對於偶發的個人使用或低流量原型，這個成本微不足道。但對於每天處理數十次互動、長期運行數個月的裝置，或是任何已超出 Gemini API 免費額度的部署場景，累積的 token 消耗在正式上線前都值得仔細評估。
 
-如果你正在尋找一個**可以直接部署、也可以作為起點深度客製化**的邊緣 AI Agent 框架，fuClaw 的架構設計與完整的雙模式範例程式碼，是目前嵌入式 AIoT 領域少見的實戰參考。無論是智慧家庭、工業監控、還是個人 AI 助理裝置，只需修改 `soul.md` 與 `device.md` 即可快速適配新場景，無需重新設計核心架構。
+能夠有效控制 token 用量的優化方向——提示詞分層路由、歷史滑動視窗、本地關鍵字預篩選——都是現有架構的直接延伸。它們被刻意保留為下一步的擴充方向，而非納入基礎實作，目的是讓參考實作保持易讀性，使設計意圖一目了然。
 
----
+如果你正在評估以 fuClaw 作為更大型專案的基礎，請將第 14 節視為擴展規模前需要逐一確認的檢查清單。架構本身是穩健的；成本結構只需與你的使用模式相匹配。
