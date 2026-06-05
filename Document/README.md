@@ -24,15 +24,17 @@
 
 ### 0.2 SD 卡檔案結構
 
-將 SD 卡格式化為 FAT32，在根目錄建立以下五個檔案：
+將 SD 卡格式化為 FAT32，在根目錄建立以下七個檔案：
 
 ```
 SD 卡根目錄/
- ├── env.json     ← WiFi、Telegram、Gemini 憑證、時區（必填）
- ├── soul.md      ← AI 個性提示詞（可選，留空使用預設）
- ├── device.md    ← 硬體裝置定義（可選，留空使用預設）
- ├── skill.md     ← 技能 SOP 定義（可選，留空使用預設）
- └── memory.md    ← 對話歷史（系統自動管理，初次留空）
+ ├── env.json                    ← WiFi、Telegram、Gemini 憑證、時區（必填）
+ ├── soul.md                     ← AI 個性提示詞（可選，留空使用預設）
+ ├── device.md                   ← 硬體裝置定義（可選，留空使用預設）
+ ├── skill.md                    ← 技能 SOP 定義（可選，留空使用預設）
+ ├── memory.md                   ← 對話歷史（系統自動管理，初次留空）
+ ├── schedule.json               ← 時間排程任務（可選，留空使用預設）
+ └── scheduleTodayExecuted.md    ← 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發（系統自動管理，初次留空）
 ```
 
 > ⚠️ **注意**：memory.md 初次請建立空白檔案即可，系統會自動寫入。
@@ -50,7 +52,8 @@ SD 卡根目錄/
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "telegramBot_chatID": "987654321",
   "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "timezone": "Taiwan"
+  "schedule_timeout": 10,
+  "timezone": "Asia/Taipei"
 }
 ```
 
@@ -59,6 +62,7 @@ SD 卡根目錄/
 - **Telegram Bot Token**：在 Telegram 搜尋 `@BotFather`，輸入 `/newbot` 依指示建立，複製 Token。
 - **Telegram Chat ID**：啟動 Bot 後，傳一則訊息，再用瀏覽器開啟 `https://api.telegram.org/bot<TOKEN>/getUpdates`，找 `"chat":{"id":...}` 欄位。
 - **Gemini API Key**：前往 [Google AI Studio](https://aistudio.google.com)，登入後點選「Get API key」。
+- **schedule timeout**：排程超過分鐘數逾時不執行
 - **timezone**：裝置所屬時區名稱。
   
 ---
@@ -129,10 +133,6 @@ SD 卡根目錄/
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_zh-TW.png)  
 
-### Agent Pipeline 完整流程圖 (MQTT)
-
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_MQTT_zh-TW.png)  
-
 ---
 
 ### FreeRTOS 雙任務架構圖
@@ -140,37 +140,40 @@ SD 卡根目錄/
 ```
 系統啟動 setup()
     │
-    ├─ 載入 SD 卡設定（env / soul / device / skill / memory）
+    ├─ 載入 SD 卡設定（env / soul / device / skill / memory / schedule）
     ├─ 初始化 WiFi
     ├─ 初始化相機
     │
     ├── 建立任務 1 ─────────────────────────────────────────┐
     │   task_getTelegramMessage()                          │
-    │   堆疊：16 KB                                         │
+    │   堆疊：16 KB                                        │
     │   優先權：tskIDLE_PRIORITY + 1                        │
     │   行為：每 1000ms 輪詢 Telegram，處理訊息              │
     │   資源：botClient（WiFiSSLClient）                    │
-    │                                                       │
+    │                                                      │
     └── 建立任務 2 ─────────────────────────────────────────┤
-    │   task_anti_theft_detection()                               │
-    │   堆疊：6 KB                                          │
-    │   優先權：tskIDLE_PRIORITY + 1                        │
-    │   行為：每 30000ms 觸發防盜偵測技能                    │
-    │   執行前：botClient.stop() + vTaskDelay(2000)         │
-    │   原因：避免三個任務同時使用網路資源造成封包衝突         │
-    │                                                       │
-    └── 建立任務 3 ─────────────────────────────────────────┤
-    │   task_time_scheduling()                               │
+    │   task_time_scheduling()                             │
     │   堆疊：6 KB                                          │
     │   優先權：tskIDLE_PRIORITY + 1                        │
     │   行為：每 60000ms 觸發時間排程技能                    │
     │   執行前：botClient.stop() + vTaskDelay(2000)         │
     │   原因：避免三個任務同時使用網路資源造成封包衝突         │
+    │                                                      │
+    └── 建立任務 3 ─────────────────────────────────────────┤
+    │   task_anti_theft_detection()                        │
+    │   堆疊：6 KB                                          │
+    │   優先權：tskIDLE_PRIORITY + 1                        │
+    │   行為：每 30000ms 觸發防盜偵測技能                    │
+    │   執行前：botClient.stop() + vTaskDelay(2000)         │
+    │   原因：避免三個任務同時使用網路資源造成封包衝突         │
+    │                                                      │
     └──────────────────────────────────────────────────────┘
 
 共享資源（Race Condition 注意事項）：
  - historicalMessages（String）：兩個任務均會讀寫
- - memory.md（SD 卡）：兩個任務均會呼叫 storeHistoricalMessagesToFile()
+ - memory.md（SD 卡）：兩個任務均會呼叫 storeDataToFile()
+ - schedule.json（SD 卡）：兩個任務均會呼叫 storeDataToFile()
+ - scheduleTodayExecuted.md（SD 卡）：兩個任務均會呼叫 storeDataToFile()
  - botClient：Telegram 任務持有，週期任務執行前必須先 stop()
 
 ⚠ 目前版本未實作 Mutex 保護，週期任務設計為「等待 Telegram 任務閒置後」執行
