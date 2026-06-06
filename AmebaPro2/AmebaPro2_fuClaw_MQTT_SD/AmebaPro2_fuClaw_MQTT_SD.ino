@@ -3743,7 +3743,7 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("fuClaw Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
     Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("fuClaw Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");
     Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");
