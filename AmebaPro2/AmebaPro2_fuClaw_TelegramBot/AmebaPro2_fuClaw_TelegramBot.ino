@@ -2466,7 +2466,7 @@ void setup() {
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("fuClaw Main page\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Web Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
   Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");       
   Serial.println("\n");  
 
@@ -2479,7 +2479,7 @@ void setup() {
     }
     
     Serial.println("fuClaw Main page\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
     Serial.println("\n");   
   }  

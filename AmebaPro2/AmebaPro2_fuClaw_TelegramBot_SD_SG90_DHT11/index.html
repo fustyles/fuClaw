@@ -479,7 +479,29 @@
         <span class="icon">&#128273;</span>
         <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
       </div>
+      <div class="field-header">
+        <label for="gemini_model">Model &nbsp;</label>
+        <span class="field-hint">Gemini Model</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="text" id="gemini_model" value="geminiModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
+      </div>	  
     </div>
+	
+    <!-- Schedule -->
+    <div class="section-label">
+      <span class="sl-icon sl-purple">&#10024;</span>Schedule Settings
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="schedule_tomeout">Timeout &nbsp;</label>
+        <span class="field-hint">in minutes</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="number" id="schedule_timeout" value="scheduleTimeout" placeholder="10" min="1" max="3600" step="1" autocomplete="off" spellcheck="false">
+      </div>	  
+    </div>	
 
     <!-- Timezone -->
     <div class="section-label">
@@ -628,6 +650,8 @@
       telegramBot_token:   document.getElementById('tg_token').value.trim(),
       telegramBot_chatID:  document.getElementById('tg_chatid').value.trim(),
       gemini_apikey:       document.getElementById('gemini_key').value.trim(),
+      gemini_model:        document.getElementById('gemini_model').value.trim(),
+      schedule_timeout:    document.getElementById('schedule_timeout').value,	  
       timezone:            document.getElementById('timezone').value
     };
   }
@@ -638,6 +662,8 @@
 	if (!cfg.telegramBot_token)  return 'Telegram Bot Token cannot be empty';
 	if (!cfg.telegramBot_chatID) return 'Telegram Chat ID cannot be empty';
 	if (!cfg.gemini_apikey)      return 'Gemini API Key cannot be empty';
+	if (!cfg.gemini_model)       return 'Gemini Model cannot be empty';	
+	if (!cfg.schedule_timeout)   return 'Schedule Timeout cannot be empty';
     return null;
   }
 
@@ -660,13 +686,16 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
+	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, "", 2)), {
 	  method: 'GET'
 	})
 	.then(res => res.text())
 	.then(txt => showToast('✔ ' + txt, 'success'))
 	.catch(()  => showToast('⚠ Device connection failed.', 'error'));
   }
+</script>
+<script>
+  document.getElementById('timezone').value = 'timeZone';
 </script>
 </body>
 </html>

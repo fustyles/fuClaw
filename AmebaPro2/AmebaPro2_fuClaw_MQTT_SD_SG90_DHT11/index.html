@@ -424,8 +424,8 @@
 
     <div class="field">
       <div class="field-header">
-        <label for="schedule_tomeout">Time Out &nbsp;</label>
-        <span class="field-hint">Schedule Time Out</span>
+        <label for="schedule_tomeout">Timeout &nbsp;</label>
+        <span class="field-hint">In minutes</span>
       </div>	  
       <div class="input-wrap">
         <input type="number" id="schedule_timeout" value="scheduleTimeout" placeholder="10" min="1" max="3600" step="1" autocomplete="off" spellcheck="false">
@@ -623,7 +623,7 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-    fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), { method: 'GET' })
+    fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, "", 2)), { method: 'GET' })
       .then(res => res.text())
       .then(txt => {
         showToast('✔ ' + txt, 'success');
@@ -631,6 +631,9 @@
       })
       .catch(() => showToast('⚠ Unable to connect to the device. JSON preview is shown below.', 'error'));
   }
+</script>
+<script>
+  document.getElementById('timezone').value = 'timeZone';
 </script>
 </body>
 </html>

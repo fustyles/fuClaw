@@ -61,7 +61,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
       rgba(0,0,0,0.15) 4px
     );
     pointer-events: none;
-    z-index: 999;
+    z-index: 1;
   }
 
   .container {
@@ -932,7 +932,7 @@ async function fetchSchedule() {
 
 function loadDemoData() {
   schedule = [
-    {"task":"Please say a New Year greeting","schedule":{"year":0,"month":1,"day":1,"hour":0,"minute":0,"second":0},"executed":false}
+    {"task":"Task Description","schedule":{"year":0,"month":0,"day":0,"hour":0,"minute":0,"second":0},"executed":false}
   ];
   schedule.forEach(enforceRule);
   renderTable();

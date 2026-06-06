@@ -3407,8 +3407,11 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("wifiPassword", wifiPassword);
             mainPageHTML.replace("telegrambotToken", telegrambotToken);
             mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
             mainPageHTML.replace("geminiApiKey", geminiApiKey);
-
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);
+			
             currentLine = "";            
           }
           else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
@@ -3917,7 +3920,7 @@ void setup() {
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("fuClaw Configuration\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Web Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
   Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");         
   Serial.println("\n");  
 
@@ -3930,7 +3933,7 @@ void setup() {
     }
     
     Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");          
     Serial.println("\n");   
   }  
