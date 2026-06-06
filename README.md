@@ -1,4 +1,4 @@
-### AI agent - fuClaw 
+### Embedded AI Agent - fuClaw 
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.png)  
 
