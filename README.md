@@ -421,9 +421,9 @@ file.println(data.c_str());             // Write new state
 | `schedule.json` | Schedule tasks | 
 | `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
 | `index.html` | Web configuration interface |
-| `index_schedule.html` | Web configuration interface |
+| `index_schedule.html` | Web schedule interface |
 | `index_chat.html` | Web chat interface |
-| `index_mqtt_chat.html` | Web chat interface | 
+| `index_mqtt_chat.html` | Web chat via MQTT interface | 
 
 All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
@@ -808,7 +808,7 @@ file.println(data.c_str());             // 寫入新狀態
 | `schedule.json` | 時間排程任務 |
 | `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
 | `index.html` | Web 設定介面 |
-| `index_schedule.html` | Web 聊天介面 |
+| `index_schedule.html` | Web 任務排程介面 |
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | Web MQTT 聊天介面 |
 
