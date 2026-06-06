@@ -152,11 +152,14 @@ scheduleTodayExecuted.md
 index.html
   <br>fuClaw configuration web page
 
+index_schedule.html
+  <br>Schedule manager (Web Chat Interface)
+
 index_chat.html
   <br>Gemini talk web page (Web Chat Interface) 
 
 index_mqtt_chat.html
-  <br>Gemini talk web page for MQTT (Web Chat Interface for MQTT)  
+  <br>Gemini talk web page via MQTT (Web Chat Interface)  
 
 Conversation state is restored automatically on boot.
 
@@ -175,9 +178,6 @@ HUB 8735 Ultra
 - Blue LED  : GPIO 26
 - Fill LED  : GPIO 13
 - Button    : GPIO 12 (input only)
-
-ESP32-S3
-- LED : GPIO 2
 
 Unknown hardware mappings require clarification.
 
@@ -421,8 +421,9 @@ file.println(data.c_str());             // Write new state
 | `schedule.json` | Schedule tasks | 
 | `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
 | `index.html` | Web configuration interface |
+| `index_schedule.html` | Web configuration interface |
 | `index_chat.html` | Web chat interface |
-| `index_mqtt_chat.html` | Web chat interface fot MQTT | 
+| `index_mqtt_chat.html` | Web chat interface | 
 
 All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
@@ -455,6 +456,7 @@ The multi-task design solves concrete concurrency and scheduling problems across
 | Task | Stack | Purpose |
 |------|-------|---------|
 | `task_getRequest` | 16384 bytes | HTTP server for web configuration and `/chat` endpoint |
+| `task_getRequestStream` | 16384 bytes | HTTP server for web video streaming |
 | `task_getTelegramMessage` | 16384 bytes | Continuous Telegram long-polling for user input |
 | `task_getMqttMessage` (MQTT) | 32768 bytes | MQTT keep-alive, reconnect, and inbound message dispatch |
 | `task_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
@@ -806,6 +808,7 @@ file.println(data.c_str());             // 寫入新狀態
 | `schedule.json` | 時間排程任務 |
 | `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
 | `index.html` | Web 設定介面 |
+| `index_schedule.html` | Web 聊天介面 |
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | Web MQTT 聊天介面 |
 
@@ -840,6 +843,7 @@ file.println(data.c_str());             // 寫入新狀態
 | 任務 | 堆疊 | 用途 |
 |------|------|------|
 | `task_getRequest` | 16384 位元組 | 用於 Web 設定和 `/chat` 端點的 HTTP 伺服器 |
+| `task_getRequestStream` | 16384 位元組 | 用於 Web 視訊串流的 HTTP 伺服器 |
 | `task_getTelegramMessage` | 16384 位元組 | 連續 Telegram 長輪詢以接收用戶輸入 |
 | `task_getMqttMessage`（MQTT） | 32768 位元組 | MQTT 保持連線、重連和入站訊息派送 |
 | `task_theft_detection` | 6144 位元組 | 定期基於視覺的入侵偵測（每 5 分鐘） |
