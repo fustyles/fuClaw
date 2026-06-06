@@ -164,6 +164,8 @@ Known Limitations
 #include "toolsDefinition.h"
 #include "skillsDefinition.h"
 
+// Main page
+#include "index_html.h"
 // Gemini chat
 #include "index_chat_html.h"
 // Schedule manager
@@ -2016,7 +2018,7 @@ void task_getRequest(void *param) {
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
-            mainPageHTML = "Welcome to <a href=\"https://github.com/fustyles/fuClaw\">fuClaw</a> home!";
+            mainPageHTML = String(INDEX_HTML);
             
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
