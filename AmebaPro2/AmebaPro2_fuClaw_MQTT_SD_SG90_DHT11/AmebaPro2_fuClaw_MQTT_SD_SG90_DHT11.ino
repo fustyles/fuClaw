@@ -1589,6 +1589,7 @@ WiFiClient wifiClient;
 
 char channel_ap[] = "2";
 WiFiServer server(81);
+WiFiServer serverStream(82);
 
 #include "Base64.h"
 #include <ArduinoJson.h>
@@ -3375,6 +3376,67 @@ void task_getRequest(void *param) {
   }
 }
 
+// Stream.
+void task_getRequestStream(void *param) {
+  (void)param;
+  while (1) {
+    WiFiClient client = serverStream.available();
+    uint32_t img_addr = 0;
+    uint32_t img_len = 0;
+    
+    if (client) {
+      String currentLine = "";
+
+      while (client.connected()) {
+        if (client.available()) {
+          char c = client.read();
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+             String head = "--Taiwan\r\nContent-Type: image/jpeg\r\n\r\n";
+            client.println("HTTP/1.1 200 OK");
+            client.println("Access-Control-Allow-Origin: *");
+            client.println("Connection: keep-alive");
+            client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
+            client.println();
+            while(client.connected()) {
+              Camera.getImage(0, &img_addr, &img_len);
+              uint8_t *fbBuf = (uint8_t*)img_addr;
+              size_t fbLen = img_len;
+              client.print(head);
+              for (size_t n=0;n<fbLen;n=n+1024) {
+                  if (n+1024<fbLen) {
+                    client.write(fbBuf, 1024);
+                    fbBuf += 1024;
+                }
+                else if (fbLen%1024>0) {
+                  size_t remainder = fbLen%1024;
+                  client.write(fbBuf, remainder);
+                }
+              }
+              client.print("\r\n");
+              
+              vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+            break;
+            } else {
+              currentLine = "";
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c;
+          }
+
+          if (currentLine.indexOf(" HTTP")!=-1) {
+            currentLine="";
+          }
+        }
+      }
+      delay(1);
+      client.stop();
+    }
+  }
+}
+
 // ============================================================
 //  MQTT: Inbound Message Callback
 // ============================================================
@@ -3854,7 +3916,8 @@ void setup() {
   Serial.println("fuClaw Configuration Manager\nhttp://192.168.1.1:81");
   Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
   Serial.println("fuClaw Chat via MQTT\nhttp://192.168.1.1:81/mqtt");
-  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");	
+  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");
+  Serial.println("Stream\nhttp://192.168.1.1:82");  
   Serial.println("\n"); 
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -3868,7 +3931,8 @@ void setup() {
     Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
     Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("fuClaw Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");
-    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");	
+    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");
+    Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82"); 	
     Serial.println("\n");   
   }   
 
@@ -3894,9 +3958,9 @@ void setup() {
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
 
-
   server.begin();
-
+  serverStream.begin(); 
+  
   if (xTaskCreate(
         task_getMqttMessage,
         (const char *)"task_getMqttMessage",
@@ -3921,6 +3985,18 @@ void setup() {
     Serial.println("Create task_task_getRequest failed");
   }        
 
+  if (xTaskCreate(
+        task_getRequestStream,
+        (const char *)"task_getRequestStream",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getRequestStream failed");
+  } 
+  
   if (xTaskCreate(
         task_time_scheduling,
         (const char *)"task_time_scheduling",
