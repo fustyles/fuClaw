@@ -686,7 +686,7 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, "", 2)), {
+	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
 	  method: 'GET'
 	})
 	.then(res => res.text())

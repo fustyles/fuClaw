@@ -11,6 +11,13 @@ String apPassword = "12345678";
 String telegrambotToken = "xxxxxxxxxx";
 String telegrambotChatId = "xxxxxxxxxx";
 
+// Gemini API configuration
+String geminiApiKey = "xxxxxxxxxx";
+String geminiModel = "gemini-3-flash-preview";
+
+int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
+float geminiTemperature = 1.0;
+
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
@@ -33,12 +40,5 @@ String systemCommand =
   "https://github.com/fustyles/fuClaw";
 
 String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
-
-// Gemini API configuration
-String geminiApiKey = "xxxxxxxxxx";
-String geminiModel = "gemini-3-flash-preview";
-
-int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
-float geminiTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
