@@ -1862,16 +1862,16 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 	
 	if (text.indexOf("<PAGE>") != -1)
 		text = text.substring(0, text.indexOf("<PAGE>"));
-	if (text.indexOf("&lt;PAGE&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;PAGE&lt;"));	
+	if (text.indexOf("&lt;PAGE&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;PAG&gt;"));	
 	if (text.indexOf("<BOT>") != -1)
 		text = text.substring(0, text.indexOf("<BOT>"));
-	if (text.indexOf("&lt;BOT&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;BOT&lt;"));	
+	if (text.indexOf("&lt;BOT&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;BOT&gt;"));	
 	if (text.indexOf("<TIME_SCHEDULING>") != -1)
 		text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));
-	if (text.indexOf("&lt;TIME_SCHEDULING&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;TIME_SCHEDULING&lt;"));	
+	if (text.indexOf("&lt;TIME_SCHEDULING&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;TIME_SCHEDULING&gt;"));
   
 	if (workId.startsWith("<PAGE>"))
 		mainPageHTML += text +"\n";

@@ -1890,16 +1890,16 @@ void replyUserMessage(String workId, String text) {
 
 	if (text.indexOf("<PAGE>") != -1)
 		text = text.substring(0, text.indexOf("<PAGE>"));
-	if (text.indexOf("&lt;PAGE&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;PAGE&lt;"));	
+	if (text.indexOf("&lt;PAGE&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;PAG&gt;"));	
 	if (text.indexOf("<MQTT>") != -1)
 		text = text.substring(0, text.indexOf("<MQTT>"));
-	if (text.indexOf("&lt;MQTT&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;MQTT&lt;"));	
+	if (text.indexOf("&lt;MQTT&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;MQTT&gt;"));	
 	if (text.indexOf("<TIME_SCHEDULING>") != -1)
 		text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));
-	if (text.indexOf("&lt;TIME_SCHEDULING&lt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;TIME_SCHEDULING&lt;"));
+	if (text.indexOf("&lt;TIME_SCHEDULING&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;TIME_SCHEDULING&gt;"));
 
 	if (workId.startsWith("<PAGE>"))
 		mainPageHTML += text +"\n";
