@@ -146,7 +146,7 @@ scheduleTodayExecuted.md
   <br>Stores scheduled tasks executed today 
 
 index.html
-  <br>fuClaw configuration web page
+  <br>Configuration web page
 
 index_schedule.html
   <br>Schedule manager (Web Chat Interface)
