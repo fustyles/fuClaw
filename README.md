@@ -34,6 +34,7 @@ It integrates:
 * Prompt-driven JSON Tool Routing
 * GPIO Digital and Analog I/O Control
 * Camera Capture and Image Upload
+* Real-time Video Streaming
 * Persistent Conversation Memory
 * FreeRTOS Concurrent Task Scheduling
 
