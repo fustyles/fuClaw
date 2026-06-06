@@ -2101,12 +2101,15 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
-  String contents = systemContent + buildGeminiMessage("user", message);
-  if (tools == 1)
-    contents = systemContentTools + historicalMessages;
-  else if (tools == 0)
+  String contents = "";
+  if (tools == 0)
     contents = systemContentNoTools + historicalMessages;
-    
+  else if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 2)
+    contents = systemContent + buildGeminiMessage("user", message);
+  else
+	contents = systemContent + buildGeminiMessage("user", message);
 
   String request = "{\"contents\": [" + contents +
                    "],\"generationConfig\": {\"maxOutputTokens\": " +
@@ -2866,7 +2869,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       storeDataToFile(scheduleFilename, scheduleTasks);
       storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
       
-	    String response = "Scheduled tasks have been cleared.";
+      String response = "Scheduled tasks have been cleared.";
       replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -2875,15 +2878,10 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + "\n";           
     }
     else if (command == "/reset") {
-      geminiChatReset();
-      
 	  String response = "New chat started.";
       replyUserMessage(workId, response);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";	  
+      geminiChatReset();  
 
     } 
     else if (command == "/getMemory") {
@@ -3678,12 +3676,12 @@ void task_getRequest(void *param) {
             if (currentLine != "") {
               currentLine = urldecode(currentLine);           
       				
-      				if (currentLine.startsWith("/")) 
-      				  executeTool(workId, currentLine, JsonObject()); 
-      				else {
-      				  currentLine = geminiChatRequest(workId, currentLine);
-      				  handleAgentResponse(workId, currentLine);
-      				}
+				if (currentLine.startsWith("/")) 
+				  executeTool(workId, currentLine, JsonObject()); 
+				else {
+				  currentLine = geminiChatRequest(workId, currentLine);
+				  handleAgentResponse(workId, currentLine);
+				}
       				
               storeDataToFile(memoryFilename, historicalMessages);
             }
