@@ -1993,12 +1993,16 @@ String mqttSendImage(String topic, bool capture, bool base64 = false) {
 
 void replyUserMessage(String workId, String text) {
 	if (text.startsWith("NONE") || text == "") return;
-  
-	if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
-		if (text.indexOf("<PAGE>") != -1)
-			text = text.substring(0, text.indexOf("<PAGE>"));
+
+  if (text.indexOf("<PAGE>") != -1)
+    text = text.substring(0, text.indexOf("<PAGE>"));
+  if (text.indexOf("<MQTT>") != -1)
+    text = text.substring(0, text.indexOf("<MQTT>"));
+  if (text.indexOf("<TIME_SCHEDULING>") != -1)
+    text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));
+
+	if (workId.startsWith("<PAGE>"))
 		mainPageHTML += text +"\n";
-	}
 	else
 		mqttSendText(mqttPublishTextTopic, text);
 }
@@ -2903,7 +2907,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     else if (command == "/reset") {
       geminiChatReset();
       
-	  String response = "New chat started.";
+	    String response = "New chat started.";
       replyUserMessage(workId, response);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -3041,8 +3045,6 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
 void handleAgentResponse(String workId, String message) {
-  message.replace("\n" + workId, "");
-  message.replace(workId, "");
       
   String rawMessage = message;
   
