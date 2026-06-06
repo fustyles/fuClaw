@@ -1,3 +1,5 @@
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
+
 ------------------------------------------------------------
 Embedded AI Agent - fuClaw with Gemini Integration
 ------------------------------------------------------------
@@ -9,10 +11,6 @@ Author:
 Repository:<br>
   https://github.com/fustyles/fuClaw
   
-
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
-
-
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
