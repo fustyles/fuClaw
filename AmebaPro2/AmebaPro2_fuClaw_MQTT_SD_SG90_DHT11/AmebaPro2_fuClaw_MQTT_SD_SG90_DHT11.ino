@@ -3329,7 +3329,7 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP", "");
             
             if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
-              storeDataToFile(schedulepageFilename, currentLine);
+              storeDataToFile(scheduleFilename, currentLine);
               scheduleTasks = currentLine;
               
               mainPageHTML = "Schedule updated successfully.";
