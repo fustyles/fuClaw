@@ -593,7 +593,7 @@
     <!-- submit -->
     <div class="btn-row">
       <button class="btn-submit" onclick="sendConfig()">
-        <span>Save & Send to Device</span>
+        <span>Update & Send to Device</span>
         <span class="arrow">→</span>
       </button>
     </div>
@@ -660,7 +660,7 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-	fetch('/save?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
+	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
 	  method: 'GET'
 	})
 	.then(res => res.text())

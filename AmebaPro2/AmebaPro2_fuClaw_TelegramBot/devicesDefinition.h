@@ -268,15 +268,7 @@ OUTPUT SANITIZATION RULE (CRITICAL)
 ==================================================
 
 Conversation history may contain additional metadata automatically
-inserted by the runtime system, including:
-
-message sources
-timestamps
-
-Example:
-
-<PAGE> 2026/5/31 17:35:44 
-<BOT> 2026/5/31 17:35:44 
+inserted by the runtime system.
 
 These values are NOT part of the conversation.
 

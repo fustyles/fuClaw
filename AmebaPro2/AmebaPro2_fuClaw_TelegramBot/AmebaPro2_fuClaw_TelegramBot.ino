@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-01 07:30
+Build Date: 2026-06-05 16:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -25,6 +25,7 @@ on Realtek Ameba Pro2 devices:
 
 It combines:
 - Telegram Bot API (HTTPS long polling)
+- Gemini Chat Web Interface
 - Google Gemini generateContent API
 - Gemini grounded web search
 - Gemini multimodal vision reasoning
@@ -39,9 +40,10 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
-Telegram User
-      ↓
-Telegram Polling Task
+Telegram / Web Chat User
+↓
+Communication Task
+(Telegram Long Polling / Web Chat)
       ↓
 Message Router
       ↓
@@ -83,21 +85,37 @@ Multi-step workflows are executed step-by-step.
 ------------------------------------------------------------
 Supported Tools
 ------------------------------------------------------------
-/digitalwrite   GPIO digital output
-/analogwrite    GPIO analog output
-/digitalread    GPIO digital input
-/analogread     GPIO analog input
-/syncrtc        Update the hardware RTC
-/getrtc         Get the hardware RTC current time
-/still          Capture image
-/vision         Capture + multimodal analysis
-/search         Grounded web search
-/delay          Pause execution for specified milliseconds
-/memory         Runtime memory diagnostics
-/log            Show tool execution history
-/reset          Reset conversation state
-/chat           Natural language reply
-/reboot         Reboot the device
+/digitalwrite             GPIO digital output
+/analogwrite              GPIO analog output
+/digitalread              GPIO digital input
+/analogread               GPIO analog input
+/syncrtc                  Update the hardware RTC
+/getrtc                   Get the hardware RTC current time
+/still                    Capture image
+/vision                   Capture + multimodal analysis
+/search                   Grounded web search
+/delay                    Pause execution for specified milliseconds
+/getMemory                Runtime memory diagnostics
+/getLog                   Show tool execution history
+/reset                    Reset conversation state
+/chat                     Natural language reply
+/reboot                   Reboot the device
+/schedule                 Add scheduled tasks
+/getSchedule              Get all scheduled tasks
+/getUnfinishedSchedule    Get unfinished scheduled tasks
+/updateScheduleStatus     Update the executed status of scheduled tasks
+/modifySchedule           Modify or delete scheduled tasks
+/clearSchedule            Clear scheduled tasks
+------------------------------------------------------------
+Web Chat Interface
+------------------------------------------------------------
+index_schedule.html
+  Schedule manager (Web Chat Interface)
+
+index_chat.html
+  Gemini talk (Web Chat Interface)
+
+Conversation state is restored automatically on boot.
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
@@ -148,6 +166,8 @@ Known Limitations
 
 // Gemini chat
 #include "index_chat_html.h"
+// Schedule manager
+#include "index_schedule_html.h"   
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -2010,8 +2030,44 @@ void task_getRequest(void *param) {
 
             currentLine = "";
 
-          }                      
-    			else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          }  
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = String(INDEX_SCHEDULE_HTML);
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = scheduleTasks;
+
+            currentLine = "";
+
+          }                                            
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            String workId = "<PAGE> " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateScheduleTasks?", "");
+            currentLine.replace(" HTTP", "");
+            
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+              scheduleTasks = currentLine;
+              
+              mainPageHTML = "Schedule updated successfully.";
+              
+              historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+              historicalMessages += buildGeminiMessage("model", mainPageHTML);  
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
+            
+          }		  
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             mainPageStatus = true;
 
@@ -2409,8 +2465,9 @@ void setup() {
   Serial.println("\n");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("fuClaw Configuration\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");      
+  Serial.println("fuClaw Main page\nhttp://192.168.1.1:81");
+  Serial.println("fuClaw Web Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");       
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -2421,8 +2478,9 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");    
+    Serial.println("fuClaw Main page\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("fuClaw Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
     Serial.println("\n");   
   }  
 

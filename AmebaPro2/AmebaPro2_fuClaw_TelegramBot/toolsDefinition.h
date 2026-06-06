@@ -1,4 +1,5 @@
 
+
 String toolsDefinition = R"(
 
 ==================================================
@@ -124,6 +125,18 @@ The scheduled task execution rule overrides the normal confirmation requirement.
 ==================================================
 TOOL ROUTING
 ==================================================
+--------------------------------------------------
+Returns a complete overview of the device capabilities, available commands, hardware interfaces, system status, and documentation links.
+--------------------------------------------------
+Request:
+
+{
+  "type":"tool_call",
+  "method":"/help",
+  "params":{
+  }
+}
+
 --------------------------------------------------
 Digital output control
 --------------------------------------------------

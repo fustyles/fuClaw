@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-04 22:30
+Build Date: 2026-06-06 16:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -131,10 +131,13 @@ scheduleTodayExecuted.md
   Stores scheduled tasks executed today
 
 index.html
-  fuClaw configuration web page
+  Configuration manager (Web Chat Interface)
+  
+index_schedule.html
+  Schedule manager (Web Chat Interface)
 
 index_chat.html
-  Gemini talk web page (Web Chat Interface)
+  Gemini talk (Web Chat Interface)
 
 Conversation state is restored automatically on boot.
 ------------------------------------------------------------
@@ -225,7 +228,7 @@ String geminiModel = "gemini-3-flash-preview";
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
-String timeZone = "Taiwan";
+String timeZone = "Asia/Taipei";
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -543,16 +546,7 @@ OUTPUT SANITIZATION RULE (CRITICAL)
 ==================================================
 
 Conversation history may contain additional metadata automatically
-inserted by the runtime system, including:
-
-message sources
-timestamps
-
-Example:
-
-<BOT> 2026/5/31 17:35:44
-<PAGE> 2026/5/31 17:35:44 
-<MQTT> 2026/5/31 17:35:44
+inserted by the runtime system.
 
 These values are NOT part of the conversation.
 
@@ -693,6 +687,18 @@ The scheduled task execution rule overrides the normal confirmation requirement.
 ==================================================
 TOOL ROUTING
 ==================================================
+--------------------------------------------------
+Returns a complete overview of the device capabilities, available commands, hardware interfaces, system status, and documentation links.
+--------------------------------------------------
+Request:
+
+{
+  "type":"tool_call",
+  "method":"/help",
+  "params":{
+  }
+}
+
 --------------------------------------------------
 Digital output control
 --------------------------------------------------
@@ -1610,8 +1616,9 @@ String deviceFilename = "device.md";
 String skillFilename = "skill.md";
 
 // Web page
-String mainpageFilename = "index.html";    // Configuration
-String chatpageFilename = "index_chat.html";    // Chat
+String configpageFilename = "index.html";    // Configuration manager
+String chatpageFilename = "index_chat.html";    // Web Chat
+String schedulepageFilename = "index_schedule.html";    // Schedule manager
 
 // schedule tasks
 String scheduleFilename = "schedule.json";
@@ -3574,7 +3581,7 @@ void task_getRequest(void *param) {
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
-            mainPageHTML = getStringFromFile(mainpageFilename);
+            mainPageHTML = getStringFromFile(configpageFilename);
             
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
@@ -3583,34 +3590,75 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("geminiApiKey", geminiApiKey);
 
             currentLine = "";            
-          } 
+          }
+          else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            String workId = "<PAGE> " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateConfig?", "");
+            currentLine.replace(" HTTP", "");
+            
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine);
+              
+              mainPageHTML = "Configuration updated successfully.";
+              executeTool(workId, "/reboot", JsonObject());
+              
+            }
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+
+            currentLine = "";
+            
+          }           
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = getStringFromFile(chatpageFilename);
 
             currentLine = "";
 
-          }                      
-          else if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          }
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = getStringFromFile(schedulepageFilename);
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = scheduleTasks;
+
+            currentLine = "";
+
+          }                                            
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             String workId = "<PAGE> " + getRtcTimeString();
             
             currentLine = urldecode(currentLine);
-            currentLine.replace("GET /save?", "");
+            currentLine.replace("GET /updateScheduleTasks?", "");
             currentLine.replace(" HTTP", "");
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              storeDataToFile(envFilename, currentLine);
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+              storeDataToFile(schedulepageFilename, currentLine);
+              scheduleTasks = currentLine;
               
-              mainPageHTML = "fuClaw configuration saved successfully.";
-              executeTool(workId, "/reboot", JsonObject());
+              mainPageHTML = "Schedule updated successfully.";
               
-            }
+              historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+              historicalMessages += buildGeminiMessage("model", mainPageHTML);  
 
-            currentLine = "";
+              storeDataToFile(memoryFilename, historicalMessages);
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
             
           }
-    			else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             mainPageStatus = true;
 
@@ -4049,7 +4097,8 @@ void setup() {
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("fuClaw Configuration\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");      
+  Serial.println("fuClaw Web Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");         
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -4061,7 +4110,8 @@ void setup() {
     }
     
     Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");    
+    Serial.println("fuClaw Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");          
     Serial.println("\n");   
   }  
 

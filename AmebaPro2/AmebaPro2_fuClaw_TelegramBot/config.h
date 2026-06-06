@@ -41,4 +41,4 @@ String geminiModel = "gemini-3-flash-preview";
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
-String timeZone = "Taiwan";
+String timeZone = "Asia/Taipei";
