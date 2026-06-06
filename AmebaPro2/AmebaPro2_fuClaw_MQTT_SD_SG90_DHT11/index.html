@@ -395,7 +395,7 @@
 
     <!-- Gemini -->
     <div class="section-label">
-      <span class="sl-icon sl-purple">&#10024;</span>Gemini AI
+      <span class="sl-icon sl-purple">&#10024;</span>Gemini Settings
     </div>
 
     <div class="field">
@@ -408,7 +408,29 @@
         <span class="icon">&#128273;</span>
         <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
       </div>
+      <div class="field-header">
+        <label for="gemini_model">Model &nbsp;</label>
+        <span class="field-hint">Gemini Model</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="text" id="gemini_model" value="geminiModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
+      </div>	  
     </div>
+	
+    <!-- Schedule -->
+    <div class="section-label">
+      <span class="sl-icon sl-purple">&#10024;</span>Schedule Settings
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="schedule_tomeout">Time Out &nbsp;</label>
+        <span class="field-hint">Schedule Time Out</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="number" id="schedule_timeout" value="scheduleTimeout" placeholder="10" min="1" max="3600" step="1" autocomplete="off" spellcheck="false">
+      </div>	  
+    </div>	
 
     <!-- Timezone -->
     <div class="section-label">
@@ -522,7 +544,7 @@
     <!-- submit -->
     <div class="btn-row">
       <button class="btn-submit" onclick="sendConfig()">
-        <span>Save & Send to Device</span>
+        <span>Update & Send to Device</span>
         <span>→</span>
       </button>
     </div>
@@ -549,7 +571,7 @@
     t.textContent = msg;
     setTimeout(() => { t.className = 'toast'; }, 5000);
   }
-
+	
   function buildJson() {
     return {
       wifi_ssid:                document.getElementById('wifi_ssid').value.trim(),
@@ -562,6 +584,8 @@
       mqtt_publishTextTopic:    document.getElementById('mqtt_pubText').value.trim(),
       mqtt_publishImageTopic:   document.getElementById('mqtt_pubImage').value.trim(),
       gemini_apikey:            document.getElementById('gemini_key').value.trim(),
+      gemini_model:             document.getElementById('gemini_model').value.trim(),
+      schedule_timeout:         document.getElementById('schedule_timeout').value,	  
       timezone:                 document.getElementById('timezone').value
     };
   }
@@ -575,6 +599,8 @@
 	if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic cannot be empty';
 	if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic cannot be empty';
 	if (!cfg.gemini_apikey)           return 'Gemini API Key cannot be empty';
+	if (!cfg.gemini_model)            return 'Gemini Model cannot be empty';	
+	if (!cfg.schedule_timeout)        return 'Schedule Timeout cannot be empty';		
     return null;
   }
 
@@ -597,7 +623,7 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-    fetch('/save?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), { method: 'GET' })
+    fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), { method: 'GET' })
       .then(res => res.text())
       .then(txt => {
         showToast('✔ ' + txt, 'success');

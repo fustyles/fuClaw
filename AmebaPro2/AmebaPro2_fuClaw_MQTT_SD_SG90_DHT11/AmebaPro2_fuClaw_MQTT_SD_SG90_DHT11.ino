@@ -94,50 +94,6 @@ It combines:
 The runtime acts as a hybrid autonomous agent:
 Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
-Runtime Architecture
-------------------------------------------------------------
-MQTT User
-      ↓
-MQTT Polling Task
-      ↓
-Message Router
-      ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow)
-      ↓
-JSON tool_call output
-      ↓
-ArduinoJson validation
-      ↓
-Tool Dispatcher
-      ↓
-Hardware / Search / Vision Execution
-      ↓
-Result injection into memory
-      ↓
-Natural language reply
-------------------------------------------------------------
-Execution Model
-------------------------------------------------------------
-This is a prompt-orchestrated tool-routing system.
-
-Gemini does NOT use native function-calling APIs.
-
-Instead:
-- Gemini emits structured JSON tool_call responses
-- Local firmware validates all tool calls
-- Invalid JSON is rejected
-- Execution is strictly sequential
-- Hardware actions are never simulated
-
-Atomic execution rule:
-One response may perform only ONE hardware action:
-- one pin
-- one operation
-- one value
-
-Multi-step workflows are executed step-by-step.
-------------------------------------------------------------
 Supported Tools
 ------------------------------------------------------------
 /digitalwrite             GPIO digital output
@@ -186,10 +142,16 @@ scheduleTodayExecuted.md
   Stores scheduled tasks executed today
 
 index.html
-  fuClaw configuration web page
+  Configuration manager (Web Chat Interface)
+  
+index_schedule.html
+  Schedule manager (Web Chat Interface)
 
 index_chat.html
-  Gemini talk web page (Web Chat Interface)
+  Gemini talk (Web Chat Interface)
+  
+index_mqtt_chat.html
+  Gemini MQTT talk (Web Chat Interface)  
 
 Conversation state is restored automatically on boot.
 ------------------------------------------------------------
@@ -221,6 +183,7 @@ Software Stack
 ------------------------------------------------------------
 - WiFi.h
 - WiFiSSLClient
+- PubSubClient
 - ArduinoJson
 - FreeRTOS
 - VideoStream
@@ -290,7 +253,7 @@ String geminiModel = "gemini-3-flash-preview";
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
-String timeZone = "Taiwan";
+String timeZone = "Asia/Taipei";
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -602,16 +565,7 @@ OUTPUT SANITIZATION RULE (CRITICAL)
 ==================================================
 
 Conversation history may contain additional metadata automatically
-inserted by the runtime system, including:
-
-message sources
-timestamps
-
-Example:
-
-<BOT> 2026/5/31 17:35:44
-<PAGE> 2026/5/31 17:35:44 
-<MQTT> 2026/5/31 17:35:44 
+inserted by the runtime system.
 
 These values are NOT part of the conversation.
 
@@ -752,6 +706,18 @@ The scheduled task execution rule overrides the normal confirmation requirement.
 ==================================================
 TOOL ROUTING
 ==================================================
+--------------------------------------------------
+Returns a complete overview of the device capabilities, available commands, hardware interfaces, system status, and documentation links.
+--------------------------------------------------
+Request:
+
+{
+  "type":"tool_call",
+  "method":"/help",
+  "params":{
+  }
+}
+
 --------------------------------------------------
 Digital output control
 --------------------------------------------------
@@ -1676,9 +1642,10 @@ String deviceFilename = "device.md";
 String skillFilename = "skill.md";
 
 // Web page
-String mainpageFilename = "index.html";    // Configuration
-String chatpageFilename = "index_chat.html";    // TCP Chat
+String configpageFilename = "index.html";    // Configuration manager
+String chatpageFilename = "index_chat.html";    // Web Chat
 String mqttchatpageFilename = "index_mqtt_chat.html";    // MQTT Chat
+String schedulepageFilename = "index_schedule.html";    // Schedule manager
 
 // schedule tasks
 String scheduleFilename = "schedule.json";
@@ -2031,11 +1998,6 @@ void replyUserMessage(String workId, String text) {
 			text = text.substring(0, text.indexOf("<PAGE>"));
 		mainPageHTML += text +"\n";
 	}
-	else if (workId.startsWith("<MQTT>") && !text.startsWith("<MQTT>")) {
-		if (text.indexOf("<MQTT>") != -1)
-		  text = text.substring(0, text.indexOf("<MQTT>"));
-		mqttSendText(mqttPublishTextTopic, text);
-	}	
 	else
 		mqttSendText(mqttPublishTextTopic, text);
 }
@@ -2061,9 +2023,8 @@ String replyUserImage(String workId, bool frames) {
       }
       mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
   }
-  else if (workId.startsWith("<MQTT>")) {
+  else
     return mqttSendImage(mqttPublishImageTopic, frames);
-  }
 
   return "";
 }
@@ -3278,7 +3239,7 @@ void task_getRequest(void *param) {
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
-            mainPageHTML = getStringFromFile(mainpageFilename);
+            mainPageHTML = getStringFromFile(configpageFilename);
             
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
@@ -3289,17 +3250,41 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
             mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
             mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
             mainPageHTML.replace("geminiApiKey", geminiApiKey);
-                
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);
+			
             currentLine = "";            
-          } 
+          }
+          else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            String workId = "<PAGE> " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateConfig?", "");
+            currentLine.replace(" HTTP", "");
+            
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine);
+              
+              mainPageHTML = "Configuration updated successfully.";
+              executeTool(workId, "/reboot", JsonObject());
+              
+            }
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+
+            currentLine = "";
+            
+          }           
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = getStringFromFile(chatpageFilename);
 
             currentLine = "";
 
-          }             
+          }
           else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = getStringFromFile(mqttchatpageFilename);
@@ -3312,27 +3297,47 @@ void task_getRequest(void *param) {
 
             currentLine = "";
 
-          }  
-          else if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          }            
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = getStringFromFile(schedulepageFilename);
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = scheduleTasks;
+
+            currentLine = "";
+
+          }                                            
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             String workId = "<PAGE> " + getRtcTimeString();
             
             currentLine = urldecode(currentLine);
-            currentLine.replace("GET /save?", "");
+            currentLine.replace("GET /updateScheduleTasks?", "");
             currentLine.replace(" HTTP", "");
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              storeDataToFile(envFilename, currentLine);
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+              storeDataToFile(schedulepageFilename, currentLine);
+              scheduleTasks = currentLine;
               
-              mainPageHTML = "fuClaw configuration saved successfully.";
-              executeTool(workId, "/reboot", JsonObject());
+              mainPageHTML = "Schedule updated successfully.";
               
-            }
+              historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+              historicalMessages += buildGeminiMessage("model", mainPageHTML);  
 
-            currentLine = "";
+              storeDataToFile(memoryFilename, historicalMessages);
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
             
           }
-    		else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             mainPageStatus = true;
 
@@ -3344,7 +3349,7 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP", "");
 
             if (currentLine != "") {
-              currentLine = urldecode(currentLine);  
+              currentLine = urldecode(currentLine);           
       				
       				if (currentLine.startsWith("/")) 
       				  executeTool(workId, currentLine, JsonObject()); 
@@ -3844,11 +3849,13 @@ void setup() {
     historicalMessages = memory;
     
   Serial.println("\n"); 
-  Serial.println("fuClaw configuration");    
-  Serial.println("http://192.168.1.1:81");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("\n");  
+  Serial.println("fuClaw Configuration Manager\nhttp://192.168.1.1:81");
+  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("fuClaw Chat via MQTT\nhttp://192.168.1.1:81/mqtt");
+  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");	
+  Serial.println("\n"); 
 
   if (WiFi.status() == WL_CONNECTED) {
     for (int i=0 ; i<3 ; i++) {
@@ -3858,9 +3865,10 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Configuration http://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw tcp Chat http://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("fuClaw mqtt Chat http://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
+    Serial.println("fuClaw Configuration\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("fuClaw Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");
+    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");	
     Serial.println("\n");   
   }   
 
