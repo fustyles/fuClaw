@@ -427,6 +427,16 @@ file.println(data.c_str());             // Write new state
 
 All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
+### Timestamp-Based `workId` Event Tracking Mechanism
+In a complex environment involving concurrent multi-tasking and multimodal interactions, the system assigns a unique, timestamp-embedded identifier—`workId`—to every generated workflow or tool call. This design delivers several core architectural advantages:
+
+* **End-To-End Traceability:**
+  Because the `workId` natively integrates a precise timestamp, it creates a unified data thread across the local firmware, front-end web interfaces, and persistent conversation records (`memory.md`). Users and developers can seamlessly track the entire lifecycle of a single AI-driven decision event—from initial command reception and reasoning routing to tool execution and final feedback—using this single ID.
+* **Asynchronous Logging & Diagnostics:**
+  Under a multi-tasking FreeRTOS environment where logs from Telegram polling, Web servers, and Schedulers can easily interleave, the `workId` serves as a critical filter. It allows for effortless isolation and reconstruction of a specific event's context, drastically simplifying the complexity of asynchronous debugging and edge-side hardware state auditing.
+* **Idempotency Guard Against Duplicate Execution:**
+  By leveraging the chronological nature of the timestamped `workId`, the edge firmware can reliably detect and reject duplicate commands caused by network latencies, retry mechanisms, or Telegram long-polling glitches. This ensures that sensitive hardware atomic operations (such as servo rotation or GPIO toggling) are executed exactly once.
+
 ---
 
 ## 7. RTC Time Synchronization via Gemini and HTTP Header Parsing
@@ -814,6 +824,16 @@ file.println(data.c_str());             // 寫入新狀態
 
 所有檔案完全解耦。其中任何一個都可以獨立修改而無需重新燒錄韌體。存儲在 `env.json` 中的憑證在啟動時首先載入，允許相同的韌體二進制檔案在多個具有不同配置的設備上部署。
 
+### 基於時間戳記的 `workId` 事件追蹤機制
+在多任務並行與多模態交互的複雜環境下，系統為每個生成的工作流（Workflow）或工具調用分配一個帶有時間戳記的唯一識別碼 —— `workId`。這項設計帶來以下核心優點：
+
+* **全鏈路事件追蹤（End-to-End Traceability）：**
+  由於 `workId` 本身嵌入了精確的時間戳記，它成功將固件端、前端網頁與持久化對話歷史紀錄（`memory.md`）串聯在一起。開發者與使用者能依據這個單一的 ID，跨平台、跨任務追蹤同一個 AI 決策事件從「接收指令、推理路由、工具執行、到結果反饋」的完整生命歷程。
+* **非同步日誌與故障診斷（Asynchronous Logging & Diagnostics）：**
+  在 FreeRTOS 多任務（如 Telegram、Web 伺服器、排程器）並行運作時，終端日誌往往會交錯重疊。透過 `workId` 作為關鍵過濾器，可以輕鬆隔離並還原特定事件的上下文，大幅降低在邊緣端進行非同步除錯與硬體狀態審計（Audit）的難度。
+* **避免重複執行的冪等性防護（Idempotency Guard）：**
+  結合時間戳記與 `workId` 的時序特性，邊緣端固件能有效識別並拒絕因網路延遲、重試機制（Retry）或 Telegram 長輪詢重複發送引發的相同指令。這能確保敏感的硬體原子操作（如伺服馬達旋轉、GPIO 切換）僅被精確執行一次，避免硬體失控。
+  
 ---
 
 ## 7. 透過 Gemini 與 HTTP Header 解析進行 RTC 時間同步
