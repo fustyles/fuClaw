@@ -1,12 +1,12 @@
-### fuClaw AI
+### AI agent - fuClaw 
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.png)  
 
-### fuClaw AI (Telegram Bot)
+### fuClaw (Telegram Bot)
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
 
-### fuClaw AI (MQTT)
+### fuClaw (MQTT)
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_MQTT.png)
 
