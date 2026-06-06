@@ -455,6 +455,17 @@ Inside the `getTelegramMessage()` polling loop, the firmware extracts the `Date:
 ### Scheduling Only Runs When RTC Is Ready
 The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task first attempts a **self-repair** by calling `executeTool("/syncrtc")` to re-synchronize the hardware clock automatically. Only if that synchronization attempt also fails — leaving rtcYear still 0 — does the task execute continue to skip the current cycle. This **self-repair before skip** strategy avoids missed scheduled tasks caused by a transient RTC initialization failure, while still guaranteeing that no scheduled task ever fires against an uninitialized clock state.
 
+### Dual-Mode Scheduler Management: Intelligence Meets Precision
+fuClaw introduces a highly flexible and intuitive dual-mode interaction mechanism for edge-side schedule management, allowing users to switch seamlessly based on different scenarios:
+
+* **AI Natural Language Parsing Mode:**
+  Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based Gemini engine automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard MicroSD card's `schedule.json`.
+* **Manual Graphical Web UI Mode:**
+  To ensure rock-solid reliability and pixel-perfect control when offline or in quiet environments, the system features a built-in dedicated schedule management web interface (`index_schedule.html`). Users can utilize the standard graphical interface to **manually add, edit, modify, or delete** any scheduled task with deterministic precision.
+
+**✨ Core Architectural Advantage:**
+Both distinct control paths **read and write to the exact same core `schedule.json` file on the onboard SD card in real-time**. This design achieves a perfect harmony between "highly flexible natural language input" and "highly deterministic graphical management," ensuring a seamless, robust user experience across all deployment conditions.
+
 ---
 
 ## 8. FreeRTOS Multi-Task Architecture
@@ -851,6 +862,17 @@ file.println(data.c_str());             // 寫入新狀態
 
 ### 排程僅在 RTC 就緒後運行
 `task_time_scheduling` 背景任務在每個評估週期前檢查 **rtcYear == 0**。如果 RTC 未初始化，任務會先呼叫 `executeTool("/syncrtc")` 嘗試自動重新同步硬體時鐘，進行自我修復。只有在同步嘗試仍然失敗、rtcYear 依然為 0 的情況下，任務才執行 **continue** 跳過當前週期。這種「**先自我修復再跳過**」的策略避免了因 RTC 初始化短暫失敗而導致的排程任務遺漏，同時仍然保證排程任務永遠不會基於未初始化的時鐘狀態觸發。
+
+### 智慧與精準兼具的「雙軌制」排程管理架構 (Dual-Mode Scheduler Management)
+fuClaw 為邊緣端排程管理設計了極具彈性且直覺的雙軌交互機制，讓使用者能依據不同場景自由切換：
+
+* **AI 自然語言語意建置 (AI Natural Language Mode)：**
+  使用者無需理解複雜的 Cron 運算式或程式語法，只需透過 Telegram 或網頁對話框輸入口語化的日常人類語言（例如：*「幫我設定每逢週一到週五的早上 8 點 30 分執行竊盜偵測」*）。雲端 Gemini 會自動精準解析使用者的「意圖（Intent）」與「時間參數」，將其轉譯為結構化的標準 JSON 任務格式發送給韌體。韌體在通過本地安全邊界驗證後，便會即時寫入板載 SD 卡中的 `schedule.json`。
+* **手動網頁 UI 密實管理 (Manual Web UI Mode)：**
+  為了確保在沒有網路、不便發聲或需要絕對精準控制時的實用性，系統同時內建了獨立的排程管理網頁（`index_schedule.html`）。使用者可以直接在圖形化介面上，以像素級的精準度進行排程任務的**手動新增、編輯、修改或即時刪除**。
+
+**✨ 核心架構優勢：**
+這兩種截然不同的控制路徑，在底層會**即時同步讀寫板載 SD 卡上的同一個 `schedule.json` 核心檔案**。這項設計達成了「高彈性自然語言輸入」與「高確定性圖形化管理」的完美融合，確保系統在任何應用情境下皆能提供無縫且強固的操控體驗。
 
 ---
 
