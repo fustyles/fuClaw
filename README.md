@@ -588,6 +588,7 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | `GET /getScheduleTasks` | Returns the raw `schedule.json` content |
 | `GET /updateScheduleTasks?{json}` | Overwrites `schedule.json` with new task array |
 | `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
+| `GET /mqtt` | Serves `index_mqtt_chat.html` (Gemini web chat UI) |
 | `GET /message?{text}` | Processes a chat message and returns the AI reply |
 
 The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to SD, preventing partial or corrupted configuration saves.
@@ -1009,6 +1010,7 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 | `GET /getScheduleTasks` | 回傳原始 `schedule.json` 內容 |
 | `GET /updateScheduleTasks?{json}` | 以新任務陣列覆寫 `schedule.json` |
 | `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
+| `GET /mqtt` | 提供 `index_mqtt_chat.html`（Gemini 網頁聊天介面） |
 | `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
 
 `/updateConfig` 端點在寫入 SD 卡前會驗證傳入資料是否為完整 JSON 物件（`startsWith("{") && endsWith("}")`），防止儲存不完整或損毀的設定。
