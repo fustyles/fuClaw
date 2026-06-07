@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-06 20:30
+Build Date: 2026-06-07 11:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -234,56 +234,19 @@ bool mainPageStatus = false;
 // Actual number of bytes downloaded from Telegram
 size_t downloadedFileSize = 0;
 
-// System prompt that defines assistant behavior.
-// Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
-String geminiRole = R"(
-You are a professional assistant with a lively, natural, and friendly personality, responding according to the user's language.
-)"; 
+// Defines the core persona and behavioral guidelines for Gemini (e.g., Smart Home Assistant, Hardware Steward).
+String geminiRole = ""; 
 
-String devicesDefinition = R"(
+// Defines high-level composite workflows and automated macro tasks available to the agent (e.g., theft_detection).
+String skillsDefinition = "";
 
-==================================================
-CONFIRMED HARDWARE DEVICES
-==================================================
+// Specifies the inventory of connected hardware components and their designated pin configurations (e.g., LEDs, Servos, DHT11).
+String devicesDefinition = "";
 
-Only the following device mappings are confirmed and may be directly controlled.
-
-AMB82-mini
-- Green indicator LED: pin 24
-- Blue indicator LED: pin 23
-
-HUB 8735 Ultra
-- Green indicator LED: pin 25
-- Blue indicator LED: pin 26
-
-- Fill light LED: pin 13
-  - analog output range: 0–255
-  - recommended safe startup brightness: 5
-
-- Function button: pin 12
-  - digital input only
-  - active-low
-  - pressed = 0
-  - released = 1
-
-No other hardware mappings are confirmed.
-
-==================================================
-HARDWARE SPECIFICATION
-==================================================
-
-SoC: Realtek AmebaPro2 (RTL8735B)
-
-Memory:
-- RAM  : 128 MB DDR2 (internal, on SoC)
-- Flash: 16 MB SPI NOR (external, on Dev. Board)
-
-These values reflect the actual hardware constraints.
-Do NOT assume limited memory.
-Do NOT apply MCU-class memory restrictions to this device.
-
-)";
-
+// The rigid orchestration framework written as a raw string literal. It strictly constraints Gemini to:
+// 1. Suppress conversational text responses and exclusively output structured JSON arrays.
+// 2. Comply with strict tool execution schemas and parameter boundary validations.
+// 3. Prevent model hallucinations to guarantee physical hardware safety and predictable state machine loops.
 String devicesRule = R"(
 
 1. ONLY confirmed devices may be directly controlled.
@@ -1364,90 +1327,6 @@ Return natural conversational reply only.
 
 )";
 
-String skillsDefinition = R"(
-
-==================================================
-BUILT-IN SKILLS REGISTRY
-==================================================
-
-==================================================
-SKILL: theft_detection
-==================================================
-
-Goal:
-Detect human presence and trigger alert workflow.
-
---------------------------------------------------
-SKILL EXECUTION
---------------------------------------------------
-
-MUST OUTPUT EXACT JSON ARRAY ONLY:
-
-Step 1: Analyze image for human presence
-
-{
-  "type": "tool_call",
-  "method": "/vision",
-  "params": {
-    "query": "Determine whether a person is visible in the image.",
-    "frames": true,
-    "task": "If a person is detected, continue workflow. If no person is detected, return NONE."
-  }
-}
-
-Step 2: If person detected → trigger alert sequence
-
-[
-  {
-    "type": "tool_call",
-    "method": "/still",
-    "params": {
-      "frames": false,
-      "task": "NONE"
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/digitalwrite",
-    "params": {
-      "pin": <blue_led_pin>,
-      "pinmode": "digitalwrite",
-      "value": 1
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/delay",
-    "params": {
-      "milliseconds": 500
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/digitalwrite",
-    "params": {
-      "pin": <blue_led_pin>,
-      "pinmode": "digitalwrite",
-      "value": 0
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/delay",
-    "params": {
-      "milliseconds": 500
-    }
-  }
-]
-
---------------------------------------------------
-FALLBACK
---------------------------------------------------
-
-If uncertain → return natural conversational response.
-
-)";
-
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
 String systemContentTools = "";
@@ -1868,6 +1747,10 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 		text = text.substring(0, text.indexOf("<BOT>"));
 	if (text.indexOf("&lt;BOT&gt;") != -1)
 		text = text.substring(0, text.indexOf("&lt;BOT&gt;"));	
+	if (text.indexOf("<MQTT>") != -1)
+		text = text.substring(0, text.indexOf("<MQTT>"));
+	if (text.indexOf("&lt;MQTT&gt;") != -1)
+		text = text.substring(0, text.indexOf("&lt;MQTT&gt;"));      
 	if (text.indexOf("<TIME_SCHEDULING>") != -1)
 		text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));
 	if (text.indexOf("&lt;TIME_SCHEDULING&gt;") != -1)
@@ -3958,6 +3841,12 @@ void setup() {
   Serial.println("device.md len: " + String(device.length()));
   if (device != "")
     devicesDefinition = device;
+
+  if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
+	  Serial.println("System configuration failed. Restarting the MCU...");
+	  delay(5000);
+	  NVIC_SystemReset();
+  }
 
   String skill = getStringFromFile(skillFilename);
   Serial.println("skill.md len: " + String(skill.length()));
