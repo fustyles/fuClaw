@@ -169,7 +169,10 @@ Known Limitations
 // Gemini chat
 #include "index_chat_html.h"
 // Schedule manager
-#include "index_schedule_html.h"   
+#include "index_schedule_html.h" 
+
+// Array of task-related tags used as stop markers when parsing text
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };  
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -544,21 +547,37 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   return getBody;
 }
 
-void replyUserMessage(String workId, String text, String keyboard = "") {
-	if (text.startsWith("NONE") || text == "") return;
+// Cleans a text string by removing timestamps, workId, and truncating at any task tag
+// Returns "NONE" if the text is empty or explicitly marked as none
+String removeTimestamps(String workId, String timestamps, String text) {
+
+    // Skip processing if text is empty or already marked as "NONE"
+    if (text.length() == 0 || text.startsWith("NONE")) return "NONE";
 	
-	if (text.indexOf("<PAGE>") != -1)
-		text = text.substring(0, text.indexOf("<PAGE>"));
-	if (text.indexOf("&lt;PAGE&gt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;PAG&gt;"));	
-	if (text.indexOf("<BOT>") != -1)
-		text = text.substring(0, text.indexOf("<BOT>"));
-	if (text.indexOf("&lt;BOT&gt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;BOT&gt;"));	
-	if (text.indexOf("<TIME_SCHEDULING>") != -1)
-		text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));
-	if (text.indexOf("&lt;TIME_SCHEDULING&gt;") != -1)
-		text = text.substring(0, text.indexOf("&lt;TIME_SCHEDULING&gt;"));	
+    // Early exit: if there are no angle brackets at all, nothing left to process
+    if (text.indexOf("&lt;") == -1 && text.indexOf("<") == -1) return text;	
+
+    // Decode HTML-escaped angle brackets back to their literal characters
+    text.replace("&lt;", "<");
+    text.replace("&gt;", ">");
+
+    // Strip the timestamp and workId from the text
+    text.replace(timestamps, "");
+    text.replace(workId, "");
+
+    // Truncate text at the first occurrence of any task tag
+    // Everything from the tag onward is discarded
+    for (const auto& tag : taskTags) {
+        int pos = text.indexOf(tag);
+        if (pos != -1)
+            text = text.substring(0, pos); // Keep only the part before the tag
+    }
+
+    return text;
+}
+
+void replyUserMessage(String workId, String text, String keyboard = "") {
+	if (text.length() == 0 || text.startsWith("NONE")) return;	
   
 	if (workId.startsWith("<PAGE>"))
 		mainPageHTML += text +"\n";
@@ -731,8 +750,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     responseText = "Gemini did not respond. Please try again.";
   }
   
-  responseText.replace(timestamps, "");
-  responseText.replace(workId, "");
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -835,8 +854,8 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
     responseText = "Gemini Search did not respond. Please try again.";
   }
 
-  responseText.replace(timestamps, "");
-  responseText.replace(workId, "");
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -953,8 +972,8 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
 
-  responseText.replace(timestamps, "");
-  responseText.replace(workId, "");
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
