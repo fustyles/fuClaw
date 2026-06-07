@@ -143,8 +143,8 @@ scheduleTodayExecuted.md
 index.html
   <br>Configuration manager web page
 
-index_system.html
-  <br>System manager (Web Chat Interface)
+index_agent.html
+  <br>Agent manager (Web Chat Interface)
   
 index_schedule.html
   <br>Schedule manager (Web Chat Interface)
@@ -415,7 +415,7 @@ file.println(data.c_str());             // Write new state
 | `schedule.json` | Schedule tasks | 
 | `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
 | `index.html` | Web configuration interface |
-| `index_system.html` | Web configuration interface |
+| `index_agent.html` | Web agent interface |
 | `index_schedule.html` | Web schedule interface |
 | `index_chat.html` | Web chat interface |
 | `index_mqtt_chat.html` | Web chat via MQTT interface | 
@@ -577,7 +577,7 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 |----------|----------|
 | `GET /` | Serves `index.html` with current credentials pre-filled |
 | `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
-| `GET /system` | Serves `index_system.html` (schedule manager UI) |
+| `GET /agent` | Serves `index_agent.html` (Agent manager UI) |
 | `GET /getSoul` | Returns the Soul content |
 | `GET /updateSoul?{data}` | Overwrites Soul definition with new content |
 | `GET /getDevice` | Returns the Device content |
@@ -837,8 +837,8 @@ file.println(data.c_str());             // 寫入新狀態
 | `memory.md` | 持久對話歷史 |
 | `schedule.json` | 時間排程任務 |
 | `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
-| `index.html` | Web 設定介面 |
-| `index_system.html` | Web 設定介面 |
+| `index.html` | Web 組態設定介面 |
+| `index_agent.html` | Web Agent 設定介面 |
 | `index_schedule.html` | Web 任務排程介面 |
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | Web MQTT 聊天介面 |
@@ -1000,6 +1000,7 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 |------|------|
 | `GET /` | 提供 `index.html`，並預先填入目前憑證 |
 | `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
+| `GET /agent` | 提供 `index_agent.html`（Agent 設定介面） |
 | `GET /getSoul` | 取得 Soul 內容 |
 | `GET /updateSoul?{data}` | 使用新內容覆寫 Soul 定義 |
 | `GET /getDevice` | 取得 Device 內容 |
