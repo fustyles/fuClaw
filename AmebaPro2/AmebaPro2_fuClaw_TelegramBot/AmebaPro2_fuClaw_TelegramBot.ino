@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-06 20:30
+Build Date: 2026-06-07 17:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -164,7 +164,7 @@ Known Limitations
 #include "toolsDefinition.h"
 #include "skillsDefinition.h"
 
-// Main page
+// Configuration manager
 #include "index_html.h"
 // Gemini chat
 #include "index_chat_html.h"
@@ -2052,7 +2052,7 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("geminiApiKey", geminiApiKey);
 
             currentLine = "";            
-          } 
+          }		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = String(INDEX_CHAT_HTML);
@@ -2555,10 +2555,11 @@ void setup() {
   Serial.println("\n");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("fuClaw Main page\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
-  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule");
-  Serial.println("Stream\nhttp://192.168.1.1:82");  
+  Serial.println("\n");  
+  Serial.println("Configuration Manager\nhttp://192.168.1.1:81"); 
+  Serial.println("Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("Scheduler Manager\nhttp://192.168.1.1:81/schedule"); 
+  Serial.println("Stream\nhttp://192.168.1.1:82");          
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -2569,12 +2570,12 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Main page\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");
-    Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82");	
+    Serial.println("Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");	
+    Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
+    Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82");            
     Serial.println("\n");   
-  }  
+  } 
 
   rtcInitialTime("<BOT>");
   replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);

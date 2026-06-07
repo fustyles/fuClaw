@@ -7,27 +7,6 @@ String wifiPassword = "xxxxxxxxxx";
 String apSsid = "fuclaw";
 String apPassword = "12345678";
 
-String systemCommand =
-  "Built-in commands:\n"
-  "/help command list\n"
-  "/still capture and send a camera image\n"
-  "/syncrtc update the hardware RTC\n" 
-  "/getrtc get the hardware RTC current time\n"
-  "/getSchedule Get all scheduled tasks\n"
-  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
-  "/getMemory show system memory usage\n"
-  "/getLog show tool execution history\n"
-  "Hardware control supported:\n"
-  "- Digital output (0 or 1)\n"
-  "- Analog output (0–255)\n"
-  "- Digital input reading\n"
-  "- Analog input reading\n\n"
-  "System Status:\n<memory>"
-  "\n\nYou can chat with Gemini using natural language.\n"
-  "The system supports real-time search and vision-based analysis.\n\n"
-  "Documentation:\n"
-  "https://github.com/fustyles/fuClaw";
-
 // MQTT broker settings
 String mqttServer   = "mqttgo.io";                          // Broker hostname or IP
 uint16_t mqttPort   = 1883;                                  // Standard MQTT port (unencrypted)
@@ -52,3 +31,24 @@ int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit comp
 float geminiTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
+
+String systemCommand =
+  "Built-in commands:\n"
+  "/help command list\n"
+  "/still capture and send a camera image\n"
+  "/syncrtc update the hardware RTC\n" 
+  "/getrtc get the hardware RTC current time\n"
+  "/getSchedule Get all scheduled tasks\n"
+  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
+  "/getMemory show system memory usage\n"
+  "/getLog show tool execution history\n"
+  "Hardware control supported:\n"
+  "- Digital output (0 or 1)\n"
+  "- Analog output (0–255)\n"
+  "- Digital input reading\n"
+  "- Analog input reading\n\n"
+  "System Status:\n<memory>"
+  "\n\nYou can chat with Gemini using natural language.\n"
+  "The system supports real-time search and vision-based analysis.\n\n"
+  "Documentation:\n"
+  "https://github.com/fustyles/fuClaw";

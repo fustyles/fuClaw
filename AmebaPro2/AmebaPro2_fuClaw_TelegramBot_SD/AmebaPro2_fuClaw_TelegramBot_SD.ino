@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-07 11:30
+Build Date: 2026-06-07 17:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1406,7 +1406,7 @@ String skillFilename = "skill.md";
 
 // Web page
 String configpageFilename = "index.html";    // Configuration manager
-String systempageFilename = "index_system.html";    // System manager
+String agentpageFilename = "index_agent.html";    // Agent Manager
 String chatpageFilename = "index_chat.html";    // Web Chat
 String schedulepageFilename = "index_schedule.html";    // Schedule manager
 
@@ -3340,9 +3340,9 @@ void task_getRequest(void *param) {
             currentLine = "";
             
           }
-          else if ((currentLine.indexOf("GET /system") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /agent") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
-            mainPageHTML = getStringFromFile(systempageFilename);
+            mainPageHTML = getStringFromFile(agentpageFilename);
 
             currentLine = "";
 
@@ -3958,7 +3958,7 @@ void setup() {
   Serial.println("AP password : " + apPassword);
   Serial.println("\n");  
   Serial.println("Configuration Manager\nhttp://192.168.1.1:81");
-  Serial.println("System Manager\nhttp://192.168.1.1:81/system");  
+  Serial.println("Agent Manager\nhttp://192.168.1.1:81/agent");  
   Serial.println("Chat\nhttp://192.168.1.1:81/chat");
   Serial.println("Scheduler Manager\nhttp://192.168.1.1:81/schedule"); 
   Serial.println("Stream\nhttp://192.168.1.1:82");          
@@ -3973,7 +3973,7 @@ void setup() {
     }
     
     Serial.println("Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-	Serial.println("System Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/system"); 	
+	Serial.println("Agent Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/agent"); 	
     Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
     Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82");            

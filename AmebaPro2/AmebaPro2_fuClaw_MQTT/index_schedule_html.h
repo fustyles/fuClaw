@@ -1121,6 +1121,56 @@ function setConnected(ok) {
 // ===== Init =====
 renderTable();
 </script>
+
+<!-- fuClaw Global Nav Bar -->
+<style>
+  .fc-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(220,228,255,.9);
+    display: flex; justify-content: space-around; align-items: stretch;
+    height: 58px;
+    box-shadow: 0 -4px 24px rgba(79,110,247,.10);
+    font-family: -apple-system,'Segoe UI','Noto Sans TC',sans-serif;
+  }
+  .fc-nav a {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; text-decoration: none;
+    color: #8892b0; font-size: .6rem; font-weight: 500;
+    letter-spacing: .03em; transition: color .2s;
+    -webkit-tap-highlight-color: transparent;
+    padding: 6px 2px 4px;
+  }
+  .fc-nav a:hover { color: #4f6ef7; }
+  .fc-nav a.fc-active { color: #4f6ef7; }
+  .fc-nav a .fc-ico {
+    width: 28px; height: 28px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; transition: background .2s, transform .15s;
+  }
+  .fc-nav a.fc-active .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
+  .fc-nav a:hover .fc-ico { background: rgba(79,110,247,.07); }
+  body { padding-bottom: 68px !important; }
+</style>
+<nav class="fc-nav">
+  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Home</span></a>
+  <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
+  <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
+  <a href="/mqtt" id="fcn-mqtt"     title="MQTT Chat"><span class="fc-ico">&#128225;</span><span>MQTT</span></a>
+</nav>
+<script>
+  (function(){
+    var map={"/":"fcn-config","":"fcn-config",
+             "/schedule":"fcn-schedule","/chat":"fcn-chat",
+             "/mqtt":"fcn-mqtt"};
+    var seg=location.pathname.replace(/\/$/,"") || "/";
+    var el=document.getElementById(map[seg]); if(el) el.className+=" fc-active";
+  })();
+</script>
+
 </body>
 </html>
 )rawhtml";
