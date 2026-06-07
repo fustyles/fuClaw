@@ -576,6 +576,7 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | Endpoint | Function |
 |----------|----------|
 | `GET /` | Serves `index.html` with current credentials pre-filled |
+| `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
 | `GET /system` | Serves `index_system.html` (schedule manager UI) |
 | `GET /getSoul` | Returns the Soul content |
 | `GET /updateSoul?{data}` | Overwrites Soul definition with new content |
@@ -583,12 +584,11 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | `GET /updateDevice?{data}` | Overwrites Devices definition with new content |
 | `GET /getSkill` | Returns the Skill content |
 | `GET /updateSkill?{data}` | Overwrites Skills definition with new content |
-| `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
 | `GET /schedule` | Serves `index_schedule.html` (schedule manager UI) |
-| `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
-| `GET /message?{text}` | Processes a chat message and returns the AI reply |
 | `GET /getScheduleTasks` | Returns the raw `schedule.json` content |
 | `GET /updateScheduleTasks?{json}` | Overwrites `schedule.json` with new task array |
+| `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
+| `GET /message?{text}` | Processes a chat message and returns the AI reply |
 
 The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to SD, preventing partial or corrupted configuration saves.
 
@@ -998,18 +998,18 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 | 端點 | 功能 |
 |------|------|
 | `GET /` | 提供 `index.html`，並預先填入目前憑證 |
+| `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
 | `GET /getSoul` | 取得 Soul 內容 |
 | `GET /updateSoul?{data}` | 使用新內容覆寫 Soul 定義 |
 | `GET /getDevice` | 取得 Device 內容 |
 | `GET /updateDevice?{data}` | 使用新內容覆寫 Device 定義 |
 | `GET /getSkill` | 取得 Skill 內容 |
 | `GET /updateSkill?{data}` | 使用新內容覆寫 Skill 定義 |
-| `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
 | `GET /schedule` | 提供 `index_schedule.html`（排程管理器介面） |
-| `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
-| `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
 | `GET /getScheduleTasks` | 回傳原始 `schedule.json` 內容 |
 | `GET /updateScheduleTasks?{json}` | 以新任務陣列覆寫 `schedule.json` |
+| `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
+| `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
 
 `/updateConfig` 端點在寫入 SD 卡前會驗證傳入資料是否為完整 JSON 物件（`startsWith("{") && endsWith("}")`），防止儲存不完整或損毀的設定。
 
