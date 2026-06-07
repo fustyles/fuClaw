@@ -9,21 +9,26 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>fuClaw Task Scheduler</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 
   :root {
-    --bg: #0a0e14;
-    --surface: #111820;
-    --surface2: #1a2230;
-    --border: #1e3a5f;
-    --accent: #00d4ff;
-    --accent2: #00ff9d;
-    --warn: #ff6b35;
-    --danger: #ff3366;
-    --text: #c8d8e8;
-    --text-dim: #5a7a9a;
-    --mono: 'Share Tech Mono', monospace;
-    --sans: 'Noto Sans TC', sans-serif;
+    --bg:       #f0f4ff;
+    --surface:  #ffffff;
+    --surface2: #f7f9ff;
+    --border:   #dde3f5;
+    --border2:  #c4cef5;
+    --accent:   #4f6ef7;
+    --accent2:  #10b981;
+    --accent3:  #06b6d4;
+    --warn:     #f59e0b;
+    --danger:   #ef4444;
+    --success:  #10b981;
+    --text:     #1a1d2e;
+    --text-dim: #8892b0;
+    --text2:    #4a5270;
+    --radius:   12px;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Noto Sans TC', 'Space Grotesk', sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,27 +46,14 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0,212,255,0.04) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,255,157,0.03) 0%, transparent 50%);
+      radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
+      radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
     pointer-events: none;
     z-index: 0;
   }
 
-  /* Scanlines */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.15) 2px,
-      rgba(0,0,0,0.15) 4px
-    );
-    pointer-events: none;
-    z-index: 1;
-  }
+
 
   .container {
     max-width: 1100px;
@@ -130,8 +122,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .status-dot.online {
-    background: var(--accent2);
-    box-shadow: 0 0 8px var(--accent2);
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
     animation: pulse 2s infinite;
   }
 
@@ -155,7 +147,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     letter-spacing: 0.06em;
     padding: 8px 18px;
     border: 1px solid;
-    border-radius: 2px;
+    border-radius: var(--radius);
     cursor: pointer;
     background: transparent;
     transition: all 0.18s;
@@ -171,8 +163,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
   .btn-primary:hover {
     background: var(--accent);
-    color: var(--bg);
-    box-shadow: 0 0 16px rgba(0,212,255,0.35);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(79,110,247,0.35);
   }
 
   .btn-success {
@@ -181,8 +173,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
   .btn-success:hover {
     background: var(--accent2);
-    color: var(--bg);
-    box-shadow: 0 0 16px rgba(0,255,157,0.35);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(16,185,129,0.35);
   }
 
   .btn-danger {
@@ -228,7 +220,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .stat-item {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 2px;
+    border-radius: var(--radius);
     padding: 8px 16px;
     font-family: var(--mono);
     font-size: 0.72rem;
@@ -248,7 +240,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .table-wrap {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius);
     overflow: hidden;
   }
 
@@ -272,12 +264,12 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   tbody tr {
-    border-bottom: 1px solid rgba(30,58,95,0.5);
+    border-bottom: 1px solid var(--border);
     transition: background 0.14s;
   }
 
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(0,212,255,0.04); }
+  tbody tr:hover { background: rgba(79,110,247,0.04); }
 
   tbody td {
     padding: 11px 14px;
@@ -286,7 +278,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 
   .task-cell {
     font-weight: 500;
-    color: #e0eaf4;
+    color: var(--text);
     max-width: 220px;
     word-break: break-all;
   }
@@ -299,33 +291,33 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .time-cell .date-part { color: var(--accent); }
-  .time-cell .time-part { color: var(--accent2); }
+  .time-cell .time-part { color: var(--accent3); }
   .time-cell .wildcard { color: var(--warn); }
 
   .badge {
     font-family: var(--mono);
     font-size: 0.65rem;
     padding: 3px 9px;
-    border-radius: 2px;
+    border-radius: 8px;
     letter-spacing: 0.08em;
     display: inline-block;
     white-space: nowrap;
   }
 
   .badge-done {
-    background: rgba(0,255,157,0.1);
-    color: var(--accent2);
-    border: 1px solid rgba(0,255,157,0.3);
+    background: rgba(16,185,129,0.1);
+    color: var(--success);
+    border: 1px solid rgba(16,185,129,0.3);
   }
 
   .badge-pending {
-    background: rgba(255,107,53,0.1);
+    background: rgba(245,158,11,0.1);
     color: var(--warn);
-    border: 1px solid rgba(255,107,53,0.3);
+    border: 1px solid rgba(245,158,11,0.3);
   }
 
   .badge-locked {
-    background: rgba(90,120,154,0.15);
+    background: rgba(136,146,176,0.12);
     color: var(--text-dim);
     border: 1px solid var(--border);
   }
@@ -338,7 +330,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     cursor: pointer;
     color: var(--text-dim);
     padding: 5px 8px;
-    border-radius: 2px;
+    border-radius: 8px;
     font-size: 0.85rem;
     transition: all 0.16s;
   }
@@ -360,7 +352,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(5,10,18,0.88);
+    background: rgba(10,15,40,0.55);
     z-index: 100;
     align-items: center;
     justify-content: center;
@@ -371,10 +363,10 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .modal {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius);
     width: 90%;
     max-width: 560px;
-    box-shadow: 0 0 60px rgba(0,212,255,0.1);
+    box-shadow: 0 8px 40px rgba(79,110,247,0.15), 0 2px 8px rgba(0,0,0,0.08);
     animation: fadeIn 0.18s ease;
     max-height: 90vh;
     overflow-y: auto;
@@ -392,6 +384,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     padding: 16px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface2);
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 
   .modal-header h2 {
@@ -450,13 +443,13 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     font-family: var(--mono);
     font-size: 0.82rem;
     padding: 8px 12px;
-    border-radius: 2px;
+    border-radius: 8px;
     outline: none;
     transition: border-color 0.16s;
   }
   .form-group input:focus, .form-group select:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(0,212,255,0.1);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
   }
   .form-group input.invalid { border-color: var(--danger); }
 
@@ -518,18 +511,18 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     position: absolute;
     height: 14px; width: 14px;
     left: 3px; top: 3px;
-    background: var(--text-dim);
+    background: #cbd5e1;
     border-radius: 50%;
     transition: all 0.2s;
   }
-  .toggle input:checked + .slider { background: rgba(0,255,157,0.15); border-color: var(--accent2); }
-  .toggle input:checked + .slider::before { transform: translateX(18px); background: var(--accent2); }
+  .toggle input:checked + .slider { background: rgba(16,185,129,0.15); border-color: var(--accent2); }
+  .toggle input:checked + .slider::before { transform: translateX(18px); background: var(--success); }
   .toggle input:disabled + .slider { opacity: 0.35; cursor: not-allowed; }
 
   .hint-box {
-    background: rgba(255,107,53,0.07);
-    border: 1px solid rgba(255,107,53,0.25);
-    border-radius: 2px;
+    background: rgba(245,158,11,0.07);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.72rem;
     color: var(--warn);
@@ -548,7 +541,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     color: var(--text-dim);
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 2px;
+    border-radius: 8px;
     padding: 10px 14px;
     margin-top: 12px;
     max-height: 140px;
@@ -559,7 +552,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   /* Toast */
   #toast {
     position: fixed;
-    bottom: 24px;
+    bottom: 82px;
     right: 24px;
     z-index: 200;
     display: flex;
@@ -573,7 +566,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     padding: 10px 18px;
-    border-radius: 2px;
+    border-radius: 8px;
     border: 1px solid;
     pointer-events: none;
     animation: slideIn 0.22s ease, fadeOut 0.3s ease 2.7s forwards;
@@ -581,17 +574,17 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .toast-item.success {
-    background: rgba(0,255,157,0.1);
-    border-color: var(--accent2);
-    color: var(--accent2);
+    background: rgba(16,185,129,0.1);
+    border-color: var(--success);
+    color: #059669;
   }
   .toast-item.error {
-    background: rgba(255,51,102,0.1);
+    background: rgba(239,68,68,0.1);
     border-color: var(--danger);
     color: var(--danger);
   }
   .toast-item.info {
-    background: rgba(0,212,255,0.1);
+    background: rgba(79,110,247,0.1);
     border-color: var(--accent);
     color: var(--accent);
   }
@@ -609,7 +602,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(10,14,20,0.7);
+    background: rgba(240,244,255,0.75);
     z-index: 300;
     align-items: center;
     justify-content: center;

@@ -3564,6 +3564,8 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
 
       result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
   }
+  
+  if (result == "") result = "NULL";
 
   return result;
 }
@@ -3874,7 +3876,7 @@ void setup() {
     }
     
     Serial.println("Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-	Serial.println("Agent Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/agent"); 	
+	  Serial.println("Agent Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/agent"); 	
     Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
     Serial.println("Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");
     Serial.println("Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");

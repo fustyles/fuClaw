@@ -3663,6 +3663,8 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
 
       result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
   }
+  
+  if (result == "") result = "NULL";
 
   return result;
 }
