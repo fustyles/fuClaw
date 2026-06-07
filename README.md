@@ -563,19 +563,25 @@ Despite the different transport layers, both versions share identical implementa
 
 ---
 
-## 12. Web Configuration & Chat Interface
+## 12. ## Web Configuration & Chat Interface
 
 ### Built-in HTTP Server (`task_getRequest`)
-A dedicated FreeRTOS task runs a lightweight HTTP server on port 81, serving three endpoints:
+
+A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving these endpoints:
 
 | Endpoint | Function |
 |----------|----------|
 | `GET /` | Serves `index.html` with current credentials pre-filled |
 | `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
-| `GET /save?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
+| `GET /schedule` | Serves `index_schedule.html` (schedule manager UI) |
+| `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
 | `GET /message?{text}` | Processes a chat message and returns the AI reply |
+| `GET /getScheduleTasks` | Returns the raw `schedule.json` content |
+| `GET /updateScheduleTasks?{json}` | Overwrites `schedule.json` with new task array |
 
-The `/save` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to SD, preventing partial or corrupted configuration saves.
+The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to SD, preventing partial or corrupted configuration saves.
+
+A second server on **port 82** streams a live MJPEG feed directly from the camera.
 
 ### Dual AP+STA Concurrent Mode
 `WiFi.enableConcurrent()` launches both an Access Point (`192.168.1.1:81`) and a Station connection simultaneously. This means the device is always reachable for configuration even when the home Wi-Fi is unavailable — a critical feature for initial setup and field recovery.
@@ -974,16 +980,22 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 ## 12. Web 設定與聊天介面
 
 ### 內建 HTTP 伺服器（`task_getRequest`）
-一個專用的 FreeRTOS 任務在 81 埠上運行一個輕量級 HTTP 伺服器，提供三個端點：
+
+一個專屬的 FreeRTOS 任務在**埠 81** 運行輕量 HTTP 伺服器，提供以下端點：
 
 | 端點 | 功能 |
 |------|------|
-| `GET /` | 以預填當前憑證服務 `index.html` |
-| `GET /chat` | 服務 `index_chat.html`（Gemini Web 聊天介面） |
-| `GET /save?{json}` | 儲存 `env.json` 到 SD 卡並觸發自動重啟 |
-| `GET /message?{text}` | 處理聊天訊息並返回 AI 回覆 |
+| `GET /` | 提供 `index.html`，並預先填入目前憑證 |
+| `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
+| `GET /schedule` | 提供 `index_schedule.html`（排程管理器介面） |
+| `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
+| `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
+| `GET /getScheduleTasks` | 回傳原始 `schedule.json` 內容 |
+| `GET /updateScheduleTasks?{json}` | 以新任務陣列覆寫 `schedule.json` |
 
-`/save` 端點在寫入 SD 之前驗證傳入的有效負載是否是完整的 JSON 物件（`startsWith("{") && endsWith("}")`），防止部分或損壞的設定儲存。
+`/updateConfig` 端點在寫入 SD 卡前會驗證傳入資料是否為完整 JSON 物件（`startsWith("{") && endsWith("}")`），防止儲存不完整或損毀的設定。
+
+**埠 82** 另設第二個伺服器，直接從相機串流 MJPEG 即時影像。
 
 ### AP+STA 雙模並發
 `WiFi.enableConcurrent()` 同時啟動存取點（`192.168.1.1:81`）和站台連線。這意味著即使家用 Wi-Fi 不可用，設備也始終可以透過設定介面存取——這對初始設定和現場恢復是一個關鍵功能。
