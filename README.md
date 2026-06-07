@@ -141,7 +141,7 @@ scheduleTodayExecuted.md
   <br>Stores scheduled tasks executed today 
 
 index.html
-  <br>Configuration web page
+  <br>Configuration manager web page
 
 index_system.html
   <br>System manager (Web Chat Interface)
