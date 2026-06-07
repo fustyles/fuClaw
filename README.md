@@ -474,7 +474,7 @@ The multi-task design solves concrete concurrency and scheduling problems across
 | `task_getRequest` | 16384 bytes | HTTP server for web configuration and `/chat` endpoint |
 | `task_getRequestStream` | 16384 bytes | HTTP server for web video streaming |
 | `task_getTelegramMessage` | 16384 bytes | Continuous Telegram long-polling for user input |
-| `task_getMqttMessage` (MQTT) | 32768 bytes | MQTT keep-alive, reconnect, and inbound message dispatch |
+| `task_getMqttMessage` | 32768 bytes | MQTT keep-alive, reconnect, and inbound message dispatch |
 | `task_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
 | `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min) |
 
@@ -897,7 +897,7 @@ fuClaw 為邊緣端排程管理設計了極具彈性且直覺的雙軌交互機�
 | `task_getRequest` | 16384 位元組 | 用於 Web 設定和 `/chat` 端點的 HTTP 伺服器 |
 | `task_getRequestStream` | 16384 位元組 | 用於 Web 視訊串流的 HTTP 伺服器 |
 | `task_getTelegramMessage` | 16384 位元組 | 連續 Telegram 長輪詢以接收用戶輸入 |
-| `task_getMqttMessage`（MQTT） | 32768 位元組 | MQTT 保持連線、重連和入站訊息派送 |
+| `task_getMqttMessage` | 32768 位元組 | MQTT 保持連線、重連和入站訊息派送 |
 | `task_theft_detection` | 6144 位元組 | 定期基於視覺的入侵偵測（每 5 分鐘） |
 | `task_time_scheduling` | 6144 位元組 | 排程硬體動作評估（每 1 分鐘） |
 
