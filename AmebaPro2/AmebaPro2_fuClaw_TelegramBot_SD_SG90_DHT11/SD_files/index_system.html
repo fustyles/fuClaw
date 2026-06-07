@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fuClaw AI Agent — Agent Config</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #f0f4ff;
+    --surface:   #ffffff;
+    --surface2:  #f7f9ff;
+    --border:    #dde3f5;
+    --border2:   #c4cef5;
+    --accent:    #4f6ef7;
+    --accent2:   #7c3aed;
+    --accent3:   #06b6d4;
+    --text:      #1a1d2e;
+    --text2:     #4a5270;
+    --text3:     #8892b0;
+    --success:   #10b981;
+    --warn:      #f59e0b;
+    --danger:    #ef4444;
+    --radius:    12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
+      radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
+    color: var(--text);
+    font-family: 'Noto Sans TC', 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 60px;
+  }
+
+  .wrapper { width: 100%; max-width: 680px; }
+
+  /* ── header ── */
+  header { text-align: center; margin-bottom: 36px; }
+
+  .logo-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; margin-bottom: 8px;
+  }
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(79,110,247,.3);
+    position: relative; overflow: hidden; flex-shrink: 0;
+  }
+  .logo-icon::before {
+    content: '';
+    position: absolute; top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(transparent 30%, rgba(255,255,255,.15) 50%, transparent 70%);
+    animation: spin 4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .logo-icon svg { position: relative; z-index: 1; }
+  .logo-mark {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 2.2rem; letter-spacing: -.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .tagline {
+    font-size: .8rem; color: var(--text3);
+    letter-spacing: .18em; text-transform: uppercase; margin-top: 4px;
+  }
+  .chips {
+    display: flex; gap: 8px; justify-content: center;
+    margin-top: 14px; flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; background: white;
+    border: 1px solid var(--border); border-radius: 20px;
+    font-size: .72rem; color: var(--text2);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .chip-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+  /* ── card ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 0;
+    box-shadow: 0 4px 24px rgba(79,110,247,.08), 0 1px 4px rgba(0,0,0,.06);
+    overflow: hidden;
+  }
+
+  /* ── tab bar ── */
+  .tab-bar {
+    display: flex; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .tab-btn {
+    flex: 1; padding: 16px 8px;
+    background: none; border: none; border-bottom: 3px solid transparent;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: .82rem; font-weight: 500;
+    color: var(--text3); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: color .2s, border-color .2s, background .2s;
+    letter-spacing: .02em; white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text2); background: rgba(79,110,247,.04); }
+  .tab-btn.active {
+    color: var(--accent); border-bottom-color: var(--accent);
+    background: white; font-weight: 600;
+  }
+  .tab-btn .ti {
+    width: 20px; height: 20px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; font-size: .85rem;
+  }
+  .ti-soul   { background: rgba(124,58,237,.1);  color: var(--accent2); }
+  .ti-device { background: rgba(6,182,212,.1);   color: var(--accent3); }
+  .ti-skill  { background: rgba(79,110,247,.1);  color: var(--accent); }
+
+  /* ── panels ── */
+  .panel { display: none; padding: 32px 36px 36px; }
+  .panel.active { display: block; }
+
+  .panel-intro {
+    padding: 12px 16px; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(79,110,247,.04), rgba(124,58,237,.04));
+    border: 1px solid var(--border);
+    font-size: .78rem; color: var(--text2);
+    margin-bottom: 24px; line-height: 1.6;
+  }
+  .panel-intro .ep {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 8px; margin-right: 12px;
+  }
+  .badge-get {
+    display: inline-block; padding: 2px 8px;
+    background: rgba(16,185,129,.1); color: #059669;
+    border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+    font-size: .68rem; font-weight: 500; letter-spacing: .04em;
+  }
+  .ep-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .73rem; color: var(--text3);
+  }
+
+  /* ── textarea ── */
+  .ta-wrap { position: relative; }
+  textarea {
+    width: 100%; min-height: 320px;
+    padding: 16px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .82rem; line-height: 1.7;
+    color: var(--text);
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    outline: none; resize: vertical;
+    transition: border-color .2s, background .2s, box-shadow .2s;
+  }
+  textarea:focus {
+    border-color: var(--accent); background: white;
+    box-shadow: 0 0 0 3px rgba(79,110,247,.12);
+  }
+  textarea::placeholder { color: var(--text3); font-size: .78rem; }
+
+  /* ── action row ── */
+  .action-row {
+    display: flex; align-items: center; gap: 10px; margin-top: 16px;
+  }
+  .btn-reload {
+    padding: 9px 16px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius); color: var(--text2);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: .8rem; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: border-color .2s, background .2s, color .2s;
+  }
+  .btn-reload:hover { border-color: var(--border2); color: var(--accent); background: white; }
+  .btn-reload:active { transform: scale(.98); }
+
+  .btn-save {
+    margin-left: auto; padding: 9px 22px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: var(--radius);
+    color: white; font-family: 'Space Grotesk', sans-serif;
+    font-size: .82rem; font-weight: 600; letter-spacing: .03em;
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+    box-shadow: 0 4px 14px rgba(79,110,247,.3);
+    transition: transform .15s, box-shadow .15s, opacity .15s;
+    position: relative; overflow: hidden;
+  }
+  .btn-save:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(79,110,247,.4); }
+  .btn-save:active { transform: translateY(0); opacity: .9; }
+  .btn-save::after {
+    content: ''; position: absolute; inset: 0;
+    background: conic-gradient(transparent 30%, rgba(255,255,255,.1) 50%, transparent 70%);
+    animation: spin 3s linear infinite;
+    opacity: 0; transition: opacity .2s;
+  }
+  .btn-save.loading::after { opacity: 1; }
+
+  /* ── status ── */
+  .status {
+    font-size: .75rem; font-family: 'JetBrains Mono', monospace;
+    padding: 5px 10px; border-radius: 8px;
+    display: none; align-items: center; gap: 5px;
+    animation: fadeIn .2s;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+  .status.ok   { display: flex; background: rgba(16,185,129,.1); color: #059669; border: 1px solid rgba(16,185,129,.2); }
+  .status.err  { display: flex; background: rgba(239,68,68,.07);  color: #dc2626; border: 1px solid rgba(239,68,68,.2); }
+  .status.busy { display: flex; background: rgba(79,110,247,.08); color: var(--accent); border: 1px solid rgba(79,110,247,.2); }
+
+  /* ── char count ── */
+  .ta-meta {
+    display: flex; justify-content: flex-end;
+    font-size: .68rem; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 5px;
+  }
+
+  /* ── footer ── */
+  footer {
+    margin-top: 24px; text-align: center;
+    font-size: .68rem; color: var(--text3);
+    letter-spacing: .06em;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  footer::before, footer::after {
+    content: ''; width: 32px; height: 1px; background: var(--border);
+  }
+
+  @media (max-width: 480px) {
+    .panel { padding: 20px 16px 28px; }
+    .tab-btn { font-size: .74rem; padding: 13px 4px; }
+    .tab-btn span.label { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="9"  r="4" fill="white" opacity=".95"/>
+          <circle cx="7"  cy="20" r="3" fill="white" opacity=".8"/>
+          <circle cx="21" cy="20" r="3" fill="white" opacity=".8"/>
+          <line x1="14" y1="13" x2="7"  y2="17" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="14" y1="13" x2="21" y2="17" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="7"  y1="20" x2="21" y2="20" stroke="white" stroke-width="1.5" opacity=".4"/>
+        </svg>
+      </div>
+      <div class="logo-mark">fuClaw</div>
+    </div>
+    <div class="tagline">AI Agent &nbsp;·&nbsp; Agent Configuration</div>
+    <div class="chips">
+      <span class="chip"><span class="chip-dot"></span>Live Editor</span>
+      <span class="chip">&#128274; Stored on Device</span>
+      <span class="chip">&#9881; v1.0</span>
+    </div>
+  </header>
+
+  <div class="card">
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('soul')" id="tab-soul">
+        <span class="ti ti-soul">&#128100;</span>
+        <span class="label">Gemini Role</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('device')" id="tab-device">
+        <span class="ti ti-device">&#9881;</span>
+        <span class="label">Devices</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('skill')" id="tab-skill">
+        <span class="ti ti-skill">&#9889;</span>
+        <span class="label">Skills</span>
+      </button>
+    </div>
+
+    <!-- Panel: Soul -->
+    <div id="panel-soul" class="panel active">
+      <div class="panel-intro">
+        <strong>Gemini Role</strong> &mdash; Defines the core persona and behavioral guidelines for the AI agent (tone, language, rules).
+      </div>
+      <div class="ta-wrap">
+        <textarea id="ta-soul" placeholder="Loading from device…" spellcheck="false"
+          oninput="updateCount('soul')"></textarea>
+      </div>
+      <div class="ta-meta"><span id="count-soul">0 chars</span></div>
+      <div class="action-row">
+        <button class="btn-reload" onclick="loadData('soul')">&#8635; Reload</button>
+        <span id="status-soul" class="status"></span>
+        <button class="btn-save" id="save-soul" onclick="saveData('soul')">
+          &#9650; Save &amp; Upload
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel: Device -->
+    <div id="panel-device" class="panel">
+      <div class="panel-intro">
+        <strong>Devices Definition</strong> &mdash; Specifies connected hardware components and their pin configurations (LEDs, servos, sensors, buttons…).
+      </div>
+      <div class="ta-wrap">
+        <textarea id="ta-device" placeholder="Loading from device…" spellcheck="false"
+          oninput="updateCount('device')"></textarea>
+      </div>
+      <div class="ta-meta"><span id="count-device">0 chars</span></div>
+      <div class="action-row">
+        <button class="btn-reload" onclick="loadData('device')">&#8635; Reload</button>
+        <span id="status-device" class="status"></span>
+        <button class="btn-save" id="save-device" onclick="saveData('device')">
+          &#9650; Save &amp; Upload
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel: Skill -->
+    <div id="panel-skill" class="panel">
+      <div class="panel-intro">
+        <strong>Skills Definition</strong> &mdash; Defines high-level composite workflows and automated macro tasks available to the agent (e.g. anti_theft_detection).
+      </div>
+      <div class="ta-wrap">
+        <textarea id="ta-skill" placeholder="Loading from device…" spellcheck="false"
+          oninput="updateCount('skill')"></textarea>
+      </div>
+      <div class="ta-meta"><span id="count-skill">0 chars</span></div>
+      <div class="action-row">
+        <button class="btn-reload" onclick="loadData('skill')">&#8635; Reload</button>
+        <span id="status-skill" class="status"></span>
+        <button class="btn-save" id="save-skill" onclick="saveData('skill')">
+          &#9650; Save &amp; Upload
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+
+  <footer>fuClaw AI Agent &nbsp;·&nbsp; Agent Config Portal &nbsp;·&nbsp; v1.0</footer>
+
+</div>
+
+<script>
+  const TABS = ['soul','device','skill'];
+
+  const EP = {
+    soul:   { get: '/getSoul',    update: '/updateSoul'   },
+    device: { get: '/getDevice',  update: '/updateDevice' },
+    skill:  { get: '/getSkill',   update: '/updateSkill'  }
+  };
+
+  function switchTab(key) {
+    TABS.forEach(k => {
+      document.getElementById('panel-' + k).classList.toggle('active', k === key);
+      document.getElementById('tab-'   + k).classList.toggle('active', k === key);
+    });
+  }
+
+  function updateCount(key) {
+    const len = document.getElementById('ta-' + key).value.length;
+    document.getElementById('count-' + key).textContent = len.toLocaleString() + ' chars';
+  }
+
+  function setStatus(key, type, msg) {
+    const el = document.getElementById('status-' + key);
+    el.className = 'status ' + type;
+    const icon = type === 'ok' ? '✔' : type === 'err' ? '✖' : '⟳';
+    el.textContent = icon + ' ' + msg;
+    if (type !== 'busy') {
+      clearTimeout(el._t);
+      el._t = setTimeout(() => { el.className = 'status'; }, 4000);
+    }
+  }
+
+  async function loadData(key) {
+    setStatus(key, 'busy', 'Fetching…');
+    try {
+      const res = await fetch(EP[key].get);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      document.getElementById('ta-' + key).value = text;
+      updateCount(key);
+      setStatus(key, 'ok', 'Loaded');
+    } catch(e) {
+      setStatus(key, 'err', e.message || 'Failed to load');
+    }
+  }
+
+  async function saveData(key) {
+    const data = document.getElementById('ta-' + key).value;
+    const btn  = document.getElementById('save-' + key);
+    btn.classList.add('loading');
+    setStatus(key, 'busy', 'Uploading…');
+    try {
+      const url = EP[key].update + '?' + encodeURIComponent(data);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setStatus(key, 'ok', 'Saved successfully');
+    } catch(e) {
+      setStatus(key, 'err', e.message || 'Upload failed');
+    } finally {
+      btn.classList.remove('loading');
+    }
+  }
+
+  // Auto-load all tabs on page load
+  TABS.forEach(k => loadData(k));
+</script>
+</body>
+</html>

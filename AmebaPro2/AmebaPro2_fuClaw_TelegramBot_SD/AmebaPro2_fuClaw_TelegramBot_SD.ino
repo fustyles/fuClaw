@@ -1406,6 +1406,7 @@ String skillFilename = "skill.md";
 
 // Web page
 String configpageFilename = "index.html";    // Configuration manager
+String systempageFilename = "index_system.html";    // System manager
 String chatpageFilename = "index_chat.html";    // Web Chat
 String schedulepageFilename = "index_schedule.html";    // Schedule manager
 
@@ -3338,7 +3339,72 @@ void task_getRequest(void *param) {
 
             currentLine = "";
             
-          }           
+          }
+          else if ((currentLine.indexOf("GET /system") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = getStringFromFile(systempageFilename);
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = geminiRole;
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /updateSoul?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSoul?", "");
+            currentLine.replace(" HTTP", "");
+            
+			geminiRole = currentLine;
+            storeDataToFile(soulFilename, currentLine);
+			
+            currentLine = "";        
+            
+          }		  
+          else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = devicesDefinition;
+
+            currentLine = "";
+
+          }
+		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP") != -1))
+		  {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateDevice?", "");
+            currentLine.replace(" HTTP", "");
+            
+			devicesDefinition = currentLine;
+            storeDataToFile(deviceFilename, currentLine);
+			
+            currentLine = "";        
+            
+          }
+          else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = skillsDefinition;
+
+            currentLine = "";
+
+          } 		  
+          else if ((currentLine.indexOf("GET /updateSkill?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSkill?", "");
+            currentLine.replace(" HTTP", "");
+            
+			skillsDefinition = currentLine;
+            storeDataToFile(skillFilename, currentLine);
+			
+            currentLine = "";        
+            
+          }			  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = getStringFromFile(chatpageFilename);
@@ -3890,9 +3956,11 @@ void setup() {
   Serial.println("\n");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("fuClaw Configuration Manager\nhttp://192.168.1.1:81");
-  Serial.println("fuClaw Chat\nhttp://192.168.1.1:81/chat");
-  Serial.println("fuClaw Scheduler Manager\nhttp://192.168.1.1:81/schedule"); 
+  Serial.println("\n");  
+  Serial.println("Configuration Manager\nhttp://192.168.1.1:81");
+  Serial.println("System Manager\nhttp://192.168.1.1:81/system");  
+  Serial.println("Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("Scheduler Manager\nhttp://192.168.1.1:81/schedule"); 
   Serial.println("Stream\nhttp://192.168.1.1:82");          
   Serial.println("\n");  
 
@@ -3904,9 +3972,10 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("fuClaw Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("fuClaw Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
+    Serial.println("Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");
+	Serial.println("System Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/system"); 	
+    Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
     Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82");            
     Serial.println("\n");   
   }  
