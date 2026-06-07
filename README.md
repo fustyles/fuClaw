@@ -143,6 +143,9 @@ scheduleTodayExecuted.md
 index.html
   <br>Configuration web page
 
+index_system.html
+  <br>System manager (Web Chat Interface)
+  
 index_schedule.html
   <br>Schedule manager (Web Chat Interface)
 
@@ -412,6 +415,7 @@ file.println(data.c_str());             // Write new state
 | `schedule.json` | Schedule tasks | 
 | `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
 | `index.html` | Web configuration interface |
+| `index_system.html` | Web configuration interface |
 | `index_schedule.html` | Web schedule interface |
 | `index_chat.html` | Web chat interface |
 | `index_mqtt_chat.html` | Web chat via MQTT interface | 
@@ -572,6 +576,13 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | Endpoint | Function |
 |----------|----------|
 | `GET /` | Serves `index.html` with current credentials pre-filled |
+| `GET /system` | Serves `index_system.html` (schedule manager UI) |
+| `GET /getSoul` | Returns the Soul content |
+| `GET /updateSoul?{data}` | Overwrites Soul definition with new content |
+| `GET /getDevice` | Returns the Device content |
+| `GET /updateDevice?{data}` | Overwrites Devices definition with new content |
+| `GET /getSkill` | Returns the Skill content |
+| `GET /updateSkill?{data}` | Overwrites Skills definition with new content |
 | `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
 | `GET /schedule` | Serves `index_schedule.html` (schedule manager UI) |
 | `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
@@ -826,6 +837,7 @@ file.println(data.c_str());             // 寫入新狀態
 | `schedule.json` | 時間排程任務 |
 | `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
 | `index.html` | Web 設定介面 |
+| `index_system.html` | Web 設定介面 |
 | `index_schedule.html` | Web 任務排程介面 |
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | Web MQTT 聊天介面 |
@@ -986,6 +998,12 @@ MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
 | 端點 | 功能 |
 |------|------|
 | `GET /` | 提供 `index.html`，並預先填入目前憑證 |
+| `GET /getSoul` | 取得 Soul 內容 |
+| `GET /updateSoul?{data}` | 使用新內容覆寫 Soul 定義 |
+| `GET /getDevice` | 取得 Device 內容 |
+| `GET /updateDevice?{data}` | 使用新內容覆寫 Device 定義 |
+| `GET /getSkill` | 取得 Skill 內容 |
+| `GET /updateSkill?{data}` | 使用新內容覆寫 Skill 定義 |
 | `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
 | `GET /schedule` | 提供 `index_schedule.html`（排程管理器介面） |
 | `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
