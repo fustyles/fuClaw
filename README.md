@@ -110,7 +110,7 @@ Supported Tools
 /getUnfinishedSchedule              <br>Get unfinished scheduled tasks<br>
 /updateScheduleStatus              <br>Update the executed status of scheduled tasks<br>
 /modifySchedule              <br>Modify or delete scheduled tasks<br>
-/clearSchedule              <br>Clear scheduled tasks
+/clearSchedule              <br>Clear scheduled tasks<br>
 /agentSendMessage              <br>Send a message to another fuClaw device
 
 ------------------------------------------------------------
