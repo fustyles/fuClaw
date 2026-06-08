@@ -170,7 +170,7 @@ void task_getRequest(void *param) {
 		  // Route: GET /
 		  // Display  welcome page.
 		  // ----------------------------------------------------
-          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
             mainPageHTML = "Welcome to <a href=\"https://github.com/fustyles/fuClaw\">fuClaw</a> home!";
 
@@ -183,7 +183,7 @@ void task_getRequest(void *param) {
 		  // Returns the embedded chat interface stored in
 		  // INDEX_CHAT_HTML.
 		  // ----------------------------------------------------		  
-          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_CHAT_HTML);
 
@@ -199,7 +199,7 @@ void task_getRequest(void *param) {
 		  // URL parameters are automatically decoded before
 		  // being processed.
 		  // ----------------------------------------------------		  
-          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             currentLine.replace("GET /message?", "");
             currentLine.replace(" HTTP", "");
