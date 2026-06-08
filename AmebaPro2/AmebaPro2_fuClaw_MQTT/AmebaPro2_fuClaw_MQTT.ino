@@ -114,7 +114,7 @@ Supported Tools
 /updateScheduleStatus     Update the executed status of scheduled tasks
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
-/agentSendMessage                Send a message to another fuClaw device
+/agentSendMessage         Send a message to another fuClaw device
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
