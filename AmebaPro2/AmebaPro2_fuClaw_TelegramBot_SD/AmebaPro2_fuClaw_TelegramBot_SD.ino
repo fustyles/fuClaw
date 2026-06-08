@@ -1964,7 +1964,7 @@ void storeDataToFile(String filename, String data) {
 // Send a message to another fuClaw device
 String agentSendMessage(String workId, String domain, String request) {
   
-  WiFiSSLClient client;
+  WiFiClient client;
   
   if (client.connect(domain.c_str(), 81)) {
 	client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
@@ -2858,6 +2858,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
       executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
 	}	
     else if (command == "/help" || command == "/start") {
          

@@ -2032,41 +2032,41 @@ void storeDataToFile(String filename, String data) {
 // Send a message to another fuClaw device
 String agentSendMessage(String workId, String domain, String request) {
   
-  WiFiSSLClient client;
+  WiFiClient client;
   
   if (client.connect(domain.c_str(), 81)) {
-  client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
-  client.println("Host: " + domain);
-  client.println("Connection: close");
-    client.println("Content-Length: 0");
-  client.println();
-  
-  String getAll="", getBody="";
-  boolean state = false;
-  long startTime = millis();
-  int waittime = 10000;
-  
-  while ((startTime + waittime) > millis()) {
-    while (client.available()) {
-    char c = client.read();
-    if (c == '\n') {
-      if (getAll.length()==0) state=true;
-      getAll = "";
+    client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+    client.println("Host: " + domain);
+    client.println("Connection: close");
+      client.println("Content-Length: 0");
+    client.println();
+    
+    String getAll="", getBody="";
+    boolean state = false;
+    long startTime = millis();
+    int waittime = 10000;
+    
+    while ((startTime + waittime) > millis()) {
+      while (client.available()) {
+      char c = client.read();
+      if (c == '\n') {
+        if (getAll.length()==0) state=true;
+        getAll = "";
+      }
+      else if (c != '\r')
+        getAll += String(c);
+      if (state==true) getBody += String(c);
+      startTime = millis();
+      }
+      if (getBody.length()!= 0) break;
     }
-    else if (c != '\r')
-      getAll += String(c);
-    if (state==true) getBody += String(c);
-    startTime = millis();
-    }
-    if (getBody.length()!= 0) break;
-  }
-  client.stop();
-  
-  return 
-    "{\"status\":\"success\","
-    "\"method\":\"/agentSendMessage\","
-    "\"response\":\"" + getBody + "\","   
-    "\"workId\":\"" + workId + "\"}"; 
+    client.stop();
+    
+    return 
+      "{\"status\":\"success\","
+      "\"method\":\"/agentSendMessage\","
+      "\"response\":\"" + getBody + "\","   
+      "\"workId\":\"" + workId + "\"}"; 
   }
 
   return 
@@ -2972,6 +2972,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
       executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
 	}
     else if (command == "/servo") {
         int pin   = params["pin"].as<int>();
