@@ -202,7 +202,7 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             currentLine.replace("GET /message?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             currentLine = urldecode(currentLine); 
                         
             mainPageHTML = "Receive: " + currentLine;

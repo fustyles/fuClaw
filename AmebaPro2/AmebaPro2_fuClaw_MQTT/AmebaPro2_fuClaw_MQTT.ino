@@ -1698,7 +1698,7 @@ void task_getRequest(void *param) {
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               mainPageHTML = "Configuration updated successfully.";
@@ -1751,7 +1751,7 @@ void task_getRequest(void *param) {
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateScheduleTasks?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
               scheduleTasks = currentLine;
@@ -1777,7 +1777,7 @@ void task_getRequest(void *param) {
             String workId = "<PAGE> " + getRtcTimeString();       
 
             currentLine.replace("GET /message?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
 
             if (currentLine != "") {
 				currentLine = urldecode(currentLine);           

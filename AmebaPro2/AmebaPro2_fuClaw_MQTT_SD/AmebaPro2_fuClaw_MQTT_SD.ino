@@ -2984,7 +2984,7 @@ void task_getRequest(void *param) {
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               storeDataToFile(envFilename, currentLine);
@@ -3017,7 +3017,7 @@ void task_getRequest(void *param) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSoul?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
 			geminiRole = currentLine;
             storeDataToFile(soulFilename, currentLine);
@@ -3037,7 +3037,7 @@ void task_getRequest(void *param) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateDevice?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
 			devicesDefinition = currentLine;
             storeDataToFile(deviceFilename, currentLine);
@@ -3056,7 +3056,7 @@ void task_getRequest(void *param) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSkill?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
 			skillsDefinition = currentLine;
             storeDataToFile(skillFilename, currentLine);
@@ -3104,7 +3104,7 @@ void task_getRequest(void *param) {
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateScheduleTasks?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
               storeDataToFile(scheduleFilename, currentLine);
@@ -3132,7 +3132,7 @@ void task_getRequest(void *param) {
             String workId = "<PAGE> " + getRtcTimeString();       
 
             currentLine.replace("GET /message?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
 
             if (currentLine != "") {
               currentLine = urldecode(currentLine);           

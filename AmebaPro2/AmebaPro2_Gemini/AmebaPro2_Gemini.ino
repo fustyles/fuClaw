@@ -781,7 +781,7 @@ void task_getRequest(void *param) {
             String workId = "<PAGE>";       
 
             currentLine.replace("GET /message?", "");
-            currentLine.replace(" HTTP", "");
+            currentLine.replace(" HTTP/1.", "");
 
             if (currentLine != "") {
 				      currentLine = urldecode(currentLine);  
