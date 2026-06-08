@@ -3855,12 +3855,12 @@ void setup() {
   if (memory != "")
     historicalMessages = memory;
     
-  Serial.println("\n");
+  Serial.println("AP mode"); 
+  Serial.println("fuClaw Manager: http://192.168.1.1:81");
+  Serial.println("Video stream: http://192.168.1.1:82"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("\n");  
-  Serial.println("fuClaw Manager: http://192.168.1.1:81");
-  Serial.println("Video stream: http://192.168.1.1:82");          
+  Serial.println(); 
 
   if (WiFi.status() == WL_CONNECTED) {
     for (int i=0 ; i<3 ; i++) {
@@ -3869,11 +3869,12 @@ void setup() {
       digitalWrite(ledPin, 0);
       delay(300);      
     }
-    
+	
+    Serial.println("STA mode"); 
     Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
     Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
-    Serial.println("\n");   
-  }    
+    Serial.println();   
+  }     
 
   // ---- MQTT initialisation ----
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
