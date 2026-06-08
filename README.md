@@ -1,5 +1,3 @@
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
-
 ------------------------------------------------------------
 Embedded AI Agent - fuClaw with Gemini Integration
 ------------------------------------------------------------
@@ -1080,3 +1078,19 @@ fuClaw 清楚地證明了一件事：完整的 AI Agent 不需要雲端伺服器
 然而，若要在成本敏感或高頻率使用的環境中部署 fuClaw，需要審慎評估[第 14 節](#14-隱憂與已知限制)所描述的 token 用量問題。目前每次互動都會將完整的系統提示詞與完整的對話歷史送至 Gemini API。對於偶發的個人使用或低流量原型，這個成本微不足道。但對於每天處理數十次互動、長期運行數個月的裝置，或是任何已超出 Gemini API 免費額度的部署場景，累積的 token 消耗在正式上線前都值得仔細評估。
 
 如果你正在評估以 fuClaw 作為更大型專案的基礎，請將第 14 節視為擴展規模前需要逐一確認的檢查清單。架構本身是穩健的；成本結構只需與你的使用模式相匹配。
+
+---
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Config_telegrambot.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Config_MQTT.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Agent.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Schedule.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Chat.png)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_MQTT.png)
