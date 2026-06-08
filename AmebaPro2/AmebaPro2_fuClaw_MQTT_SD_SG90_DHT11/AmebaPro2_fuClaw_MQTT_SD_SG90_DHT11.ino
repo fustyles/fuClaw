@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-07 17:00
+Build Date: 2026-06-08 12:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -117,6 +117,7 @@ Supported Tools
 /updateScheduleStatus     Update the executed status of scheduled tasks
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
+/agentSendMessage                Send a message to another fuClaw device
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
@@ -256,6 +257,7 @@ float geminiTemperature = 1.0;
 String timeZone = "Asia/Taipei";
 
 // Array of task-related tags used as stop markers when parsing text
+// Every tag MUST be enclosed in angle brackets '<' and '>'.
 const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
 
 String mainPageHTML = "";
@@ -956,6 +958,45 @@ Clear scheduled tasks:
 }
 
 --------------------------------------------------
+Send a message to another fuClaw device.
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendMessage",
+  "params": {
+    "device":"<device address>",
+    "message": "<message text>"
+  }
+}
+
+Success response:
+
+{
+  "status": "success",
+  "method": "/agentSendMessage",
+  "workId": "<system-provided>"
+}
+
+Error response:
+
+{
+  "status": "error",
+  "method": "/agentSendMessage",
+  "reason":"<error reason>",  
+  "workId": "<system-provided>"
+}
+
+Requirements:
+- The destination device address is required.
+- The address may be:
+  - IPv4 address
+  - Hostname
+  - Domain name
+  - mDNS name (*.local)
+- If the destination address is missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
 Servo motor control:
 --------------------------------------------------
 {
@@ -1543,6 +1584,41 @@ DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length());
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2;
+        } else if (input[i] == '+') {
+            result += ' ';
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+String urlencode(String str) {
+  const char *msg = str.c_str();
+  const char *hex = "0123456789ABCDEF";
+  String encodedMsg = "";
+  while (*msg != '\0') {
+    if (('a' <= *msg && *msg <= 'z') || ('A' <= *msg && *msg <= 'Z') || ('0' <= *msg && *msg <= '9') || *msg == '-' || *msg == '_' || *msg == '.' || *msg == '~') {
+      encodedMsg += *msg;
+    } else {
+      encodedMsg += '%';
+      encodedMsg += hex[(unsigned char)*msg >> 4];
+      encodedMsg += hex[*msg & 0xf];
+    }
+    msg++;
+  }
+  return encodedMsg;
+}
+
 // Send request to Gemini and return GMT date and time
 String getGeminiDatetime() {
 
@@ -1980,6 +2056,34 @@ void storeDataToFile(String filename, String data) {
   }
   
   fs.end();
+}
+
+// Send a message to another fuClaw device
+String agentSendMessage(String workId, String domain, String request) {
+  
+  WiFiSSLClient client;
+  
+  if (client.connect(domain.c_str(), 81)) {
+	client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+	client.println("Host: " + domain);
+	client.println("Connection: close");
+    client.println("Content-Length: 0");
+	client.println();
+
+	client.stop();
+	
+	return 
+		"{\"status\":\"success\","
+		"\"method\":\"/agentSendMessage\","
+		"\"workId\":\"" + workId + "\"}";	
+  }
+
+  return 
+		"{\"status\":\"error\","
+		"\"method\":\"/agentSendMessage\","				
+		"\"reason\":\"Connected to the device failed.\","
+		"\"workId\":\"" + workId + "\"}";
+			
 }
 
 // Reset conversation memory to initial system prompt state
@@ -2859,6 +2963,17 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   		
   	  NVIC_SystemReset();
   	}	
+  	else if (command == "/agentSendMessage") {
+      String device = params["device"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = agentSendMessage(workId, device, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+	}	
     else if (command == "/servo") {
         int pin   = params["pin"].as<int>();
         int angle = params["angle"].as<int>();
@@ -3039,24 +3154,6 @@ void handleAgentResponse(String workId, String message) {
       replyUserMessage(workId, message);
     }
   }
-}
-
-String urldecode(const String& input) {
-    String result = "";
-    result.reserve(input.length());
-    for (int i = 0; i < (int)input.length(); i++) {
-        if (input[i] == '%' && i + 2 < (int)input.length()) {
-            char hex[3] = { input[i+1], input[i+2], '\0' };
-            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
-            result.concat((char)val);
-            i += 2;
-        } else if (input[i] == '+') {
-            result += ' ';
-        } else {
-            result += input[i];
-        }
-    }
-    return result;
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.

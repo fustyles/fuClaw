@@ -442,6 +442,45 @@ Clear scheduled tasks:
   "params":{}
 }
 
+--------------------------------------------------
+Send a message to another fuClaw device.
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendMessage",
+  "params": {
+    "device":"<device address>",
+    "message": "<message text>"
+  }
+}
+
+Success response:
+
+{
+  "status": "success",
+  "method": "/agentSendMessage",
+  "workId": "<system-provided>"
+}
+
+Error response:
+
+{
+  "status": "error",
+  "method": "/agentSendMessage",
+  "reason":"<error reason>",  
+  "workId": "<system-provided>"
+}
+
+Requirements:
+- The destination device address is required.
+- The address may be:
+  - IPv4 address
+  - Hostname
+  - Domain name
+  - mDNS name (*.local)
+- If the destination address is missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
