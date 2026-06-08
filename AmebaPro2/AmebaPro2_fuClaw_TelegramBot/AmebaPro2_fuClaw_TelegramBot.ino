@@ -2041,7 +2041,7 @@ void task_getRequest(void *param) {
           }
           
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
-          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
             mainPageHTML = String(INDEX_HTML);
             
@@ -2053,28 +2053,28 @@ void task_getRequest(void *param) {
 
             currentLine = "";            
           }		  
-          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_CHAT_HTML);
 
             currentLine = "";
 
           }  
-          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_SCHEDULE_HTML);
 
             currentLine = "";
 
           }
-          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = scheduleTasks;
 
             currentLine = "";
 
           }                                            
-          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
             String workId = "<PAGE> " + getRtcTimeString();
             
@@ -2096,7 +2096,7 @@ void task_getRequest(void *param) {
             currentLine = "";        
             
           }		  
-          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
             mainPageStatus = true;
 
@@ -2183,7 +2183,7 @@ void task_getRequestStream(void *param) {
             currentLine += c;
           }
 
-          if (currentLine.indexOf(" HTTP")!=-1) {
+          if (currentLine.indexOf(" HTTP/1.")!=-1) {
             currentLine="";
           }
         }
@@ -2558,11 +2558,8 @@ void setup() {
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("\n");  
-  Serial.println("Configuration Manager\nhttp://192.168.1.1:81"); 
-  Serial.println("Chat\nhttp://192.168.1.1:81/chat");
-  Serial.println("Scheduler Manager\nhttp://192.168.1.1:81/schedule"); 
-  Serial.println("Stream\nhttp://192.168.1.1:82");          
-  Serial.println("\n");  
+  Serial.println("fuClaw Manager: http://192.168.1.1:81");
+  Serial.println("Video stream: http://192.168.1.1:82");          
 
   if (WiFi.status() == WL_CONNECTED) {
     for (int i=0 ; i<3 ; i++) {
@@ -2572,12 +2569,10 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("Configuration Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81");	
-    Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("Scheduler Manager\nhttp://" + Ip2String(WiFi.localIP()) + ":81/schedule");   
-    Serial.println("Stream\nhttp://" + Ip2String(WiFi.localIP()) + ":82");            
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
+    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
     Serial.println("\n");   
-  } 
+  }   
 
   rtcInitialTime("<BOT>");
   replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
