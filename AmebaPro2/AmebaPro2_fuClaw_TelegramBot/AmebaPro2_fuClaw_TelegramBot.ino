@@ -681,12 +681,32 @@ String agentSendMessage(String workId, String domain, String request) {
 	client.println("Connection: close");
     client.println("Content-Length: 0");
 	client.println();
-
+	
+	String getAll="", getBody="";
+	boolean state = false;
+	long startTime = millis();
+	int waittime = 10000;
+	
+	while ((startTime + waittime) > millis()) {
+	  while (client.available()) {
+		char c = client.read();
+		if (c == '\n') {
+		  if (getAll.length()==0) state=true;
+		  getAll = "";
+		}
+		else if (c != '\r')
+		  getAll += String(c);
+		if (state==true) getBody += String(c);
+		startTime = millis();
+	  }
+	  if (getBody.length()!= 0) break;
+	}
 	client.stop();
 	
 	return 
 		"{\"status\":\"success\","
 		"\"method\":\"/agentSendMessage\","
+		"\"response\":\"" + getBody + "\","		
 		"\"workId\":\"" + workId + "\"}";	
   }
 

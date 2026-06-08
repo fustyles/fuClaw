@@ -2035,26 +2035,46 @@ String agentSendMessage(String workId, String domain, String request) {
   WiFiSSLClient client;
   
   if (client.connect(domain.c_str(), 81)) {
-	client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
-	client.println("Host: " + domain);
-	client.println("Connection: close");
+  client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+  client.println("Host: " + domain);
+  client.println("Connection: close");
     client.println("Content-Length: 0");
-	client.println();
-
-	client.stop();
-	
-	return 
-		"{\"status\":\"success\","
-		"\"method\":\"/agentSendMessage\","
-		"\"workId\":\"" + workId + "\"}";	
+  client.println();
+  
+  String getAll="", getBody="";
+  boolean state = false;
+  long startTime = millis();
+  int waittime = 10000;
+  
+  while ((startTime + waittime) > millis()) {
+    while (client.available()) {
+    char c = client.read();
+    if (c == '\n') {
+      if (getAll.length()==0) state=true;
+      getAll = "";
+    }
+    else if (c != '\r')
+      getAll += String(c);
+    if (state==true) getBody += String(c);
+    startTime = millis();
+    }
+    if (getBody.length()!= 0) break;
+  }
+  client.stop();
+  
+  return 
+    "{\"status\":\"success\","
+    "\"method\":\"/agentSendMessage\","
+    "\"response\":\"" + getBody + "\","   
+    "\"workId\":\"" + workId + "\"}"; 
   }
 
   return 
-		"{\"status\":\"error\","
-		"\"method\":\"/agentSendMessage\","				
-		"\"reason\":\"Connected to the device failed.\","
-		"\"workId\":\"" + workId + "\"}";
-			
+    "{\"status\":\"error\","
+    "\"method\":\"/agentSendMessage\","       
+    "\"reason\":\"Connected to the device failed.\","
+    "\"workId\":\"" + workId + "\"}";
+      
 }
 
 // Reset conversation memory to initial system prompt state
@@ -3721,12 +3741,12 @@ void task_getRequest(void *param) {
             if (currentLine != "") {
               currentLine = urldecode(currentLine);           
       				
-				if (currentLine.startsWith("/")) 
-				  executeTool(workId, currentLine, JsonObject()); 
-				else {
-				  currentLine = geminiChatRequest(workId, currentLine);
-				  handleAgentResponse(workId, currentLine);
-				}
+    				if (currentLine.startsWith("/")) 
+    				  executeTool(workId, currentLine, JsonObject()); 
+    				else {
+    				  currentLine = geminiChatRequest(workId, currentLine);
+    				  handleAgentResponse(workId, currentLine);
+    				}
       				
               storeDataToFile(memoryFilename, historicalMessages);
             }
