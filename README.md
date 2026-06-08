@@ -542,7 +542,7 @@ The Telegram version uses HTTPS long-polling against the `getUpdates` API on a p
 - **HTTP header time parasitism**: The `Date:` header extracted from each polling response provides GMT time for RTC initialization at zero additional cost.
 - **Voice message support**: Telegram's voice message objects (OGG/Opus) are downloaded, Base64-encoded, and sent to Gemini STT inline — the entire voice-to-action pipeline requires no external storage service.
 - **Image delivery**: Camera frames are uploaded as multipart JPEG directly to Telegram's `sendPhoto` API, delivering native in-chat photo messages.
-- **WorkId routing**: The `replyUserMessage()` function uses a `workId` prefix (`<BOT>`, `<PAGE>`, `<THEFT_DETECTION>`, `<TIME_SCHEDULING>`) to route replies to the correct output channel without passing channel references through the entire call stack.
+- **WorkId routing**: The `replyUserMessage()` function uses a `workId` prefix (`<BOT>`, `<PAGE>`, `<TIME_SCHEDULING>`, `<THEFT_DETECTION>`) to route replies to the correct output channel without passing channel references through the entire call stack.
 
 ### MQTT Version
 
@@ -965,7 +965,7 @@ Telegram 版本在持久的 `WiFiSSLClient` 連線上使用 HTTPS 長輪詢對 `
 - **HTTP Header 時間寄生**：從每次輪詢回應中提取的 `Date:` header 以零額外成本為 RTC 初始化提供 GMT 時間。
 - **語音訊息支援**：Telegram 的語音訊息物件（OGG/Opus）被下載、Base64 編碼並內聯發送到 Gemini STT——整個語音到動作的管線無需外部儲存服務。
 - **圖像傳遞**：相機幀以 multipart JPEG 格式直接上傳到 Telegram 的 `sendPhoto` API，在聊天中傳遞原生照片訊息。
-- **WorkId 路由**：`replyUserMessage()` 函式使用 `workId` 前綴（`<BOT>`、`<PAGE>`、`<THEFT_DETECTION>`、`<TIME_SCHEDULING>`）將回覆路由到正確的輸出通道，而不需要在整個呼叫堆疊中傳遞通道引用。
+- **WorkId 路由**：`replyUserMessage()` 函式使用 `workId` 前綴（`<BOT>`、`<PAGE>`、`<TIME_SCHEDULING>`、`<THEFT_DETECTION>`）將回覆路由到正確的輸出通道，而不需要在整個呼叫堆疊中傳遞通道引用。
 
 ### MQTT 版本
 
