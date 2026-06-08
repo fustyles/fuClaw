@@ -487,7 +487,7 @@ Before either background task executes, it calls `botClient.stop()` and waits 2 
 The MQTT client is configured with `wifiClient.setNonBlockingMode()` before initialization, preventing the TCP stack from stalling the RTOS scheduler during I/O. The `task_getMqttMessage` task receives a larger stack (32768 bytes) to accommodate the MQTT library's internal processing and JPEG image payload publishing.
 
 ### Opt-In Background Tasks
-The `task_time_scheduling` task is enabled by default in setup(). Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. The `task_theft_detection` task remains disabled by default via a comment block in setup(). Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly on first flash.
+The `task_time_scheduling task` is enabled by default in `setup()`. Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. Conversely, the `task_theft_detection` feature remains disabled by default via a comment block in `setup()`. Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly upon the initial flash, thereby serving as a paradigm for skill design.
 
 ---
 
@@ -910,7 +910,7 @@ fuClaw 為邊緣端排程管理設計了極具彈性且直覺的雙軌交互機�
 MQTT 客戶端在初始化前以 `wifiClient.setNonBlockingMode()` 設定，防止 TCP 堆疊在 I/O 期間阻塞 RTOS 排程器。`task_getMqttMessage` 任務獲得更大的堆疊（32768 位元組），以容納 MQTT 函式庫的內部處理和 JPEG 圖像有效負載發布。
 
 ### 選擇性啟用的背景任務
-`task_time_scheduling` 排程任務在 setup() 中**預設啟用**。時間排程執行被視為核心執行期能力——建立了排程的用戶預期任務會自動觸發，無需額外設定。`task_theft_detection` 防盜任務則仍以注解塊在 setup() 中**預設禁用**。啟用自主視覺入侵偵測是一個具有直接硬體後果的重大行為改變，用戶應該有意識地選擇啟用，而不是在首次燒錄後意外激活。
+`task_time_scheduling` 排程任務在 setup() 中**預設啟用**。時間排程執行被視為核心執行期能力——建立了排程的用戶預期任務會自動觸發，無需額外設定。`task_theft_detection` 防盜任務則仍以注解塊在 setup() 中**預設禁用**。啟用自主視覺入侵偵測是一個具有直接硬體後果的重大行為改變，用戶應該有意識地選擇啟用，而不是在首次燒錄後意外激活，提供一項技能設計的範本。。
 
 ---
 
