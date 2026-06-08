@@ -955,6 +955,7 @@ Success response:
 {
   "status": "success",
   "method": "/agentSendMessage",
+  "response": "<reply message returned by target device>",  
   "workId": "<system-provided>"
 }
 
@@ -2061,6 +2062,15 @@ void geminiChatReset() {
   
   historicalMessages = "";
   executeToolHistory = "";
+
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  
+}
+
+// Reset system Content
+void systemContentReset() {
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
@@ -3604,9 +3614,10 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateSoul?", "");
             currentLine.replace(" HTTP/1.", "");
             
-			geminiRole = currentLine;
             storeDataToFile(soulFilename, currentLine);
-			
+            geminiRole = currentLine;
+            systemContentReset();
+            
             currentLine = "";        
             
           }		  
@@ -3617,15 +3628,15 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }
-		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1))
-		  {
+		      else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateDevice?", "");
             currentLine.replace(" HTTP/1.", "");
             
-			devicesDefinition = currentLine;
             storeDataToFile(deviceFilename, currentLine);
+            devicesDefinition = currentLine;
+            systemContentReset();            
 			
             currentLine = "";        
             
@@ -3643,9 +3654,10 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateSkill?", "");
             currentLine.replace(" HTTP/1.", "");
             
-			skillsDefinition = currentLine;
             storeDataToFile(skillFilename, currentLine);
-			
+            skillsDefinition = currentLine;
+            systemContentReset();
+            
             currentLine = "";        
             
           }		  
@@ -4217,7 +4229,9 @@ void setup() {
     Serial.println("STA mode"); 
     Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
     Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
-    Serial.println();   
+    Serial.println();
+
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
   }  
 
   servo12.attach(12);

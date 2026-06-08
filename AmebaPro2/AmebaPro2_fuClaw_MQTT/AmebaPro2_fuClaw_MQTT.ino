@@ -710,6 +710,15 @@ void geminiChatReset() {
   
 }
 
+// Reset system Content
+void systemContentReset() {
+
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  
+}
+
 // Send request to Gemini and return response text
 String geminiChatRequest(String workId, String message, int tools = 1) {
   String timestamps = "\n" + workId;
@@ -2378,6 +2387,8 @@ void setup() {
     Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
     Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
     Serial.println();   
+	
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));	
   }    
 
   // ---- MQTT initialisation ----

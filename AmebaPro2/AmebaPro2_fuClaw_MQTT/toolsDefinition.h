@@ -459,6 +459,7 @@ Success response:
 {
   "status": "success",
   "method": "/agentSendMessage",
+  "response": "<reply message returned by target device>",  
   "workId": "<system-provided>"
 }
 
