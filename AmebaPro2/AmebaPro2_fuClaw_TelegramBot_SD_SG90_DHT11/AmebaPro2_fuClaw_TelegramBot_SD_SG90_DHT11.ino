@@ -2037,35 +2037,42 @@ String agentSendMessage(String workId, String domain, String request) {
   if (client.connect(domain.c_str(), 81)) {
     client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
     client.println("Host: " + domain);
-    client.println("Connection: close");
-      client.println("Content-Length: 0");
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("Content-Length: 0");
     client.println();
     
-    String getAll="", getBody="";
-    boolean state = false;
-    long startTime = millis();
-    int waittime = 10000;
-    
-    while ((startTime + waittime) > millis()) {
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
       while (client.available()) {
-      char c = client.read();
-      if (c == '\n') {
-        if (getAll.length()==0) state=true;
-        getAll = "";
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
       }
-      else if (c != '\r')
-        getAll += String(c);
-      if (state==true) getBody += String(c);
-      startTime = millis();
-      }
-      if (getBody.length()!= 0) break;
+      vTaskDelay(1);
     }
-    client.stop();
+    
+    client.stop();  
     
     return 
       "{\"status\":\"success\","
       "\"method\":\"/agentSendMessage\","
-      "\"response\":\"" + getBody + "\","   
+      "\"response\":\"" + body + "\","   
       "\"workId\":\"" + workId + "\"}"; 
   }
 
@@ -3555,7 +3562,6 @@ void task_getRequest(void *param) {
               client.println("Content-Length: " + String(pageToSend.length()));
               client.println("Access-Control-Allow-Origin: *");
               client.println("Cache-Control: no-cache");
-              client.println("Connection: close");
               client.println();
             
               const char* ptr = pageToSend.c_str();
