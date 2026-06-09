@@ -113,7 +113,7 @@ Supported Tools
 /clearSchedule              <br>Clear scheduled tasks<br>
 /agentSendMessage              <br>Send a message to another fuClaw device<br>
 /agentSendMessageMQTT     <br>Send a message to another fuClaw device or any subscriber via MQTT<br>
-/agentSendImageMQTT       <br>Send a video snapshot to another fuClaw device or any MQTT subscriber
+/agentSendImageMQTT       <br>Send a video snapshot to another fuClaw device or any subscriber via MQTT
 
 ------------------------------------------------------------
 Persistent Files
