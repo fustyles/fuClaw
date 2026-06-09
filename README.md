@@ -244,7 +244,8 @@ Claude Evaluation
 11. [Dual Communication Modes: Telegram Bot vs MQTT](#11-dual-communication-modes-telegram-bot-vs-mqtt)
 12. [Web Configuration & Chat Interface](#12-web-configuration--chat-interface)
 13. [Output Sanitization & Markdown Stripping](#13-output-sanitization--markdown-stripping)
-14. [Concerns & Known Limitations](#14-Concerns--Known-Limitations)
+14. [Agent-to-Agent & MQTT Multimodal Communications](#14-Agent-to-Agent-&-MQTT-Multimodal-Communications)
+15. [Concerns & Known Limitations](#14-Concerns--Known-Limitations)
     
 ---
 
