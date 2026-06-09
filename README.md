@@ -111,7 +111,9 @@ Supported Tools
 /updateScheduleStatus              <br>Update the executed status of scheduled tasks<br>
 /modifySchedule              <br>Modify or delete scheduled tasks<br>
 /clearSchedule              <br>Clear scheduled tasks<br>
-/agentSendMessage              <br>Send a message to another fuClaw device
+/agentSendMessage              <br>Send a message to another fuClaw device<br>
+/agentSendMessageMQTT     <br>Send a message to another fuClaw device or any subscriber via MQTT<br>
+/agentSendImageMQTT       <br>Send a video snapshot to another fuClaw device or any MQTT subscriber
 
 ------------------------------------------------------------
 Persistent Files
