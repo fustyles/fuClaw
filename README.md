@@ -637,7 +637,7 @@ These tools empower the Gemini reasoning engine to not only manipulate local GPI
 
 ### Extended Tool Contracts
 
-| Method | Responsibility | Arguments & Schemes | Restrictions & Safety Boundaries |
+| Method | Responsibility | Restrictions & Safety Boundaries |
 | :--- | :--- | :--- |
 | `/agentSendMessage` | Sends a direct P2P text message to another targeted fuClaw node. | Target must be network-reachable; used for low-overhead edge-to-edge synchronization. |
 | `/agentSendMessageMQTT` | Publishes a text payload to a specified MQTT topic via the configured broker. | Dependent on connection state defined in `env.json`; returns Error JSON upon broker dropouts. |
@@ -1090,7 +1090,7 @@ MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 W
 
 ### 擴充工具合約定義
 
-| 工具方法 (Method) | 核心職責 (Responsibility) | 參數結構與架構 (Arguments) | 限制與安全邊界 (Restrictions & Safety) |
+| 工具方法 (Method) | 核心職責 (Responsibility) | 限制與安全邊界 (Restrictions & Safety) |
 | :--- | :--- | :--- |
 | `/agentSendMessage` | 發送直連 P2P 文字訊息至另一台指定的 fuClaw 節點設備。 | 目的端必須在網路可達範圍內，用於輕量級的設備間直接狀態同步。 |
 | `/agentSendMessageMQTT` | 透過已連線的 Broker 將文字載荷發布至指定的 MQTT 主題。 | 依賴 `env.json` 中配置的連線狀態；若與 Broker 斷開會立即回傳 Error JSON。 |
