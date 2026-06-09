@@ -482,6 +482,37 @@ Requirements:
 - If the destination address is missing, the agent MUST ask the user.
 - The tool call MUST NOT be generated until all required parameters are available.
 
+--------------------------------------------------
+Send a message to another fuClaw device or any subscriber via MQTT. 
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendMessageMQTT",
+  "params": {
+	"publishTopic": "<MQTT topic to publish the message to>",
+    "message": "<message text>"
+  }
+}
+
+Requirements:
+- topic is required. If missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
+Send a video snapshot to another fuClaw device or any MQTT subscriber.
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendImageMQTT",
+  "params": {
+	"publishTopic": "<MQTT topic to publish the image to>"
+  }
+}
+
+Requirements:
+- topic is required. If missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================

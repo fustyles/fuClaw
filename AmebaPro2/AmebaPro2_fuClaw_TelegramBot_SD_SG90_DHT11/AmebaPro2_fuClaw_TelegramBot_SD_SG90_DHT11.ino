@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-08 12:00
+Build Date: 2026-06-09 02:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -2135,6 +2135,9 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
+	  
+    client.setRecvTimeout(10000);
+		  
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
@@ -2244,6 +2247,9 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
+	  
+    client.setRecvTimeout(10000);
+	
     // Send HTTP Request
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
@@ -2336,6 +2342,9 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   const char* myDomain = "generativelanguage.googleapis.com";
 
   if (client.connect(myDomain, 443)) {
+	  
+    client.setRecvTimeout(10000);
+	
     if (frames)
       Camera.getImage(0, &imageAddress, &imageLength);
     else if (!frames && imageLength == 0) {

@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-08 12:00
+Build Date: 2026-06-09 02:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -116,6 +116,8 @@ Supported Tools
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
 /agentSendMessage         Send a message to another fuClaw device
+/agentSendMessageMQTT     Send a message to another fuClaw device or any subscriber via MQTT
+/agentSendImageMQTT       Send a video snapshot to another fuClaw device or any subscriber via MQTT
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
@@ -986,6 +988,37 @@ Requirements:
   - Domain name
   - mDNS name (*.local)
 - If the destination address is missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
+Send a message to another fuClaw device or any subscriber via MQTT. 
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendMessageMQTT",
+  "params": {
+	"publishTopic": "<MQTT topic to publish the message to>",
+    "message": "<message text>"
+  }
+}
+
+Requirements:
+- topic is required. If missing, the agent MUST ask the user.
+- The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
+Send a video snapshot to another fuClaw device or any MQTT subscriber.
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/agentSendImageMQTT",
+  "params": {
+	"publishTopic": "<MQTT topic to publish the image to>"
+  }
+}
+
+Requirements:
+- topic is required. If missing, the agent MUST ask the user.
 - The tool call MUST NOT be generated until all required parameters are available.
 
 ==================================================
@@ -2094,6 +2127,9 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
+	  
+    client.setRecvTimeout(10000);
+		  
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
@@ -2203,6 +2239,9 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
+	  
+    client.setRecvTimeout(10000);
+		  
     // Send HTTP Request
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
@@ -2295,6 +2334,9 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   const char* myDomain = "generativelanguage.googleapis.com";
 
   if (client.connect(myDomain, 443)) {
+	  
+    client.setRecvTimeout(10000);
+		  
     if (frames)
       Camera.getImage(0, &imageAddress, &imageLength);
     else if (!frames && imageLength == 0) {
@@ -2896,7 +2938,32 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/agentSendMessageMQTT") {
+      String publishTopic = params["publishTopic"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = mqttSendText(publishTopic, message + "\n\n<metadata>\ndefault_reply_topic=" + mqttSubscribeTextTopic + "\n</metadata>");
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
 	}	
+  	else if (command == "/agentSendImageMQTT") {
+      String publishTopic = params["publishTopic"].as<String>();
+	  
+      String response = mqttSendImage(publishTopic, true);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
+	}
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
