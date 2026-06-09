@@ -628,7 +628,36 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 ---
 
-## 14. Concerns & Known Limitations
+## 14. Agent-to-Agent & MQTT Multimodal Communications
+
+To evolve from a standalone edge device into a collaborative **Multi-Agent Ecosystem**, fuClaw expands its Prompt-Orchestrated Tool Routing mechanism with three native autonomous communication tools: `/agentSendMessage`, `/agentSendMessageMQTT`, and `/agentSendImageMQTT`. 
+
+These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks and MQTT brokers.
+
+### Extended Tool Contracts
+
+| Method | Responsibility | Arguments & Schemes | Restrictions & Safety Boundaries |
+| :--- | :--- | :--- | :--- |
+| `/agentSendMessage` | Sends a direct P2P text message to another targeted fuClaw node. | `{ "target_ip": "string", "message": "string" }` | Target must be network-reachable; used for low-overhead edge-to-edge synchronization. |
+| `/agentSendMessageMQTT` | Publishes a text payload to a specified MQTT topic via the configured broker. | `{ "topic": "string", "message": "string" }` | Dependent on connection state defined in `env.json`; returns Error JSON upon broker dropouts. |
+| `/agentSendImageMQTT` | Captures and flushes the current camera video snapshot to a specific MQTT topic. | `{ "topic": "string", "frames": boolean, "task": "string" }` | Monitored by FreeRTOS stack guards; large image packets use automated dynamic chunk buffers. |
+
+### Architectural Design & Optimization
+
+1. **Decoupled Multi-Agent Collaboration (`/agentSendMessage`)**
+   When the Gemini engine evaluates local sensor anomalies (e.g., DHT11 temperature thresholds breached) and determines that a remote physical zone requires collective intervention, it invokes `/agentSendMessage`. This bypasses centralized server logic, allowing edge agents to negotiate actions directly in application layers, preserving the operational context within `memory.md`.
+
+2. **Asynchronous IoT Pub/Sub Topology (`/agentSendMessageMQTT`)**
+   Unlike standard Telegram synchronous request-response loops, `/agentSendMessageMQTT` enables sub-second telemetry broadcasting. Messages are dispatched directly to the topic configured in `env.json` (e.g., `mqtt_publishTextTopic`), providing out-of-the-box integration with industrial IoT platforms, Home Assistant, Node-RED, or custom ESP32/Ameba sub-nodes.
+
+3. **Frame-Reuse & Memory Shielding (`/agentSendImageMQTT`)**
+   Transmitting large multi-kilobyte JPEG streams over MQTT in a highly constrained FreeRTOS environment poses severe stack-overflow risks. To mitigate this:
+   * **Frame Cache Preservation:** Inheriting behavioral rules from `/still` and `/vision`, setting `"frames": false` forces the tool to reuse the existing JPEG buffer locked by prior vision tasks, omitting redundant camera sensor read cycles and saving substantial CPU clocks.
+   * **Heap Allocation Safety:** The execution block allocates memory dynamically (`malloc`/`free`) outside the tight `task_getMqttMessage` stack (allocated at 32KB), guaranteeing that network sockets and SSL handshakes never starve the core runtime.
+
+---
+
+## 15. Concerns & Known Limitations
 
 ### Token Usage & System Prompt Cost
 
@@ -684,7 +713,8 @@ If you are evaluating fuClaw as a foundation for a larger project, treat Section
 11. [雙通訊模式：Telegram Bot 與 MQTT](#11-雙通訊模式telegram-bot-與-mqtt)
 12. [Web 設定與聊天介面](#12-web-設定與聊天介面)
 13. [輸出淨化與 Markdown 清除](#13-輸出淨化與-markdown-清除)
-14. [隱憂與已知限制](#14-隱憂與已知限制)
+14. [跨設備代理與 MQTT 多模態通訊擴充](#14-跨設備代理與-MQTT-多模態通訊擴充)
+15. [隱憂與已知限制](#15-隱憂與已知限制)
 
 ---
 
@@ -1051,7 +1081,36 @@ MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 W
 
 ---
 
-## 14. 隱憂與已知限制
+## 14. 跨設備代理與 MQTT 多模態通訊擴充
+
+為了從單一邊緣設備（Standalone Edge Device）演進至**多設備協同運作（Multi-Agent Collaboration）**的物聯網生態系，fuClaw 擴充了其「提示詞編排工具路由機制」（Prompt-Orchestrated Tool Routing），原生新增了三項具備自主通訊能力的邊緣端工具：`/agentSendMessage`、`/agentSendMessageMQTT` 與 `/agentSendImageMQTT`。
+
+這使得 Gemini 推理引擎在評估工作流時，不僅能控制本地端的硬體 GPIO（如指示燈、伺服馬達等），還能自主決定何時透過 P2P 網路或 MQTT 代理伺服器（Broker）向外發送狀態遙測、文字告警或原始二進位多媒體載荷。
+
+### 擴充工具合約定義
+
+| 工具方法 (Method) | 核心職責 (Responsibility) | 參數結構與架構 (Arguments) | 限制與安全邊界 (Restrictions & Safety) |
+| :--- | :--- | :--- | :--- |
+| `/agentSendMessage` | 發送直連 P2P 文字訊息至另一台指定的 fuClaw 節點設備。 | `{ "target_ip": "string", "message": "string" }` | 目的端必須在網路可達範圍內，用於輕量級的設備間直接狀態同步。 |
+| `/agentSendMessageMQTT` | 透過已連線的 Broker 將文字載荷發布至指定的 MQTT 主題。 | `{ "topic": "string", "message": "string" }` | 依賴 `env.json` 中配置的連線狀態；若與 Broker 斷開會立即回傳 Error JSON。 |
+| `/agentSendImageMQTT` | 擷取並將相機當前的視訊快照（Video Snapshot）以二進位發布至特定 MQTT 主題。 | `{ "topic": "string", "frames": boolean, "task": "string" }` | 受 FreeRTOS 棧監視器保護；大圖傳輸會自動啟用動態分塊緩衝優化。 |
+
+### 核心設計架構與技術優化
+
+1. **解耦的多代理人協同 (Decoupled Multi-Agent Collaboration — `/agentSendMessage`)**
+   當 Gemini 引擎評估本地感測器數據（例如偵測到 DHT11 溫濕度超越安全臨界值），並判定需要觸發另一個物理區域的連動設備時，會自主調用 `/agentSendMessage`。此設計跳過了中央伺服器的中轉，允許邊緣代理人在應用層直接進行「對話式協同」，且整個決策上下文將完整保留在 `memory.md` 中，具備天然的可解釋性。
+
+2. **非同步物聯網事件發布 (Asynchronous IoT Pub/Sub — `/agentSendMessageMQTT`)**
+   相較於 Telegram 的同步請求-回應（Req-Res）迴圈，`/agentSendMessageMQTT` 提供了亞秒級（Sub-second）的事件廣播能力。訊息能即時發布至 `env.json` 指定的 `mqtt_publishTextTopic` 主題，這讓 fuClaw 能無縫對接開源智慧家居（如 Home Assistant、Node-RED）或現有的標準物聯網節點（如 ESP32、STM32）。
+
+3. **快照複用與記憶體防護 (Frame-Reuse & Memory Shielding — `/agentSendImageMQTT`)**
+   在資源極度受限的 FreeRTOS 環境下，透過 MQTT 傳輸數十 KB 的 JPEG 影像極易引發堆疊溢位（Stack Overflow）。為了解決此痛點：
+   * **幀快取複用機制 (Frame Cache Preservation)：** 補強並繼承了 `/still` 與 `/vision` 的核心邏輯。當傳入 `"frames": false` 時，工具會直接複用先前視覺任務已鎖定在記憶體中的 JPEG 緩衝區，避免重複觸發相機硬體擷取，大幅節省 CPU 週期。
+   * **堆積記憶體安全 (Heap Allocation Safety)：** 傳輸動態影像時，核心採用動態記憶體分配（`malloc`/`free`）而非佔用 `task_getMqttMessage` 的執行緒棧（該棧已配置為 32KB），確保 SSL 網路堆疊與 Wi-Fi 吞吐不會因資源爭奪而引發設備當機。
+     
+---
+
+## 15. 隱憂與已知限制
 
 ### Token 用量與系統提示詞成本
 
