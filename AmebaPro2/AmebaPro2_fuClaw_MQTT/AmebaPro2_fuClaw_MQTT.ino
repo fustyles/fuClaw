@@ -777,9 +777,11 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
 
   WiFiSSLClient client;
   String responseText = "";
-
+	  
+  client.setRecvTimeout(10000);
+	
   if (client.connect("generativelanguage.googleapis.com", 443)) {
-		  
+	  
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
@@ -887,10 +889,11 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
 
   WiFiSSLClient client;
   String responseText = "";
-
+	  
+  client.setRecvTimeout(10000);
+	
   if (client.connect("generativelanguage.googleapis.com", 443)) {
 	  
-    // Send HTTP Request
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
@@ -980,9 +983,11 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   WiFiSSLClient client;
   String responseText = "";
   const char* myDomain = "generativelanguage.googleapis.com";
-
+	  
+  client.setRecvTimeout(10000);
+	
   if (client.connect(myDomain, 443)) {
-	  	  
+	  
     if (frames)
       Camera.getImage(0, &imageAddress, &imageLength);
     else if (!frames && imageLength == 0) {
