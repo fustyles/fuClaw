@@ -1993,6 +1993,9 @@ String agentSendMessage(String workId, String domain, String request) {
   WiFiClient client;
   
   if (client.connect(domain.c_str(), 81)) {
+	  
+	client.setRecvTimeout(20000);
+	
     client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
     client.println("Host: " + domain);
     client.println("Access-Control-Allow-Origin: *");
