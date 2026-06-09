@@ -2943,14 +2943,20 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String publishTopic = params["publishTopic"].as<String>();
       String message = params["message"].as<String>();
 	  
-      String response = mqttSendText(publishTopic, message + "\n\n<metadata>\ndefault_reply_topic=" + mqttSubscribeTextTopic + "\n</metadata>");
+      String response = mqttSendText(
+        publishTopic,
+        message +
+		"\n\n<metadata>\n" +
+		"Default response topic rule:\n" +
+		"If the request does not explicitly specify a reply topic,\n" +
+		"use " + mqttSubscribeTextTopic + " as the response topic.\n" +
+		"</metadata>"
+      );
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
       executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
-	  
-	  evaluateWorkflowContinuation(workId, reCheck);
 	}	
   	else if (command == "/agentSendImageMQTT") {
       String publishTopic = params["publishTopic"].as<String>();
@@ -2963,7 +2969,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
-	}
+	}	
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
