@@ -568,7 +568,7 @@ Despite the different transport layers, both versions share identical implementa
 
 ---
 
-## 12. ## Web Configuration & Chat Interface
+## 12. Web Configuration & Chat Interface
 
 ### Built-in HTTP Server (`task_getRequest`)
 
@@ -608,7 +608,7 @@ The chat page communicates with the device via `GET /message?<text>` — a pure 
 - **Error toast**: Network failures surface as a timed overlay rather than breaking the UI state.
 - **Markdown stripping for web context**: `handleAgentResponse()` applies a separate stripping path for `<PAGE>` workIds, converting `*` list markers to `•` bullets and removing fenced code block markers, producing clean readable output without raw Markdown syntax.
 
-### Web MQTT Chat Interface (`index_mqtt_chat.html`)
+### Web Chat Interface via MQTT (`index_mqtt_chat.html`)
 
 The MQTT chat interface is designed for scenarios requiring **continuous bidirectional streaming**. It connects directly to an MQTT Broker over WebSocket, establishing a real-time publish/subscribe channel between the browser and fuClaw — no polling required. Key highlights:
 
