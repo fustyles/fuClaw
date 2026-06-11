@@ -15,7 +15,7 @@ Version
 -----------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-09 02:00
+Build Date: 2026-06-11 23:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -255,6 +255,16 @@ String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
 
 #define CONFIG_INIC_IPC_HIGH_TP
+
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
 
 String urldecode(const String& input) {
     String result = "";
@@ -2466,6 +2476,7 @@ void setup() {
 
   // ---- MQTT initialisation ----
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+  wifiClientId = generateMqttClientId();  
   wifiClient.setNonBlockingMode();
   mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
   mqttClient.setCallback(callback);                   // Register inbound handler

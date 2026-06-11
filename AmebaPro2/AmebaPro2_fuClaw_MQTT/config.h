@@ -13,15 +13,15 @@ uint16_t mqttPort   = 1883;                                  // Standard MQTT po
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
 
-// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
-String wifiClientId = "AmebaPro2" + String(random(0xffff), HEX);
-
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
 //   Publish topics  : device pushes text replies and camera images here
 String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
 String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+
+// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
+String wifiClientId = "";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";

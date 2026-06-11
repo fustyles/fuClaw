@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-09 02:00
+Build Date: 2026-06-11 23:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -239,15 +239,15 @@ uint16_t mqttPort   = 1883;                                  // Standard MQTT po
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
 
-// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
-String wifiClientId = "AmebaPro2" + String(random(0xffff), HEX);
-
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
 //   Publish topics  : device pushes text replies and camera images here
 String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
 String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+
+// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
+String wifiClientId = "";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -1617,6 +1617,16 @@ AmebaServo servo12;
 DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
+
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
 
 String urldecode(const String& input) {
     String result = "";
@@ -4093,6 +4103,7 @@ void setup() {
 
   // ---- MQTT initialisation ----
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+  wifiClientId = generateMqttClientId();
   wifiClient.setNonBlockingMode();
   mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
   mqttClient.setCallback(callback);                   // Register inbound handler
