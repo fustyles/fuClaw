@@ -34,7 +34,11 @@ SD 卡根目錄/
  ├── skill.md                    ← 技能 SOP 定義（可選，留空使用預設）
  ├── memory.md                   ← 對話歷史（系統自動管理，初次留空）
  ├── schedule.json               ← 時間排程任務（可選，留空使用預設）
- └── scheduleTodayExecuted.md    ← 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發（系統自動管理，初次留空）
+ ├── scheduleTodayExecuted.md    ← 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發（系統自動管理，初次留空）
+ ├── index.html                  ← 系統設定網頁
+ ├── index_agent.html            ← 代理人設定網頁
+ ├── index_schedule.html         ← 時間排程任務網頁
+ └── index_chat.html             ← 聊天網頁
 ```
 
 > ⚠️ **注意**：memory.md 初次請建立空白檔案即可，系統會自動寫入。
