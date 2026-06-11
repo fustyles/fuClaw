@@ -52,6 +52,7 @@ SD 卡根目錄/
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "telegramBot_chatID": "987654321",
   "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "gemini_model": "gemini-3-flash-preview",
   "schedule_timeout": 10,
   "timezone": "Asia/Taipei"
 }
@@ -164,7 +165,7 @@ SD 卡根目錄/
     │   task_anti_theft_detection()                        │
     │   堆疊：6 KB                                          │
     │   優先權：tskIDLE_PRIORITY + 1                        │
-    │   行為：每 30000ms 觸發防盜偵測技能                    │
+    │   行為：每 30000ms 觸發防盜偵測技能 (預設停用)          │
     │   執行前：botClient.stop() + vTaskDelay(2000)         │
     │   原因：避免三個任務同時使用網路資源造成封包衝突         │
     │                                                      │
