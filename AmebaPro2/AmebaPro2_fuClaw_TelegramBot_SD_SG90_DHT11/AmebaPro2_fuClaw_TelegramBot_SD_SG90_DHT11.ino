@@ -1558,6 +1558,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+// Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
     String result = "";
     result.reserve(input.length());
@@ -1576,6 +1577,7 @@ String urldecode(const String& input) {
     return result;
 }
 
+// Encodes a plain string into URL-encoded (percent-encoded) format
 String urlencode(String str) {
   const char *msg = str.c_str();
   const char *hex = "0123456789ABCDEF";

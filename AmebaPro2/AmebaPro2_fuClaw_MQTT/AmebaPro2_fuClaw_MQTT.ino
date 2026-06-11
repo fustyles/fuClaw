@@ -256,6 +256,7 @@ bool rtcUpdateStatus = false;
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
 String generateMqttClientId() {
   uint8_t mac[6];
   WiFi.macAddress(mac);
@@ -266,6 +267,7 @@ String generateMqttClientId() {
   return String(clientId);
 }
 
+// Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
     String result = "";
     result.reserve(input.length());
@@ -284,6 +286,7 @@ String urldecode(const String& input) {
     return result;
 }
 
+// Encodes a plain string into URL-encoded (percent-encoded) format
 String urlencode(String str) {
   const char *msg = str.c_str();
   const char *hex = "0123456789ABCDEF";

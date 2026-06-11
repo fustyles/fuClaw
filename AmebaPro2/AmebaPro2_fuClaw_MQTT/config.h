@@ -20,7 +20,7 @@ String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound co
 String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
 
-// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
+// Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
 String wifiClientId = "";
 
 // Gemini API configuration

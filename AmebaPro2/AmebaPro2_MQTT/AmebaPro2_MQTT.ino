@@ -39,8 +39,7 @@ uint16_t mqttPort   = 1883;                                  // Standard MQTT po
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
 
-// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
-String wifiClientId = "AmebaPro2" + String(random(0xffff), HEX);
+
 
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
@@ -49,6 +48,9 @@ String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound co
 String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound raw JPEG topic
 String mqttPublishBase64ImageTopic = "xxxxxxxxxx/publishbase64image"; // Outbound Base64 JPEG topic
+
+// Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
+String wifiClientId = "";
 
 // ============================================================
 //  Constants & Global Variables
@@ -98,6 +100,17 @@ uint32_t img_len  = 0;   // Byte length of the JPEG data
 
 // Enable the high-throughput IPC path between the ISP and network stack
 #define CONFIG_INIC_IPC_HIGH_TP
+
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
 
 // ============================================================
 //  MQTT: Send Text Message
@@ -485,6 +498,7 @@ void setup() {
 
     // ---- MQTT initialisation ----
     // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+	wifiClientId = generateMqttClientId();  	
     wifiClient.setNonBlockingMode();
     mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
     mqttClient.setCallback(callback);                   // Register inbound handler
