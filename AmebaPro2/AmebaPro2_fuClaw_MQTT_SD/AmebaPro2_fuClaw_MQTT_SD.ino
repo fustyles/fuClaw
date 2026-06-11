@@ -2957,7 +2957,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         message +
 		"\n\n<metadata>\n" +
 		"Default response topic rule:\n" +
-		"use " + mqttSubscribeTextTopic + " as the response topic.\n" +
+		"When a response is required, use " + mqttSubscribeTextTopic + " as the response topic.\n" +
 		"</metadata>"
       );
 
