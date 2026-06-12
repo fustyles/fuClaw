@@ -64,15 +64,15 @@ uint16_t mqttPort   = 1883;                                  // Standard MQTT po
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
 
-// Unique client ID — appends a random 16-bit hex suffix to avoid collisions
-String wifiClientId = "AmebaPro2" + String(random(0xffff), HEX);
-
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
 //   Publish topics  : device pushes text replies and camera images here
 String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
 String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+
+// Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
+String wifiClientId = "";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -132,6 +132,36 @@ uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
 
 #define CONFIG_INIC_IPC_HIGH_TP
+
+// Decodes a URL-encoded string back to its original form
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length());
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2;
+        } else if (input[i] == '+') {
+            result += ' ';
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
 
 // ============================================================
 //  MQTT: Send Text Message
@@ -681,24 +711,6 @@ void initWiFi() {
   
 }
 
-String urldecode(const String& input) {
-    String result = "";
-    result.reserve(input.length());
-    for (int i = 0; i < (int)input.length(); i++) {
-        if (input[i] == '%' && i + 2 < (int)input.length()) {
-            char hex[3] = { input[i+1], input[i+2], '\0' };
-            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
-            result.concat((char)val);
-            i += 2;
-        } else if (input[i] == '+') {
-            result += ' ';
-        } else {
-            result += input[i];
-        }
-    }
-    return result;
-}
-
 // fuClaw configuration web page. Users can set system parameters from the webpage.
 void task_getRequest(void *param) {
   (void)param;
@@ -927,7 +939,7 @@ void setup() {
  
   Serial.println("\n");  
   Serial.println("fuClaw tcp Chat\nhttp://192.168.1.1:81/chat");
-   Serial.println("fuClaw mqtt Chat\nhttp://192.168.1.1:81/mqtt"); 
+  Serial.println("fuClaw mqtt Chat\nhttp://192.168.1.1:81/mqtt"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("\n");  
@@ -947,6 +959,7 @@ void setup() {
 
   // ---- MQTT initialisation ----
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+  wifiClientId = generateMqttClientId();    
   wifiClient.setNonBlockingMode();
   mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
   mqttClient.setCallback(callback);                   // Register inbound handler
