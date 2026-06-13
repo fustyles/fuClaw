@@ -1,5 +1,5 @@
 /*
- * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-5-23 13:00
+ * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-6-13 22:00
  * Website : https://www.facebook.com/francefu
  *
  * Description:
@@ -16,12 +16,12 @@
 // ============================================================
 
 // WiFi credentials
-char wifi_ssid[] = "xxxxxxxxxx";
-char wifi_pass[] = "xxxxxxxxxx";
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
 // Telegram bot configuration
-String telegramBot_token = "xxxxxxxxxx";
-String telegramBot_chatID = "xxxxxxxxxx";
+String telegrambotToken = "xxxxxxxxxx";
+String telegrambotChatId = "xxxxxxxxxx";
 
 // ============================================================
 //  Constants & Global Variables
@@ -62,6 +62,9 @@ VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
 // Pointers to the last captured image buffer
 uint32_t img_addr = 0;
 uint32_t img_len  = 0;
+
+// Last Telegram message ID
+long lastMessageId = 0;
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
@@ -283,7 +286,7 @@ void executeCommand(String botMessage) {
         "[{\"text\":\"/still\"},{\"text\":\"/memory\"}]"
       "],\"one_time_keyboard\":false}";
 
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, command, keyboard);
+    sendMessageToTelegram(telegrambotToken, telegrambotChatId, command, keyboard);
 
   // ---- Force reconnect ----
   } 
@@ -298,33 +301,33 @@ void executeCommand(String botMessage) {
   else if (botMessage == "/on") {
 
     digitalWrite(ledPin, 1);
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn on", "");
+    sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Turn on", "");
 
   // ---- LED off ----
   } 
   else if (botMessage == "/off") {
 
     digitalWrite(ledPin, 0);
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn off", "");
+    sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Turn off", "");
 
   // ---- Camera snapshot ----
   } 
   else if (botMessage == "/still") {
 
-    sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
+    sendCapturedImageToTelegram(telegrambotToken, telegrambotChatId, 1);
 
   // ---- Memory report ----
   } 
   else if (botMessage == "/memory") {
 
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, getMemoryInfo(), "");
+    sendMessageToTelegram(telegrambotToken, telegrambotChatId, getMemoryInfo(), "");
 
   // ---- Unknown command ----
   } 
   else {
 
     sendMessageToTelegram(
-      telegramBot_token, telegramBot_chatID,
+      telegrambotToken, telegrambotChatId,
       "Command is not defined.", "");
   }
 }
@@ -337,27 +340,31 @@ void executeCommand(String botMessage) {
  * @brief Connect to WiFi and initialise the camera.
  *        Retries WiFi up to 2 times with a 5 s timeout each attempt.
  */
+// Initialize WiFi
 void initWiFi() {
+    
+  for (int i=0;i<2;i++) {
 
-  for (int i = 0; i < 2; i++) {
+    if (wifiSsid=="")
+      break;
 
-    if (String(wifi_ssid) == "") break;
-
-    WiFi.begin(wifi_ssid, wifi_pass);
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
     delay(1000);
 
-    Serial.println("");
+    Serial.println();
     Serial.print("Connecting to ");
-    Serial.println(wifi_ssid);
+    Serial.println(wifiSsid);
 
-    long int StartTime = millis();
+    unsigned long StartTime=millis();
 
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-      if ((StartTime + 5000) < millis()) break;
+
+      if ((StartTime+5000) < millis())
+        break;
     }
   }
-
+  
 }
 
 // ============================================================
@@ -375,115 +382,127 @@ void initWiFi() {
  */
 void getTelegramMessage() {
 
-  const char* myDomain = "api.telegram.org";
-  String getAll = "", getBody = "";
+  const char* myDomain  = "api.telegram.org";
+  String      getAll    = "";
+  String      getTime   = "";
+  String      getBody   = "";
 
   JsonObject          obj;
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(8192);
 
-  String message   = "";
-  long   message_id = 0;
+  String text        = "";
+  String voiceFileId = "";
+  long   message_id  = 0;
 
-  if (messageLastId == 0)
-    Serial.println("Connect to " + String(myDomain));
+  // Reuse existing connection if still alive; reconnect only when needed
+  if (!botClient.connected()) {
+    if (lastMessageId == 0)
+      Serial.println("Connect to " + String(myDomain));
 
-  if (botClient.connect(myDomain, 443)) {
+    if (!botClient.connect(myDomain, 443))
+      return;
 
-    if (messageLastId == 0) {
+    if (lastMessageId == 0)
       Serial.println("Connection successful");
-
-      // Signal successful connection with 3 LED blinks
-      for (int i = 0; i < 3; i++) {
-        digitalWrite(ledPin, HIGH); 
-		vTaskDelay(500 / portTICK_PERIOD_MS);
-        digitalWrite(ledPin, LOW);  
-		vTaskDelay(500 / portTICK_PERIOD_MS);
-      }
-    }
-
-    // ---- Main polling loop ----
-    while (botClient.connected()) {
-
-      getAll  = "";
-      getBody = "";
-
-      // Request the single most recent message
-      String request = "limit=1&offset=-1&allowed_updates=message";
-
-      botClient.println("POST /bot" + telegramBot_token + "/getUpdates HTTP/1.1");
-      botClient.println("Host: " + String(myDomain));
-      botClient.println("Content-Length: " + String(request.length()));
-      botClient.println("Content-Type: application/x-www-form-urlencoded");
-      botClient.println("Connection: keep-alive");
-      botClient.println();
-      botClient.print(request);
-
-      int     waitTime  = 5000;
-      long    startTime = millis();
-      boolean state     = false;
-
-      while ((startTime + waitTime) > millis()) {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-
-        while (botClient.available()) {
-          char c = botClient.read();
-
-          if (c == '\n') {
-            if (getAll.length() == 0) state = true;
-            getAll = "";
-          } else if (c != '\r') {
-            getAll += String(c);
-          }
-
-          if (state == true) getBody += String(c);
-
-          startTime = millis();
-        }
-
-        if (getBody.length() > 0) break;
-      }
-	  
-      getBody.trim();
-
-      if (getBody == "")
-        return;	  
-
-      deserializeJson(doc, getBody);
-      obj = doc.as<JsonObject>();
-
-      // Parse message_id as String then convert to int for reliability
-      message_id = obj["result"][0]["message"]["message_id"].as<long>();
-      message    = obj["result"][0]["message"]["text"].as<String>();
-
-      // Process only if this is a new, valid message
-      if (message_id != messageLastId && message_id) {
-
-        int id_last   = messageLastId;
-        messageLastId = message_id;
-
-        if (id_last == 0) {
-          // Skip the first message seen after (re)boot to avoid replaying old commands
-          message_id = 0;
-          message    = sendHelp ? "/help" : "";
-        }
-
-        if (message != "") {
-          executeCommand(message);
-        }
-      }
-    }   // end while(botClient.connected())
   }
 
-  // ---- WiFi reconnection ----
-  while (WiFi.status() != WL_CONNECTED) {
+  while (botClient.connected()) {
 
+    getAll  = "";
+    getTime = "";
+    getBody = "";
+
+    String request = "limit=1&offset=-1&allowed_updates=message";
+
+    botClient.println("POST /bot" + telegrambotToken + "/getUpdates HTTP/1.1");
+    botClient.println("Host: "           + String(myDomain));
+    botClient.println("Content-Length: " + String(request.length()));
+    botClient.println("Content-Type: application/x-www-form-urlencoded");
+    botClient.println("Connection: keep-alive");
+    botClient.println();
+    botClient.print(request);
+
+    int           waitTime    = 5000;
+    unsigned long startTime   = millis();
+    bool          state       = false;
+    bool          dataReceived = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (botClient.available()) {
+        char c = botClient.read();
+
+        if (c == '\n') {
+          if (getAll.length() == 0)
+            state = true;
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
+        }
+
+        if (state) {
+          getBody += String(c);
+        } else {
+          if      (getTime.indexOf("Date:") != -1)
+            getTime  = "";
+          else if (getTime.indexOf("Content-Type") != -1)
+            getTime += "";
+          else
+            getTime += String(c);
+        }
+
+        startTime = millis();
+      }
+
+      // Break as soon as body is received
+      if (getBody.length() > 0) {
+        dataReceived = true;
+        break;
+      }
+    }
+
+    getTime.replace("Content-Type", "");
+
+    if (!dataReceived || getBody == "") return;
+
+    DeserializationError err = deserializeJson(doc, getBody);
+    if (err) {
+      Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+      return;
+    }
+    obj = doc.as<JsonObject>();
+
+    message_id = obj["result"][0]["message"]["message_id"].as<long>();
+
+    if (message_id && message_id != lastMessageId) {
+
+      long id_last  = lastMessageId;
+      lastMessageId = message_id;
+
+      if (id_last == 0) {
+        message_id = 0;
+
+      } else {
+
+        if (obj["result"][0]["message"].containsKey("text")) {
+          text = obj["result"][0]["message"]["text"].as<String>();
+
+          executeCommand(text);
+
+        }
+      }
+    }
+  }
+
+  while (WiFi.status() != WL_CONNECTED) {
     WiFi.disconnect();
-    WiFi.begin(wifi_ssid, wifi_pass);
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
 
     unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
       vTaskDelay(500 / portTICK_PERIOD_MS);
-    }
   }
 }
 
