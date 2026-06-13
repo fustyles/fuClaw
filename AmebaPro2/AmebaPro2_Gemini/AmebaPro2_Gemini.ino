@@ -8,7 +8,7 @@ Repository:
 ------------------------------------------------------------
 Version
 -----------------------------------------------------------
-Build Date: 2026-06-02 19:30
+Build Date: 2026-06-13 20:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -67,9 +67,9 @@ String mqttPassword = "";                                    // Leave empty if n
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
 //   Publish topics  : device pushes text replies and camera images here
-String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
-String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
-String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+String mqttSubscribeTextTopic      = "fuclaw1/subscribe";       // Inbound command topic
+String mqttPublishTextTopic        = "fuclaw1/publish";         // Outbound text reply topic
+String mqttPublishImageTopic       = "fuclaw1/publishimage";    // Outbound JPEG topic
 
 // Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
 String wifiClientId = "";
@@ -937,9 +937,10 @@ void setup() {
     Serial.println("Create task_task_getRequest failed");
   }    
  
-  Serial.println("\n");  
-  Serial.println("fuClaw tcp Chat\nhttp://192.168.1.1:81/chat");
-  Serial.println("fuClaw mqtt Chat\nhttp://192.168.1.1:81/mqtt"); 
+  Serial.println("\n");
+  Serial.println("Main page\nhttp://192.168.1.1:81/chat");    
+  Serial.println("Web Chat\nhttp://192.168.1.1:81/chat");
+  Serial.println("Web Chat via MQTT\nhttp://192.168.1.1:81/mqtt"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("\n");  
@@ -951,9 +952,10 @@ void setup() {
       digitalWrite(ledPin, 0);
       delay(300);      
     }
-    
-    Serial.println("fuClaw tcp Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("fuClaw mqtt Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
+
+    Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()) + ":81");     
+    Serial.println("Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
+    Serial.println("Web Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
     Serial.println("\n");   
   }   
 
