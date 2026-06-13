@@ -27,8 +27,8 @@ HUB 8735 Ultra
 */
 
 // WiFi credentials
-String wifiSsid = "teacher";
-String wifiPassword = "12345678";
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";
@@ -305,10 +305,10 @@ void setup() {
   }        
 
   Serial.println("\n");   
+  Serial.println("Main page\nhttp://192.168.1.1");
+  Serial.println("Web Chat\nhttp://192.168.1.1/chat");
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println("Home\nhttp://192.168.1.1");
-  Serial.println("Chat\nhttp://192.168.1.1/chat");  	
   Serial.println("\n");  
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -319,8 +319,8 @@ void setup() {
       delay(300);      
     }
     
-    Serial.println("Home\nhttp://" + Ip2String(WiFi.localIP()));
-    Serial.println("Chat\nhttp://" + Ip2String(WiFi.localIP()) + "/chat");    
+    Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()));
+    Serial.println("Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + "/chat");    
     Serial.println("\n");   
   }   
   
