@@ -1,15 +1,10 @@
 /*
- * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-5-30 15:00
+ * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-6-13 21:30
  * Website : https://www.facebook.com/francefu
  *
  * Description:
  *   MQTT client running on AMB82-mini (Realtek RTL8735B) that supports
  *   the following text commands received via MQTT subscription:
- *     /help    — list available commands
- *     /on      — turn the onboard LED on
- *     /off     — turn the onboard LED off
- *     /still   — capture a JPEG snapshot and publish it (raw bytes + Base64)
- *     /memory  — report current and minimum-ever free heap size
  *
  *   Camera frames are published to two separate topics:
  *     - Raw binary JPEG  → mqttPublishImageTopic
@@ -30,16 +25,14 @@
 // ============================================================
 
 // WiFi credentials
-char wifi_ssid[] = "xxxxxxxxxx";   // Your 5 GHz SSID
-char wifi_pass[] = "xxxxxxxxxx";   // Your WiFi password
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
 // MQTT broker settings
 String mqttServer   = "mqttgo.io";                          // Broker hostname or IP
 uint16_t mqttPort   = 1883;                                  // Standard MQTT port (unencrypted)
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
-
-
 
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
@@ -157,7 +150,7 @@ void mqttSendText(String topic, String text) {
  * @param base64   true  = encode the frame as a Base64 data-URI string.
  *                 false = publish raw binary JPEG bytes (default).
  */
-void mqttSendImage(String topic, bool capture, bool base64 = false) {
+void mqttSendImage(String topic, bool capture = true , bool base64 = false) {
 
     // Attempt to connect (or re-use the existing session)
     if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
@@ -272,31 +265,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
         memcpy(message, payload, length);  // Copy raw payload bytes
         message[length] = '\0';            // Append null terminator
 
-        executeCommand(String(message));   // Dispatch to command handler
+        String text = String(message);
+        
+        if (text == "/still")
+          mqttSendImage(mqttPublishImageTopic);
+        else {
+          mqttSendText(mqttPublishTextTopic, "Receive: " + text);
+        }        
 
         free(message);                     // Release temporary buffer
     }
-}
-
-// ============================================================
-//  System: Memory Info
-// ============================================================
-
-/**
- * @brief Build a human-readable string reporting heap memory usage.
- *
- * Uses FreeRTOS heap-4 statistics:
- *   xPortGetFreeHeapSize()            — bytes currently available on the heap.
- *   xPortGetMinimumEverFreeHeapSize() — lowest watermark since boot; useful
- *                                       for detecting memory-pressure peaks.
- *
- * @return Multi-line String with free-heap and minimum-heap values.
- */
-String getMemoryInfo() {
-    String msg = "";
-    msg += "Free heap: " + String(xPortGetFreeHeapSize());
-    msg += "\nMin heap: "  + String(xPortGetMinimumEverFreeHeapSize());
-    return msg;
 }
 
 // ============================================================
@@ -345,75 +323,6 @@ void getMqttMessage() {
 }
 
 // ============================================================
-//  Command Dispatcher
-// ============================================================
-
-/**
- * @brief Parse an inbound MQTT command string and execute the matching action.
- *
- * Commands are matched case-sensitively.  A non-empty response string is
- * published back to mqttPublishTextTopic after the action completes.
- * Image commands publish directly and do not set the response string.
- *
- * Supported commands:
- *   /help   — reply with a list of all available commands.
- *   /on     — drive ledPin HIGH (LED on) and confirm.
- *   /off    — drive ledPin LOW  (LED off) and confirm.
- *   /still  — capture a fresh JPEG frame and publish it to both the raw
- *              binary topic and the Base64 topic; no text reply is sent.
- *   /memory — reply with current and minimum free-heap statistics.
- *   <other> — reply with "Command is not defined."
- *
- * @param message  Command string received from the MQTT broker (null-terminated).
- */
-void executeCommand(String message) {
-
-    String response = "";   // Accumulate text reply; empty means no text publish
-
-    if (message == "help" || message == "/help") {
-
-        // Return a multi-line command reference to the caller
-        response =
-            "/help command list\n"
-            "/on turn on led\n"
-            "/off turn off led\n"
-            "/still get still\n"
-            "/memory remaining memory";
-
-    } else if (message == "/on") {
-
-        digitalWrite(ledPin, 1);   // Set LED GPIO HIGH → LED on
-        response = "Turn on";
-
-    } else if (message == "/off") {
-
-        digitalWrite(ledPin, 0);   // Set LED GPIO LOW  → LED off
-        response = "Turn off";
-
-    } else if (message == "/still") {
-
-        // Capture one fresh frame and publish it in both encodings.
-        // The second call passes capture=false to reuse the same frame
-        // without incurring a second camera-pipeline latency.
-        mqttSendImage(mqttPublishImageTopic,       true);         // Raw binary JPEG
-        
-        // mqttSendImage(mqttPublishBase64ImageTopic, true, true);   // Base64 data-URI JPEG
-
-    } else if (message == "/memory") {
-
-        response = getMemoryInfo();   // Heap watermark report
-
-    } else {
-        // Unrecognised command — notify the sender
-        response = "Command is not defined.";
-    }
-
-    // Publish the text reply only when there is something to say
-    if (response != "")
-        mqttSendText(mqttPublishTextTopic, response);
-}
-
-// ============================================================
 //  Initialisation: WiFi + Camera
 // ============================================================
 
@@ -430,27 +339,29 @@ void executeCommand(String message) {
  *   time to settle before the ISP starts consuming DMA bandwidth.
  */
 void initWiFi() {
+    
+  for (int i=0;i<2;i++) {
 
-    for (int i = 0; i < 2; i++) {
+    if (wifiSsid=="")
+      break;
 
-        // Skip WiFi setup if no SSID has been configured
-        if (String(wifi_ssid) == "") break;
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
+    delay(1000);
 
-        WiFi.begin(wifi_ssid, wifi_pass);
-        delay(1000);   // Give the driver a moment to start the association
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(wifiSsid);
 
-        Serial.println("");
-        Serial.print("Connecting to ");
-        Serial.println(wifi_ssid);
+    unsigned long StartTime=millis();
 
-        long int StartTime = millis();
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
 
-        // Poll until connected or 5-second per-attempt timeout expires
-        while (WiFi.status() != WL_CONNECTED) {
-            delay(500);
-            if ((StartTime + 5000) < millis()) break;
-        }
+      if ((StartTime+5000) < millis())
+        break;
     }
+  }
+  
 }
 
 // ============================================================
@@ -498,7 +409,7 @@ void setup() {
 
     // ---- MQTT initialisation ----
     // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
-	wifiClientId = generateMqttClientId();  	
+	  wifiClientId = generateMqttClientId();  	
     wifiClient.setNonBlockingMode();
     mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
     mqttClient.setCallback(callback);                   // Register inbound handler
