@@ -1,15 +1,14 @@
 /*
- * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-5-23 18:30
+ * Author  : ChungYi Fu (Kaohsiung, Taiwan)  2026-6-13 22:30
  * Website : https://www.facebook.com/francefu
  *
  * Description:
  *   Telegram bot running on AMB82-mini that supports:
  *   - Text commands to control LED, capture still image, and check memory
- *   - Voice message speech-to-text via Google Gemini API
- *   - Recognized voice text is forwarded to executeCommand() as a text command
+ *   - Persistent HTTPS long-polling via a keep-alive SSL connection
  *
  * Hardware: AMB82-mini (Realtek RTL8735B)
- * Dependencies: WiFi, Base64, ArduinoJson, FreeRTOS, VideoStream
+ * Dependencies: WiFi, ArduinoJson, FreeRTOS, VideoStream
  */
 
 // ============================================================
@@ -17,12 +16,12 @@
 // ============================================================
 
 // WiFi credentials
-char wifi_ssid[] = "xxxxxxxxxx";
-char wifi_pass[] = "xxxxxxxxxx";
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
 // Telegram bot configuration
-String telegramBot_token = "xxxxxxxxxx";
-String telegramBot_chatID = "xxxxxxxxxx";
+String telegrambotToken = "xxxxxxxxxx";
+String telegrambotChatId = "xxxxxxxxxx";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -37,6 +36,10 @@ String geminiModel = "gemini-3-flash-preview";
 
 // Actual number of bytes downloaded from Telegram
 size_t downloadedFileSize = 0;
+
+// ============================================================
+//  Constants & Global Variables
+// ============================================================
 
 // LED output pin (AMB82-mini: 24 / HUB 8735 Ultra: 25)
 int ledPin = 24;
@@ -71,12 +74,12 @@ VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
 // Alternatively use VGA resolution:
 // VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
-// WiFi AP channel (unused in station mode, kept for reference)
-char channel_ap[] = "2";
-
 // Pointers to the last captured image buffer
 uint32_t img_addr = 0;
 uint32_t img_len  = 0;
+
+// Last Telegram message ID
+long lastMessageId = 0;
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
@@ -123,7 +126,7 @@ void sendMessageToTelegram(String token, String chatid, String text, String keyb
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -184,6 +187,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 
     String tail = "\r\n--Taiwan--\r\n";
 
+    // Use size_t to avoid overflow on images larger than 65535 bytes
     size_t extraLen = head.length() + tail.length();
     size_t totalLen = img_len + extraLen;
 
@@ -213,7 +217,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -245,98 +249,6 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 }
 
 // ============================================================
-//  System: Memory Info
-// ============================================================
-
-/**
- * @brief Build a string showing current and minimum-ever free heap size.
- *
- * @return Multi-line string with heap statistics
- */
-String getMemoryInfo() {
-  String msg = "";
-  msg += "Free heap: " + String(xPortGetFreeHeapSize());
-  msg += "\nMin heap: "  + String(xPortGetMinimumEverFreeHeapSize());
-  return msg;
-}
-
-// ============================================================
-//  Command Dispatcher
-// ============================================================
-
-/**
- * @brief Parse a bot message (text or STT result) and execute the
- *        corresponding action.
- *
- * Supported commands:
- *   /help   — list all commands and show a reply keyboard
- *   /on     — turn the LED on
- *   /off    — turn the LED off
- *   /still  — capture and send a camera snapshot
- *   /memory — report heap usage
- *   null    — force-close the persistent bot connection
- *
- * @param botMessage  Command string received from Telegram or STT
- */
-void executeCommand(String botMessage) {
-
-  if (botMessage == "") return;
-
-  // ---- Help / start ----
-  if (botMessage == "help" || botMessage == "/help" || botMessage == "/start") {
-
-    String command =
-      "/help command list\n"
-      "/on turn on led\n"
-      "/off turn off led\n"
-      "/still get still\n"
-      "/memory remaining memory";
-
-    String keyboard =
-      "{\"keyboard\":["
-        "[{\"text\":\"/help\"},{\"text\":\"/on\"},{\"text\":\"/off\"}],"
-        "[{\"text\":\"/still\"},{\"text\":\"/memory\"}]"
-      "],\"one_time_keyboard\":false}";
-
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, command, keyboard);
-
-  // ---- Force reconnect ----
-  } else if (botMessage == "null") {
-
-    botClient.stop();
-
-  // ---- LED on ----
-  } else if (botMessage == "/on") {
-
-    digitalWrite(ledPin, 1);
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn on", "");
-
-  // ---- LED off ----
-  } else if (botMessage == "/off") {
-
-    digitalWrite(ledPin, 0);
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn off", "");
-
-  // ---- Camera snapshot ----
-  } else if (botMessage == "/still") {
-
-    sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
-
-  // ---- Memory report ----
-  } else if (botMessage == "/memory") {
-
-    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, getMemoryInfo(), "");
-
-  // ---- Unknown command ----
-  } else {
-
-    sendMessageToTelegram(
-      telegramBot_token, telegramBot_chatID,
-      botMessage + "\n\nCommand is not defined.", "");
-  }
-}
-
-// ============================================================
 //  Hardware Initialisation
 // ============================================================
 
@@ -344,33 +256,33 @@ void executeCommand(String botMessage) {
  * @brief Connect to WiFi and initialise the camera.
  *        Retries WiFi up to 2 times with a 5 s timeout each attempt.
  */
+// Initialize WiFi
 void initWiFi() {
+    
+  for (int i=0;i<2;i++) {
 
-  for (int i = 0; i < 2; i++) {
+    if (wifiSsid=="")
+      break;
 
-    if (String(wifi_ssid) == "") break;
-
-    WiFi.begin(wifi_ssid, wifi_pass);
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
     delay(1000);
 
-    Serial.println("");
+    Serial.println();
     Serial.print("Connecting to ");
-    Serial.println(wifi_ssid);
+    Serial.println(wifiSsid);
 
-    long int StartTime = millis();
+    unsigned long StartTime=millis();
 
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-      if ((StartTime + 5000) < millis()) break;
+
+      if ((StartTime+5000) < millis())
+        break;
     }
   }
-
-  // Camera setup: no rotation, channel 0, JPEG stream
-  config.setRotation(0);
-  Camera.configVideoChannel(0, config);
-  Camera.videoInit();
-  Camera.channelBegin(0);
+  
 }
+
 
 // ============================================================
 //  Gemini: Speech-to-Text via Inline Audio
@@ -507,7 +419,7 @@ uint8_t* downloadTelegramFile(String filePath) {
   if (client.connect("api.telegram.org", 443)) {
 
     // HTTP/1.0 prevents chunked transfer encoding so the body is pure binary
-    client.println("GET /file/bot" + telegramBot_token + "/" + filePath + " HTTP/1.0");
+    client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
     client.println("Host: api.telegram.org");
     client.println("Connection: close");
     client.println();
@@ -560,7 +472,7 @@ String getTelegramFilePath(String fileId) {
 
   if (client.connect("api.telegram.org", 443)) {
 
-    client.println("GET /bot" + telegramBot_token +
+    client.println("GET /bot" + telegrambotToken +
                    "/getFile?file_id=" + fileId + " HTTP/1.1");
     client.println("Host: api.telegram.org");
     client.println("Connection: close");
@@ -606,151 +518,160 @@ String getTelegramFilePath(String fileId) {
 
 /**
  * @brief Open a persistent HTTPS connection to Telegram and process incoming
- *        messages in a loop.
+ *        text messages in a loop.
  *
- * Handles two message types:
- *   - text  : forwarded directly to executeCommand()
- *   - voice : downloaded, transcribed by Gemini STT, then forwarded to
- *             executeCommand() so voice commands work identically to text ones
- *
- * The function returns (and the FreeRTOS task calls it again) only when the
- * connection is lost, allowing WiFi reconnection logic to run.
+ * Requests only the most recent message (limit=1, offset=-1) on each poll.
+ * Skips the first message seen after (re)boot to avoid replaying old commands.
+ * The function returns only when the connection is lost, allowing the FreeRTOS
+ * task to call it again and trigger WiFi reconnection if needed.
  */
 void getTelegramMessage() {
 
-  const char* myDomain = "api.telegram.org";
-  String getAll = "", getBody = "";
+  const char* myDomain  = "api.telegram.org";
+  String      getAll    = "";
+  String      getTime   = "";
+  String      getBody   = "";
 
   JsonObject          obj;
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(8192);
 
   String text        = "";
   String voiceFileId = "";
   long   message_id  = 0;
 
-  if (messageLastId == 0)
-    Serial.println("Connect to " + String(myDomain));
+  // Reuse existing connection if still alive; reconnect only when needed
+  if (!botClient.connected()) {
+    if (lastMessageId == 0)
+      Serial.println("Connect to " + String(myDomain));
 
-  if (botClient.connect(myDomain, 443)) {
+    if (!botClient.connect(myDomain, 443))
+      return;
 
-    if (messageLastId == 0) {
+    if (lastMessageId == 0)
       Serial.println("Connection successful");
-
-      // Signal successful connection with 3 LED blinks
-      for (int i = 0; i < 3; i++) {
-        digitalWrite(ledPin, HIGH); delay(500);
-        digitalWrite(ledPin, LOW);  delay(500);
-      }
-    }
-
-    // ---- Main polling loop ----
-    while (botClient.connected()) {
-
-      getAll  = "";
-      getBody = "";
-
-      // Request the single most recent message
-      String request = "limit=1&offset=-1&allowed_updates=message";
-
-      botClient.println("POST /bot" + telegramBot_token + "/getUpdates HTTP/1.1");
-      botClient.println("Host: " + String(myDomain));
-      botClient.println("Content-Length: " + String(request.length()));
-      botClient.println("Content-Type: application/x-www-form-urlencoded");
-      botClient.println("Connection: keep-alive");
-      botClient.println();
-      botClient.print(request);
-
-      int     waitTime  = 5000;
-      long    startTime = millis();
-      boolean state     = false;
-
-      while ((startTime + waitTime) > millis()) {
-        delay(100);
-
-        while (botClient.available()) {
-          char c = botClient.read();
-
-          if (c == '\n') {
-            if (getAll.length() == 0) state = true;
-            getAll = "";
-          } else if (c != '\r') {
-            getAll += String(c);
-          }
-
-          if (state == true) getBody += String(c);
-
-          startTime = millis();
-        }
-
-        if (getBody.length() > 0) break;
-      }
-	  
-      getBody.trim();
-
-      if (getBody == "")
-        return;	  
-
-      deserializeJson(doc, getBody);
-      obj = doc.as<JsonObject>();
-
-      message_id = obj["result"][0]["message"]["message_id"].as<long>();
-
-      // Process only if this is a new, valid message
-      if (message_id != messageLastId && message_id) {
-
-        int id_last   = messageLastId;
-        messageLastId = message_id;
-
-        if (id_last == 0) {
-          // Skip the first message seen after (re)boot to avoid replaying old commands
-          message_id = 0;
-          if (sendHelp == true) { executeCommand("/help"); return; }
-
-        } else {
-
-          // ---- Text message ----
-          if (obj["result"][0]["message"].containsKey("text")) {
-            text = obj["result"][0]["message"]["text"].as<String>();
-            executeCommand(text);
-          }
-
-          // ---- Voice message ----
-          if (doc["result"][0]["message"].containsKey("voice")) {
-
-            voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
-
-            // Resolve file_id → CDN path → download raw OGG bytes
-            String   filePath  = getTelegramFilePath(voiceFileId);
-            uint8_t* voiceFile = downloadTelegramFile(filePath);
-
-            if (voiceFile && downloadedFileSize > 0) {
-
-              // Transcribe with Gemini and treat result as a text command
-              text = sendFileToGemini(
-                voiceFile, downloadedFileSize,
-                "audio/ogg; codecs=opus",
-                "Transcribe this audio to text exactly as spoken.");
-
-              executeCommand(text);
-            }
-
-            if (voiceFile) free(voiceFile);   // Always release the voice buffer
-          }
-        }
-      }
-    }   // end while(botClient.connected())
   }
 
-  // ---- WiFi reconnection ----
-  while (WiFi.status() != WL_CONNECTED) {
+  while (botClient.connected()) {
 
+    getAll  = "";
+    getTime = "";
+    getBody = "";
+
+    String request = "limit=1&offset=-1&allowed_updates=message";
+
+    botClient.println("POST /bot" + telegrambotToken + "/getUpdates HTTP/1.1");
+    botClient.println("Host: "           + String(myDomain));
+    botClient.println("Content-Length: " + String(request.length()));
+    botClient.println("Content-Type: application/x-www-form-urlencoded");
+    botClient.println("Connection: keep-alive");
+    botClient.println();
+    botClient.print(request);
+
+    int           waitTime    = 5000;
+    unsigned long startTime   = millis();
+    bool          state       = false;
+    bool          dataReceived = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (botClient.available()) {
+        char c = botClient.read();
+
+        if (c == '\n') {
+          if (getAll.length() == 0)
+            state = true;
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
+        }
+
+        if (state) {
+          getBody += String(c);
+        } else {
+          if      (getTime.indexOf("Date:") != -1)
+            getTime  = "";
+          else if (getTime.indexOf("Content-Type") != -1)
+            getTime += "";
+          else
+            getTime += String(c);
+        }
+
+        startTime = millis();
+      }
+
+      // Break as soon as body is received
+      if (getBody.length() > 0) {
+        dataReceived = true;
+        break;
+      }
+    }
+
+    getTime.replace("Content-Type", "");
+
+    if (!dataReceived || getBody == "") return;
+
+    DeserializationError err = deserializeJson(doc, getBody);
+    if (err) {
+      Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+      return;
+    }
+    obj = doc.as<JsonObject>();
+
+    message_id = obj["result"][0]["message"]["message_id"].as<long>();
+
+    if (message_id && message_id != lastMessageId) {
+
+      long id_last  = lastMessageId;
+      lastMessageId = message_id;
+
+      if (id_last == 0) {
+        message_id = 0;
+
+      } else {
+
+		if (obj["result"][0]["message"].containsKey("text")) {
+		  text = obj["result"][0]["message"]["text"].as<String>();
+
+      sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
+
+		}
+
+		// ---- Voice message ----
+		if (doc["result"][0]["message"].containsKey("voice")) {
+
+			voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+
+			// Resolve file_id → CDN path → download raw OGG bytes
+			String   filePath  = getTelegramFilePath(voiceFileId);
+			uint8_t* voiceFile = downloadTelegramFile(filePath);
+
+			if (voiceFile && downloadedFileSize > 0) {
+
+			  // Transcribe with Gemini and treat result as a text command
+			  text = sendFileToGemini(
+				voiceFile, downloadedFileSize,
+				"audio/ogg; codecs=opus",
+				"Transcribe this audio to text exactly as spoken.");
+
+			  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
+			}
+
+			if (voiceFile) free(voiceFile);   // Always release the voice buffer
+		}
+		  
+      }
+    }
+  }
+
+  while (WiFi.status() != WL_CONNECTED) {
     WiFi.disconnect();
-    WiFi.begin(wifi_ssid, wifi_pass);
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
 
     unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
-      delay(500);
-    }
+
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
+      vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
@@ -761,7 +682,7 @@ void getTelegramMessage() {
 /**
  * @brief FreeRTOS task that calls getTelegramMessage() in an infinite loop.
  *
- * Stack size: 32 KB (required for SSL + JSON + Base64 operations).
+ * Stack size: 4 KB (sufficient for text-only bot without audio/Base64 work).
  */
 void getTelegramMessage_task(void* param) {
   (void)param;
@@ -782,11 +703,17 @@ void setup() {
 
   initWiFi();
 
+  // Camera setup: no rotation, channel 0, JPEG stream
+  config.setRotation(0);
+  Camera.configVideoChannel(0, config);
+  Camera.videoInit();
+  Camera.channelBegin(0);  
+
   // Spawn the Telegram polling task
   if (xTaskCreate(
         getTelegramMessage_task,
         "getTelegramMessage_task",
-        32768,          // Stack: 32 KB
+        32768,           // Stack: 4 KB (no audio processing needed)
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL) != pdPASS) {
