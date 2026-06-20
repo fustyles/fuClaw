@@ -28,7 +28,7 @@
 
 ```
 SD 卡根目錄/
- ├── env.json                    ← WiFi、Telegram、Gemini 憑證、時區（必填）
+ ├── env.json                    ← 裝置名稱、WiFi、Telegram、Gemini 憑證、時區（必填）
  ├── soul.md                     ← AI 個性提示詞（可選，留空使用預設）
  ├── device.md                   ← 硬體裝置定義（可選，留空使用預設）
  ├── skill.md                    ← 技能 SOP 定義（可選，留空使用預設）
@@ -51,6 +51,7 @@ SD 卡根目錄/
 
 ```json
 {
+  "device_name": "你的裝置名稱",
   "wifi_ssid": "你的WiFi名稱",
   "wifi_pass": "你的WiFi密碼",
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
@@ -64,11 +65,12 @@ SD 卡根目錄/
 
 **如何取得各項憑證：**
 
+- **device name**：裝置名稱。
 - **Telegram Bot Token**：在 Telegram 搜尋 `@BotFather`，輸入 `/newbot` 依指示建立，複製 Token。
 - **Telegram Chat ID**：啟動 Bot 後，傳一則訊息，再用瀏覽器開啟 `https://api.telegram.org/bot<TOKEN>/getUpdates`，找 `"chat":{"id":...}` 欄位。
 - **Gemini API Key**：前往 [Google AI Studio](https://aistudio.google.com)，登入後點選「Get API key」。
 - **schedule timeout**：排程超過分鐘數逾時不執行
-- **timezone**：裝置所屬時區名稱。
+- **time zone**：裝置所屬時區名稱。
   
 ---
 
