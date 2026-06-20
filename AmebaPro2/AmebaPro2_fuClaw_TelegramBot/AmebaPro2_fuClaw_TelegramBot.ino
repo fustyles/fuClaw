@@ -414,7 +414,7 @@ void rtcInitialTime(String workId) {
     "\"rtcSecond\":0\n"
     "}";
 
-  String message = geminiChatRequest("[BOT]", prompt, -1);
+  String message = geminiChatRequest("<BOT>", prompt, -1);
 
   if (message.startsWith("{") && message.endsWith("}")) {
 
