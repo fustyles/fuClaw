@@ -175,7 +175,7 @@ Known Limitations
 
 // Array of task-related tags used as stop markers when parsing text
 // Every tag MUST be enclosed in angle brackets '<' and '>'.
-const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };  
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" }; 
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -670,14 +670,14 @@ String removeTimestamps(String workId, String timestamps, String text) {
 void replyUserMessage(String workId, String text, String keyboard = "") {
 	if (text.length() == 0 || text.startsWith("NONE")) return;	
   
-	if (workId.startsWith("<PAGE>"))
+	if (workId.startsWith(String(taskTags[0])))
 		mainPageHTML += text +"\n";
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
 String replyUserImage(String workId, bool frames) {
-  if (workId.startsWith("<PAGE>")) {
+  if (workId.startsWith(String(taskTags[0]))) {
       if (frames)
           Camera.getImage(0, &imageAddress, &imageLength);
           
@@ -1762,7 +1762,7 @@ void handleAgentResponse(String workId, String message) {
     } else if (message != "NONE") {
       message = rawMessage;
 
-      if (workId.startsWith("<PAGE>")) {
+      if (workId.startsWith(String(taskTags[0]))) {
         message.replace("\\\"", "\"");
         message.replace("\\\\", "\\");
         message.replace("\\n", "\n");
@@ -2099,7 +2099,7 @@ void getTelegramMessage() {
 
     getTime.replace("Content-Type", "");
 
-    String workId = "<BOT> " + getTime;
+    String workId = String(taskTags[1]) + " " + getTime;
 
     if (!dataReceived || getBody == "") return;
 
@@ -2121,7 +2121,7 @@ void getTelegramMessage() {
         message_id = 0;
 
       } else {
-        workId = "<BOT> " + getRtcTimeString();
+        workId = String(taskTags[1]) + " " + getRtcTimeString();
 
         if (obj["result"][0]["message"].containsKey("text")) {
           text = obj["result"][0]["message"]["text"].as<String>();
@@ -2266,7 +2266,7 @@ void task_getRequest(void *param) {
           }                                            
           else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
-            String workId = "<PAGE> " + getRtcTimeString();
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateScheduleTasks?", "");
@@ -2292,7 +2292,7 @@ void task_getRequest(void *param) {
 
             mainPageHTML = "";
             
-            String workId = "<PAGE> " + getRtcTimeString();       
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();       
 
             currentLine.replace("GET /message?", "");
             currentLine.replace(" HTTP/1.", "");
@@ -2409,7 +2409,7 @@ void task_theft_detection(void *param) {
     
     Serial.println("\n\nExecuting Skill: theft_detection\n\n");
 
-    String workId = "<THEFT_DETECTION> " + getRtcTimeString();
+    String workId = String(taskTags[4]) + " " + getRtcTimeString();
     
     evaluateWorkflowContinuation(
   		workId, 
@@ -2591,7 +2591,7 @@ void task_time_scheduling(void *param) {
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    String workId = "<TIME_SCHEDULING> " + rtcFormatTime;
+    String workId = String(taskTags[3]) + " " + rtcFormatTime;
 
     if (rtcYear == 0) {
       Serial.println("[DEBUG] RTC time is not initialized.");
@@ -2771,8 +2771,8 @@ void setup() {
     historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));	
   }    
 
-  rtcInitialTime("<BOT>");
-  replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
+  rtcInitialTime(String(taskTags[1]));
+  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
   long long epoch = rtc.Read();
