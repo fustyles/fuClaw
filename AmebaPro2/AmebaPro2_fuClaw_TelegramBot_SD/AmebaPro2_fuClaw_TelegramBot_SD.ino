@@ -2708,7 +2708,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
        
       String response =
         "{\"method\":\"/still\","
-        "\"result\":\"" + res + "\",";
+        "\"result\":\"" + res + "\","
         "\"workId\":\"" + workId + "\"}";
 		
       historicalMessages += buildGeminiMessage("user", command + timestamps);

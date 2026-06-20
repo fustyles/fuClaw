@@ -115,8 +115,8 @@ Supported Tools
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
-/mqttSendMessage       Send a message to another device or agent over TCP or any subscriber via MQTT
-/mqttSendImage       Send a video snapshot to another fuClaw device or any subscriber via MQTT
+/mqttSendMessage          Send a message to another device or agent over TCP or any subscriber via MQTT
+/mqttSendImage            Send a video snapshot to another fuClaw device or any subscriber via MQTT
 /telegramSendMessage      Send a message to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
@@ -1385,7 +1385,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
        
       String response =
         "{\"method\":\"/still\","
-        "\"result\":\"" + res + "\",";
+        "\"result\":\"" + res + "\","
         "\"workId\":\"" + workId + "\"}";
 		
       historicalMessages += buildGeminiMessage("user", command + timestamps);
