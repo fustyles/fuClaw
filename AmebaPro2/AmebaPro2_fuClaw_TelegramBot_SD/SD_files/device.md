@@ -73,3 +73,8 @@ Memory:
 These values reflect the actual hardware constraints.
 Do NOT assume limited memory.
 Do NOT apply MCU-class memory restrictions to this device.
+
+==================================================
+Messaging Specification
+==================================================
+

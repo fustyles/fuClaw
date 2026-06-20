@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-11 23:00
+Build Date: 2026-06-20 21:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -117,9 +117,11 @@ Supported Tools
 /updateScheduleStatus     Update the executed status of scheduled tasks
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
-/agentSendMessage         Send a message to another fuClaw device
-/agentSendMessageMQTT     Send a message to another fuClaw device or any subscriber via MQTT
+/tcpSendMessage           Send a message to another device or agent over TCP
+/tcpSendMessageMQTT       Send a message to another device or agent over TCP or any subscriber via MQTT
 /agentSendImageMQTT       Send a video snapshot to another fuClaw device or any subscriber via MQTT
+/telegramSendMessage      Send a message to Telegram Bot
+/lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
@@ -258,6 +260,8 @@ float geminiTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
 
+String deviceName = "fuClaw";
+
 // Array of task-related tags used as stop markers when parsing text
 // Every tag MUST be enclosed in angle brackets '<' and '>'.
 const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
@@ -273,6 +277,7 @@ String skillsDefinition = "";
 
 // Specifies the inventory of connected hardware components and their designated pin configurations (e.g., LEDs, Servos, DHT11).
 String devicesDefinition = "";
+String devicesDefinitionFinal = "";
 
 // The rigid orchestration framework written as a raw string literal. It strictly constraints Gemini to:
 // 1. Suppress conversational text responses and exclusively output structured JSON arrays.
@@ -960,11 +965,11 @@ Clear scheduled tasks:
 }
 
 --------------------------------------------------
-Send a message to another fuClaw device.
+Send a message to another device or agent over TCP:
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "params": {
     "device":"<device address>",
     "message": "<message text>"
@@ -975,7 +980,7 @@ Success response:
 
 {
   "status": "success",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "response": "<reply message returned by target device>",  
   "workId": "<system-provided>"
 }
@@ -984,7 +989,7 @@ Error response:
 
 {
   "status": "error",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "reason":"<error reason>",  
   "workId": "<system-provided>"
 }
@@ -1000,11 +1005,11 @@ Requirements:
 - The tool call MUST NOT be generated until all required parameters are available.
 
 --------------------------------------------------
-Send a message to another fuClaw device or any subscriber via MQTT. 
+  Send a message to another device or agent over TCP or any subscriber via MQTT. 
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/agentSendMessageMQTT",
+  "method": "/tcpSendMessageMQTT",
   "params": {
 	"publishTopic": "<MQTT topic to publish the message to>",
     "message": "<message text>"
@@ -1029,6 +1034,98 @@ Send a video snapshot to another fuClaw device or any MQTT subscriber.
 Requirements:
 - topic is required. If missing, the agent MUST ask the user.
 - The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
+Send a message through a Telegram Bot:
+--------------------------------------------------
+
+{
+"type": "tool_call",
+"method": "/telegramSendMessage",
+"params": {
+"token": "<access token>",	
+"chatId": "<chat id>",
+"message": "<message text>"
+}
+}
+
+Success response:
+
+{
+"status": "success",
+"method": "/telegramSendMessage",
+"response": "Message sent successfully.",
+"workId": ""<system-provided>"
+}
+
+Error response:
+
+{
+"status": "error",
+"method": "/telegramSendMessage",
+"reason": "<error reason>",
+"workId": ""<system-provided>"
+}
+
+Requirements:
+
+token, chatId and message are required.
+chatId specifies the target Telegram chat.
+The target may be:
+Private user chat
+Group chat
+Supergroup
+Channel
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the target chat is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a Telegram message or notification.
+
+--------------------------------------------------
+Send a message through a LINE Bot:
+--------------------------------------------------
+
+{
+"type": "tool_call",
+"method": "/lineSendMessage",
+"params": {
+"token": "<access token>",
+"targetId": "<user/group/room id>",
+"message": "<message text>"
+}
+}
+
+Success response:
+
+{
+"status": "success",
+"method": "/lineSendMessage",
+"response": "Message sent successfully.",
+"workId": ""<system-provided>"
+}
+
+Error response:
+
+{
+"status": "error",
+"method": "/lineSendMessage",
+"reason": "<error reason>",
+"workId": ""<system-provided>"
+}
+
+Requirements:
+
+token, targetId, and message are required.
+token must be a valid LINE Messaging API Channel Access Token.
+targetId specifies the destination in LINE.
+Supported destination types:
+User ID
+Group ID
+Room ID
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the destination is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a LINE message or notification.
 
 --------------------------------------------------
 Servo motor control:
@@ -1537,19 +1634,20 @@ String envFilename = "env.json";
   
 /*
 {
-  "wifi_ssid": "xxxxx",
-  "wifi_pass": "xxxxx",
-  "mqtt_server": "xxxxx",
-  "mqtt_port": "xxxxx",
-  "mqtt_user": "xxxxx",
-  "mqtt_password": "xxxxx",
-  "mqtt_subscribeTextTopic": "xxxxx",
-  "mqtt_publishTextTopic": "xxxxx",
-  "mqtt_publishImageTopic": "xxxxx",
-  "gemini_apikey": "xxxxx",
-  "gemini_model": "xxxxx",  
-  "schedule_timeout": 10,
-  "timezone": "Asia/Taipei" 
+	"device_name": "xxxxx",
+	"wifi_ssid": "xxxxx",
+	"wifi_pass": "xxxxx",
+	"mqtt_server": "xxxxx",
+	"mqtt_port": "xxxxx",
+	"mqtt_user": "xxxxx",
+	"mqtt_password": "xxxxx",
+	"mqtt_subscribeTextTopic": "xxxxx",
+	"mqtt_publishTextTopic": "xxxxx",
+	"mqtt_publishImageTopic": "xxxxx",
+	"gemini_apikey": "xxxxx",
+	"gemini_model": "xxxxx",  
+	"schedule_timeout": 10,
+	"timezone": "Asia/Taipei" 
 }
 */
 
@@ -1995,14 +2093,14 @@ String removeTimestamps(String workId, String timestamps, String text) {
 void replyUserMessage(String workId, String text) {
 	if (text.length() == 0 || text.startsWith("NONE")) return;
 
-	if (workId.startsWith("<PAGE>"))
+	if (workId.startsWith(String(taskTags[0])))
 		mainPageHTML += text +"\n";
 	else
 		mqttSendText(mqttPublishTextTopic, text);
 }
 
 String replyUserImage(String workId, bool frames) {
-  if (workId.startsWith("<PAGE>")) {
+  if (workId.startsWith(String(taskTags[0]))) {
       if (frames)
           Camera.getImage(0, &imageAddress, &imageLength);
           
@@ -2105,8 +2203,8 @@ void storeDataToFile(String filename, String data) {
   fs.end();
 }
 
-// Send a message to another fuClaw device
-String agentSendMessage(String workId, String domain, String request) {
+//   Send a message to another device or agent over TCP
+String tcpSendMessage(String workId, String domain, String request) {
   
   WiFiClient client;
   
@@ -2150,14 +2248,14 @@ String agentSendMessage(String workId, String domain, String request) {
     
     return 
       "{\"status\":\"success\","
-      "\"method\":\"/agentSendMessage\","
+      "\"method\":\"/tcpSendMessage\","
       "\"response\":\"" + body + "\","   
       "\"workId\":\"" + workId + "\"}"; 
   }
 
   return 
     "{\"status\":\"error\","
-    "\"method\":\"/agentSendMessage\","       
+    "\"method\":\"/tcpSendMessage\","       
     "\"reason\":\"Connected to the device failed.\","
     "\"workId\":\"" + workId + "\"}";
       
@@ -2170,8 +2268,8 @@ void geminiChatReset() {
   executeToolHistory = "";
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -2179,8 +2277,8 @@ void geminiChatReset() {
 void systemContentReset() {
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -3057,11 +3155,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   		
   	  NVIC_SystemReset();
   	}	
-  	else if (command == "/agentSendMessage") {
+  	else if (command == "/tcpSendMessage") {
       String device = params["device"].as<String>();
       String message = params["message"].as<String>();
 	  
-      String response = agentSendMessage(workId, device, message);
+      String response = tcpSendMessage(workId, device, message);
 	  
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
@@ -3070,7 +3168,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
 	}
-  	else if (command == "/agentSendMessageMQTT") {
+  	else if (command == "/tcpSendMessageMQTT") {
       String publishTopic = params["publishTopic"].as<String>();
       String message = params["message"].as<String>();
 	  
@@ -3099,7 +3197,35 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
-	}			
+	}	
+  	else if (command == "/telegramSendMessage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/lineSendMessage") {
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}		
     else if (command == "/servo") {
         int pin   = params["pin"].as<int>();
         int angle = params["angle"].as<int>();
@@ -3233,7 +3359,7 @@ void handleAgentResponse(String workId, String message) {
     } else if (message != "NONE") {
       message = rawMessage;
 
-      if (workId.startsWith("<PAGE>")) {
+      if (workId.startsWith(String(taskTags[0]))) {
         message.replace("\\\"", "\"");
         message.replace("\\\\", "\\");
         message.replace("\\n", "\n");
@@ -3336,7 +3462,8 @@ void task_getRequest(void *param) {
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
             mainPageHTML = getStringFromFile(configpageFilename);
-            
+			
+            mainPageHTML.replace("deviceName", deviceName);
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
             mainPageHTML.replace("mqttServer", mqttServer);
@@ -3355,7 +3482,7 @@ void task_getRequest(void *param) {
           }
           else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
-            String workId = "<PAGE> " + getRtcTimeString();
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
@@ -3408,7 +3535,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }
-		      else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateDevice?", "");
@@ -3416,6 +3543,11 @@ void task_getRequest(void *param) {
             
             storeDataToFile(deviceFilename, currentLine);
             devicesDefinition = currentLine;
+			
+			devicesDefinitionFinal = devicesDefinition;
+			devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+			devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			
             systemContentReset();            
 			
             currentLine = "";        
@@ -3477,7 +3609,7 @@ void task_getRequest(void *param) {
           }                                            
           else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
-            String workId = "<PAGE> " + getRtcTimeString();
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
             
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateScheduleTasks?", "");
@@ -3506,7 +3638,7 @@ void task_getRequest(void *param) {
 
             mainPageHTML = "";
             
-            String workId = "<PAGE> " + getRtcTimeString();       
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();       
 
             currentLine.replace("GET /message?", "");
             currentLine.replace(" HTTP/1.", "");
@@ -3616,7 +3748,7 @@ void task_getRequestStream(void *param) {
  */
 void callback(char* topic, byte* payload, unsigned int length) {
 
-    String workId = "<MQTT> " + getRtcTimeString();
+    String workId = String(taskTags[2]) + " " + getRtcTimeString();
 
     // Allocate a null-terminated copy of the payload on the heap
     char* message = (char*)malloc(length + 1);
@@ -3701,7 +3833,7 @@ void task_theft_detection(void *param) {
     
     Serial.println("\n\nExecuting Skill: theft_detection\n\n");
 
-    String workId = "<THEFT_DETECTION> " + getRtcTimeString();
+    String workId = String(taskTags[4]) + " " + getRtcTimeString();
     
     evaluateWorkflowContinuation(
 		workId, 
@@ -3881,7 +4013,7 @@ void task_time_scheduling(void *param) {
 	  
     vTaskDelay(60000 / portTICK_PERIOD_MS);
 
-    String workId = "<TIME_SCHEDULING> " + rtcFormatTime;
+    String workId = String(taskTags[3]) + " " + rtcFormatTime;
 
     if (rtcYear == 0) {
       Serial.println("[DEBUG] RTC time is not initialized.");
@@ -4000,7 +4132,7 @@ void setEnvironmentSettings(String jsonString) {
   }
 
   JsonObject obj = doc.as<JsonObject>();
-  
+  deviceName =  obj["device_name"].as<String>(); 
   wifiSsid =  obj["wifi_ssid"].as<String>();
   wifiPassword =  obj["wifi_pass"].as<String>();
   mqttServer =  obj["mqtt_server"].as<String>();
@@ -4049,7 +4181,10 @@ void setup() {
   Serial.println("device.md len: " + String(device.length()));
   if (device != "")
     devicesDefinition = device;
-
+  devicesDefinitionFinal = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+  
   if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
 	  Serial.println("System configuration failed. Restarting the MCU...");
 	  delay(5000);
@@ -4072,8 +4207,8 @@ void setup() {
     executedTodayTasks = scheduleExecutedTodayTasks;
 
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
     
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
@@ -4117,8 +4252,8 @@ void setup() {
 
   dht.begin();
 
-  rtcInitialTime("<MQTT>");
-  replyUserMessage("<MQTT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+  rtcInitialTime(String(taskTags[2]));
+  replyUserMessage(String(taskTags[2]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
   long long epoch = rtc.Read();

@@ -443,11 +443,11 @@ Clear scheduled tasks:
 }
 
 --------------------------------------------------
-Send a message to another fuClaw device.
+Send a message to another device or agent over TCP:
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "params": {
     "device":"<device address>",
     "message": "<message text>"
@@ -458,7 +458,7 @@ Success response:
 
 {
   "status": "success",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "response": "<reply message returned by target device>",  
   "workId": "<system-provided>"
 }
@@ -467,7 +467,7 @@ Error response:
 
 {
   "status": "error",
-  "method": "/agentSendMessage",
+  "method": "/tcpSendMessage",
   "reason":"<error reason>",  
   "workId": "<system-provided>"
 }
@@ -481,6 +481,98 @@ Requirements:
   - mDNS name (*.local)
 - If the destination address is missing, the agent MUST ask the user.
 - The tool call MUST NOT be generated until all required parameters are available.
+
+--------------------------------------------------
+Send a message through a Telegram Bot:
+--------------------------------------------------
+
+{
+"type": "tool_call",
+"method": "/telegramSendMessage",
+"params": {
+"token": "<access token>",	
+"chatId": "<chat id>",
+"message": "<message text>"
+}
+}
+
+Success response:
+
+{
+"status": "success",
+"method": "/telegramSendMessage",
+"response": "Message sent successfully.",
+"workId": ""<system-provided>"
+}
+
+Error response:
+
+{
+"status": "error",
+"method": "/telegramSendMessage",
+"reason": "<error reason>",
+"workId": ""<system-provided>"
+}
+
+Requirements:
+
+token, chatId and message are required.
+chatId specifies the target Telegram chat.
+The target may be:
+Private user chat
+Group chat
+Supergroup
+Channel
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the target chat is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a Telegram message or notification.
+
+--------------------------------------------------
+Send a message through a LINE Bot:
+--------------------------------------------------
+
+{
+"type": "tool_call",
+"method": "/lineSendMessage",
+"params": {
+"token": "<access token>",
+"targetId": "<user/group/room id>",
+"message": "<message text>"
+}
+}
+
+Success response:
+
+{
+"status": "success",
+"method": "/lineSendMessage",
+"response": "Message sent successfully.",
+"workId": ""<system-provided>"
+}
+
+Error response:
+
+{
+"status": "error",
+"method": "/lineSendMessage",
+"reason": "<error reason>",
+"workId": ""<system-provided>"
+}
+
+Requirements:
+
+token, targetId, and message are required.
+token must be a valid LINE Messaging API Channel Access Token.
+targetId specifies the destination in LINE.
+Supported destination types:
+User ID
+Group ID
+Room ID
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the destination is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a LINE message or notification.
 
 ==================================================
 SEARCH FOLLOW-UP RULES

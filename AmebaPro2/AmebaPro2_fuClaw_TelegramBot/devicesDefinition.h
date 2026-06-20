@@ -43,6 +43,11 @@ These values reflect the actual hardware constraints.
 Do NOT assume limited memory.
 Do NOT apply MCU-class memory restrictions to this device.
 
+==================================================
+Messaging Specification
+==================================================
+
+
 )";
 
 String devicesRule = R"(
@@ -283,3 +288,5 @@ Your output must contain only user-facing content.
 Any timestamping, logging, or message tracking is handled externally by the system and must not be duplicated in the model output.
 
 )";
+
+String devicesDefinitionFinal = "";

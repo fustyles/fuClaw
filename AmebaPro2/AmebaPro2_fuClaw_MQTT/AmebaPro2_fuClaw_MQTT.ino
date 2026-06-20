@@ -15,7 +15,7 @@ Version
 -----------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-11 23:00
+Build Date: 2026-06-20 21:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -114,9 +114,11 @@ Supported Tools
 /updateScheduleStatus     Update the executed status of scheduled tasks
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
-/agentSendMessage         Send a message to another fuClaw device
-/agentSendMessageMQTT     Send a message to another fuClaw device or any subscriber via MQTT
+/tcpSendMessage           Send a message to another device or agent over TCP
+/tcpSendMessageMQTT       Send a message to another device or agent over TCP or any subscriber via MQTT
 /agentSendImageMQTT       Send a video snapshot to another fuClaw device or any subscriber via MQTT
+/telegramSendMessage      Send a message to Telegram Bot
+/lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
@@ -685,8 +687,8 @@ String buildGeminiMessage(String role, String message, bool comma = true) {
   return jsonMessage;
 }
 
-// Send a message to another fuClaw device
-String agentSendMessage(String workId, String domain, String request) {
+//   Send a message to another device or agent over TCP
+String tcpSendMessage(String workId, String domain, String request) {
   
   WiFiClient client;
   
@@ -730,14 +732,14 @@ String agentSendMessage(String workId, String domain, String request) {
     
     return 
       "{\"status\":\"success\","
-      "\"method\":\"/agentSendMessage\","
+      "\"method\":\"/tcpSendMessage\","
       "\"response\":\"" + body + "\","   
       "\"workId\":\"" + workId + "\"}"; 
   }
 
   return 
     "{\"status\":\"error\","
-    "\"method\":\"/agentSendMessage\","       
+    "\"method\":\"/tcpSendMessage\","       
     "\"reason\":\"Connected to the device failed.\","
     "\"workId\":\"" + workId + "\"}";
       
@@ -750,8 +752,8 @@ void geminiChatReset() {
   executeToolHistory = "";
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -759,8 +761,8 @@ void geminiChatReset() {
 void systemContentReset() {
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -1581,11 +1583,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   		
   	  NVIC_SystemReset();
   	}
-  	else if (command == "/agentSendMessage") {
+  	else if (command == "/tcpSendMessage") {
       String device = params["device"].as<String>();
       String message = params["message"].as<String>();
 	  
-      String response = agentSendMessage(workId, device, message);
+      String response = tcpSendMessage(workId, device, message);
 	  
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
@@ -1594,7 +1596,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
 	}
-  	else if (command == "/agentSendMessageMQTT") {
+  	else if (command == "/tcpSendMessageMQTT") {
       String publishTopic = params["publishTopic"].as<String>();
       String message = params["message"].as<String>();
 	  
@@ -1624,6 +1626,34 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
 	}	
+  	else if (command == "/telegramSendMessage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/lineSendMessage") {
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}		
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -2448,10 +2478,14 @@ void setup() {
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
   Camera.channelBegin(0);
+  
+  devicesDefinitionFinal = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;  
 
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
     
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");

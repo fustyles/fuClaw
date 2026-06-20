@@ -13,7 +13,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-09 02:00
+Build Date: 2026-06-20 21:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -105,7 +105,9 @@ Supported Tools
 /updateScheduleStatus     Update the executed status of scheduled tasks
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
-/agentSendMessage         Send a message to another fuClaw device
+/tcpSendMessage           Send a message to another device or agent over TCP
+/telegramSendMessage      Send a message to Telegram Bot
+/lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Web Chat Interface
 ------------------------------------------------------------
@@ -445,7 +447,7 @@ void rtcInitialTime(String workId) {
 }
 
 // Send text message to Telegram bot
-void telegramSendMessage(String token, String chatid, String text, String keyboard) {
+String telegramSendMessage(String token, String chatid, String text, String keyboard = "") {
   text.replace("\\n", "%0A");
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
@@ -493,6 +495,57 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
     }
     client.stop();
   }
+  else {
+    getBody="Connected to api.telegram.org failed.";
+  }
+  
+  return getBody;
+}
+
+// Send text message to Line bot
+String lineSendMessage(String token, String targetId, String message) {
+  String getAll="", getBody="";
+  
+  String request = "{\"to\":\""+targetId+"\",\"messages\":[{\"type\":\"text\",\"text\":\""+message+"\"}]}";
+	
+  const char* myDomain = "api.line.me";
+
+  WiFiSSLClient client;
+
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /v2/bot/message/push HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: api.line.me");
+    client.println("Authorization: Bearer " + token);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    client.println(request);
+    client.println();
+	
+    boolean state = false;
+    long startTime = millis();
+    while ((startTime + 3000) > millis()) {
+      while (client.available()) {
+        char c = client.read();
+        if (c == '\n') {
+          if (getAll.length()==0) state=true;
+           getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+          if (state==true) getBody += String(c);
+          startTime = millis();
+        }
+        if (getBody.length()!= 0) break;
+      }
+      client.stop();
+  }
+  else {
+    getBody="Connected to api.line.me failed.";
+  }
+  
+  return getBody;
 }
 
 // Capture a still image from camera and upload it to Telegram as JPEG.
@@ -671,8 +724,8 @@ String buildGeminiMessage(String role, String message, bool comma = true) {
   return jsonMessage;
 }
 
-// Send a message to another fuClaw device
-String agentSendMessage(String workId, String domain, String request) {
+//   Send a message to another device or agent over TCP
+String tcpSendMessage(String workId, String domain, String request) {
   
   WiFiClient client;
   
@@ -716,14 +769,14 @@ String agentSendMessage(String workId, String domain, String request) {
     
     return 
       "{\"status\":\"success\","
-      "\"method\":\"/agentSendMessage\","
+      "\"method\":\"/tcpSendMessage\","
       "\"response\":\"" + body + "\","   
       "\"workId\":\"" + workId + "\"}"; 
   }
 
   return 
     "{\"status\":\"error\","
-    "\"method\":\"/agentSendMessage\","       
+    "\"method\":\"/tcpSendMessage\","       
     "\"reason\":\"Connected to the device failed.\","
     "\"workId\":\"" + workId + "\"}";
       
@@ -736,8 +789,8 @@ void geminiChatReset() {
   executeToolHistory = "";
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -745,8 +798,8 @@ void geminiChatReset() {
 void systemContentReset() {
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
@@ -1568,11 +1621,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   		
   	  NVIC_SystemReset();
   	}	
-  	else if (command == "/agentSendMessage") {
+  	else if (command == "/tcpSendMessage") {
       String device = params["device"].as<String>();
       String message = params["message"].as<String>();
 	  
-      String response = agentSendMessage(workId, device, message);
+      String response = tcpSendMessage(workId, device, message);
 	  
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);	  
@@ -1581,6 +1634,34 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
 	}	
+  	else if (command == "/telegramSendMessage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/lineSendMessage") {
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}		
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -2658,10 +2739,14 @@ void setup() {
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
   Camera.channelBegin(0); 
+  
+  devicesDefinitionFinal = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;  
 
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
@@ -2694,7 +2779,6 @@ void setup() {
   time_t rawtime = (time_t)epoch;
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
-
 
   server.begin();
   serverStream.begin();   

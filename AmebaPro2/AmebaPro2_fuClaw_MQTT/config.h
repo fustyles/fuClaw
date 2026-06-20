@@ -32,6 +32,8 @@ float geminiTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
 
+String deviceName = "fuClaw";
+
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
