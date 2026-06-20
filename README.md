@@ -111,11 +111,11 @@ Supported Tools
 /updateScheduleStatus              <br>Update the executed status of scheduled tasks<br>
 /modifySchedule              <br>Modify or delete scheduled tasks<br>
 /clearSchedule              <br>Clear scheduled tasks<br>
-/tcpSendMessage           Send a message to another device or agent over TCP
-/mqttSendMessage          Send a message to another device or agent over TCP or any subscriber via MQTT
-/mqttSendImage            Send a video snapshot to another fuClaw device or any subscriber via MQTT
-/telegramSendMessage      Send a message to Telegram Bot
-/lineSendMessage          Send a message to Line Bot
+/tcpSendMessage           <br>Send a message to another device or agent over TCP<br>
+/mqttSendMessage          <br>Send a message to another device or agent over TCP or any subscriber via MQTT<br>
+/mqttSendImage            <br>Send a video snapshot to another fuClaw device or any subscriber via MQTT<br>
+/telegramSendMessage      <br>Send a message to Telegram Bot<br>
+/lineSendMessage          <br>Send a message to Line Bot<br>
 
 ------------------------------------------------------------
 Persistent Files
