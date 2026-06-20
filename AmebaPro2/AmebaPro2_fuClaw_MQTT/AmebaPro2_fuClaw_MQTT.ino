@@ -394,6 +394,108 @@ String getRtcTimeString() {
   return String(buffer);
 }
 
+// Send text message to Telegram bot
+String telegramSendMessage(String token, String chatid, String text, String keyboard = "") {
+  text.replace("\\n", "%0A");
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  String request = "parse_mode=HTML&chat_id="+chatid+"&text="+text;
+
+  if (keyboard!="")
+    request += "&reply_markup="+keyboard;
+
+  WiFiSSLClient client;
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /bot"+token+"/sendMessage HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(request.length()));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println("Connection: close");
+    client.println();
+    client.print(request);
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool state = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+	  
+      while (client.available())  {
+        char c = client.read();
+
+        if (state)
+          getBody += String(c);
+
+        if (c == '\n')  {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+    client.stop();
+  }
+  else {
+    getBody="Connected to api.telegram.org failed.";
+  }
+  
+  return getBody;
+}
+
+// Send text message to Line bot
+String lineSendMessage(String token, String targetId, String message) {
+  String getAll="", getBody="";
+  
+  String request = "{\"to\":\""+targetId+"\",\"messages\":[{\"type\":\"text\",\"text\":\""+message+"\"}]}";
+	
+  const char* myDomain = "api.line.me";
+
+  WiFiSSLClient client;
+
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /v2/bot/message/push HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: api.line.me");
+    client.println("Authorization: Bearer " + token);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    client.println(request);
+    client.println();
+	
+    boolean state = false;
+    long startTime = millis();
+    while ((startTime + 3000) > millis()) {
+      while (client.available()) {
+        char c = client.read();
+        if (c == '\n') {
+          if (getAll.length()==0) state=true;
+           getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+          if (state==true) getBody += String(c);
+          startTime = millis();
+        }
+        if (getBody.length()!= 0) break;
+      }
+      client.stop();
+  }
+  else {
+    getBody="Connected to api.line.me failed.";
+  }
+  
+  return getBody;
+}
+
 // Initialize the RTC using Gemini-synchronized local time.
 void rtcInitialTime(String workId) {
 	
