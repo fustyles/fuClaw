@@ -479,6 +479,11 @@ void getTelegramMessage() {
 
       long id_last  = lastMessageId;
       lastMessageId = message_id;
+	  
+      String fromChatId = obj["result"][0]["message"]["chat"]["id"].as<String>();
+      if (fromChatId != telegrambotChatId) {
+        return;
+      }	  	  
 
       if (id_last == 0) {
         message_id = 0;

@@ -624,6 +624,11 @@ void getTelegramMessage() {
 
       long id_last  = lastMessageId;
       lastMessageId = message_id;
+	  
+      String fromChatId = obj["result"][0]["message"]["chat"]["id"].as<String>();
+      if (fromChatId != telegrambotChatId) {
+        return;
+      }	  
 
       if (id_last == 0) {
         message_id = 0;
@@ -633,7 +638,7 @@ void getTelegramMessage() {
 		if (obj["result"][0]["message"].containsKey("text")) {
 		  text = obj["result"][0]["message"]["text"].as<String>();
 
-      sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
+		  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
 
 		}
 
