@@ -487,7 +487,7 @@ Requirements:
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/tcpSendMessageMQTT",
+  "method": "/mqttSendMessage",
   "params": {
 	"publishTopic": "<MQTT topic to publish the message to>",
     "message": "<message text>"
@@ -503,7 +503,7 @@ Send a video snapshot to another fuClaw device or any MQTT subscriber.
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/agentSendImageMQTT",
+  "method": "/mqttSendImage",
   "params": {
 	"publishTopic": "<MQTT topic to publish the image to>"
   }

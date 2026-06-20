@@ -118,8 +118,8 @@ Supported Tools
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
-/tcpSendMessageMQTT       Send a message to another device or agent over TCP or any subscriber via MQTT
-/agentSendImageMQTT       Send a video snapshot to another fuClaw device or any subscriber via MQTT
+/mqttSendMessage       Send a message to another device or agent over TCP or any subscriber via MQTT
+/mqttSendImage       Send a video snapshot to another fuClaw device or any subscriber via MQTT
 /telegramSendMessage      Send a message to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
@@ -1009,7 +1009,7 @@ Requirements:
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/tcpSendMessageMQTT",
+  "method": "/mqttSendMessage",
   "params": {
 	"publishTopic": "<MQTT topic to publish the message to>",
     "message": "<message text>"
@@ -1025,7 +1025,7 @@ Send a video snapshot to another fuClaw device or any MQTT subscriber.
 --------------------------------------------------
 {
   "type": "tool_call",
-  "method": "/agentSendImageMQTT",
+  "method": "/mqttSendImage",
   "params": {
 	"publishTopic": "<MQTT topic to publish the image to>"
   }
@@ -3270,7 +3270,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
 	  evaluateWorkflowContinuation(workId, reCheck);
 	}
-  	else if (command == "/tcpSendMessageMQTT") {
+  	else if (command == "/mqttSendMessage") {
       String publishTopic = params["publishTopic"].as<String>();
       String message = params["message"].as<String>();
 	  
@@ -3288,7 +3288,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
 	}	
-  	else if (command == "/agentSendImageMQTT") {
+  	else if (command == "/mqttSendImage") {
       String publishTopic = params["publishTopic"].as<String>();
 	  
       String response = mqttSendImage(publishTopic, true);
