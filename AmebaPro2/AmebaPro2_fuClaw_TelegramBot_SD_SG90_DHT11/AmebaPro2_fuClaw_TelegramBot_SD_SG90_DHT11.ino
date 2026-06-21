@@ -988,31 +988,13 @@ Send a message through a Telegram Bot:
 --------------------------------------------------
 
 {
-"type": "tool_call",
-"method": "/telegramSendMessage",
-"params": {
-"token": "<access token>",	
-"chatId": "<chat id>",
-"message": "<message text>"
-}
-}
-
-Success response:
-
-{
-"status": "success",
-"method": "/telegramSendMessage",
-"response": "Message sent successfully.",
-"workId": ""<system-provided>"
-}
-
-Error response:
-
-{
-"status": "error",
-"method": "/telegramSendMessage",
-"reason": "<error reason>",
-"workId": ""<system-provided>"
+  "type": "tool_call",
+  "method": "/telegramSendMessage",
+  "params": {
+    "token": "<access token>",	
+    "chatId": "<chat id>",
+    "message": "<message text>"
+  }
 }
 
 Requirements:
@@ -1034,31 +1016,13 @@ Send a message through a LINE Bot:
 --------------------------------------------------
 
 {
-"type": "tool_call",
-"method": "/lineSendMessage",
-"params": {
-"token": "<access token>",
-"targetId": "<user/group/room id>",
-"message": "<message text>"
-}
-}
-
-Success response:
-
-{
-"status": "success",
-"method": "/lineSendMessage",
-"response": "Message sent successfully.",
-"workId": ""<system-provided>"
-}
-
-Error response:
-
-{
-"status": "error",
-"method": "/lineSendMessage",
-"reason": "<error reason>",
-"workId": ""<system-provided>"
+  "type": "tool_call",
+  "method": "/lineSendMessage",
+  "params": {
+    "token": "<access token>",
+    "targetId": "<user/group/room id>",
+    "message": "<message text>"
+  }
 }
 
 Requirements:
