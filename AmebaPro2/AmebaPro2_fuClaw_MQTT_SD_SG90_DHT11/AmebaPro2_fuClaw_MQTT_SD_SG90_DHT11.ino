@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-20 21:00
+Build Date: 2026-06-21 21:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1642,7 +1642,7 @@ String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
 String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
 String buildGeminiMessage(String role, String message, bool comma);
-String getRtcTimeString();
+String getRtcTimeString(bool filename);
 void replyUserMessage(String workId, String text);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
@@ -1792,7 +1792,7 @@ String getGeminiDatetime() {
   
 }
 
-String getRtcTimeString() {
+String getRtcTimeString(bool filename = false) {
 
   long long epoch = rtc.Read();
 
@@ -1802,16 +1802,30 @@ String getRtcTimeString() {
 
   char buffer[32];
 
-  sprintf(
-    buffer,
-    "%04d/%d/%d %02d:%02d:%02d",
-    timeinfo->tm_year + 1900,
-    timeinfo->tm_mon + 1,
-    timeinfo->tm_mday,
-    timeinfo->tm_hour,
-    timeinfo->tm_min,
-    timeinfo->tm_sec
-  );
+  if (filename == true) {
+	  sprintf(
+		buffer,
+		"%04d%d%d%02d%02d%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
+  else {
+	  sprintf(
+		buffer,
+		"%04d/%d/%d %02d:%02d:%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
 
   return String(buffer);
 }
@@ -1919,7 +1933,7 @@ String lineSendMessage(String token, String targetId, String message) {
 }
 
 // Initialize the RTC using Gemini-synchronized local time.
-void rtcInitialTime(String workId) {
+void rtcInitialTime(String workName) {
 	
   rtcUpdateStatus = true;
   
@@ -1958,7 +1972,7 @@ void rtcInitialTime(String workId) {
 
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
-      replyUserMessage(workId, "RTC time update failed.");
+      replyUserMessage(workName, "RTC time update failed.");
       
     }
 
@@ -1973,7 +1987,7 @@ void rtcInitialTime(String workId) {
 
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-    replyUserMessage(workId, "RTC time update failed.");
+    replyUserMessage(workName, "RTC time update failed.");
   }
 
   rtc.Init();
@@ -2240,13 +2254,16 @@ String getStringFromFile(String fileNname) {
 }
 
 // Backup existing historical messages file and save updated messages to SD card
-void storeDataToFile(String filename, String data) {
+void storeDataToFile(String filename, String data, bool timestamp = false) {
   
   fs.begin();
   
   String file_path = String(fs.getRootPath());
-  String currentFile = file_path + "/" + filename; 
-  String backupFile = currentFile + ".bak";  
+  String currentFile = file_path + "/" + filename;
+  
+  String backupFile = currentFile + ".bak";
+  if (timestamp == true)
+	  backupFile = currentFile + "_" + getRtcTimeString(true) + ".bak"; 
   
   if (fs.exists(currentFile)) {
     
@@ -2254,6 +2271,7 @@ void storeDataToFile(String filename, String data) {
       
       fs.remove(backupFile);
     }
+    delay(100);
     
     fs.rename(currentFile, backupFile);
   }
@@ -2265,6 +2283,8 @@ void storeDataToFile(String filename, String data) {
     file.println(data.c_str());
     file.close();
   }
+  else
+	  Serial.println("[DEBUG] File open failed: " + currentFile);
   
   fs.end();
 }
@@ -2332,6 +2352,8 @@ void geminiChatReset() {
   
   historicalMessages = "";
   executeToolHistory = "";
+  
+  storeDataToFile(memoryFilename, historicalMessages, true);  
 
   systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
@@ -2439,8 +2461,9 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
       //}
     } 
     else if (doc["error"]) {
-      responseText = "Gemini API Error: " + doc["error"]["message"].as<String>();
+      responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
+	  responseText = "Gemini API Error";
     } 
     else {
       responseText = "Unexpected response from Gemini.";
@@ -2546,8 +2569,9 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
     } 
     else if (doc["error"]) {
-      responseText = "Gemini Search API Error: " + doc["error"]["message"].as<String>();
+      responseText = "[DEBUG] Gemini API (Search) Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
+	  responseText = "Gemini API (Search) Error";
     } 
     else {
       responseText = "Unexpected response from Gemini Search.";
@@ -2667,8 +2691,9 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
     } 
     else if (doc["error"]) {
-      responseText = "Gemini Vision API Error: " + doc["error"]["message"].as<String>();
+      responseText = "[DEBUG] Gemini API (Vision) Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
+	  responseText = "Gemini API (Vision) Error";
     } 
     else {
       responseText = "Unexpected response from Gemini Vision.";
@@ -3142,10 +3167,10 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + "\n";           
     }
     else if (command == "/reset") {
-      String response = "New chat started.";
-      replyUserMessage(workId, response);
-
       geminiChatReset();  
+            
+	  String response = "New chat started.";
+      replyUserMessage(workId, response); 
 
     } 
     else if (command == "/getMemory") {
@@ -4318,7 +4343,7 @@ void setup() {
 
   dht.begin();
 
-  rtcInitialTime(String(taskTags[2]));
+  rtcInitialTime("RTC Initial Time");
   replyUserMessage(String(taskTags[2]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
