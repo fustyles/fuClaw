@@ -19,11 +19,12 @@ No other hardware mappings are confirmed.
 HARDWARE SPECIFICATION
 ==================================================
 
-SoC: Realtek AmebaPro2 (RTL8735B)
+SoC: ESP32-S3-WROOM-1-N16R8
 
 Memory:
-- RAM  : 128 MB DDR2 (internal, on SoC)
-- Flash: 16 MB SPI NOR (external, on Dev. Board)
+- SRAM : 512 KB Internal SRAM
+- PSRAM: 8 MB Octal SPI PSRAM
+- Flash: 16 MB Octal SPI NOR Flash
 
 These values reflect the actual hardware constraints.
 Do NOT assume limited memory.
