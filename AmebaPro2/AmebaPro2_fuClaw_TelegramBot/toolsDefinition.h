@@ -511,6 +511,34 @@ The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a Telegram message or notification.
 
 --------------------------------------------------
+Send a screen snapshot through a Telegram Bot:
+--------------------------------------------------
+
+{
+  "type": "tool_call",
+  "method": "/telegramSendImage",
+  "params": {
+    "token": "<access token>",	
+    "chatId": "<chat id>",
+	"frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>"
+  }
+}
+
+Requirements:
+
+token and chatId are required.
+chatId specifies the target Telegram chat.
+The target may be:
+Private user chat
+Group chat
+Supergroup
+Channel
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the target chat is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a Telegram message or notification.
+
+--------------------------------------------------
 Send a message through a LINE Bot:
 --------------------------------------------------
 

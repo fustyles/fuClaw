@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-21 21:00
+Build Date: 2026-06-22 00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1055,6 +1055,34 @@ The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a Telegram message or notification.
 
 --------------------------------------------------
+Send a screen snapshot through a Telegram Bot:
+--------------------------------------------------
+
+{
+  "type": "tool_call",
+  "method": "/telegramSendImage",
+  "params": {
+    "token": "<access token>",	
+    "chatId": "<chat id>",
+	"frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>"
+  }
+}
+
+Requirements:
+
+token and chatId are required.
+chatId specifies the target Telegram chat.
+The target may be:
+Private user chat
+Group chat
+Supergroup
+Channel
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the target chat is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a Telegram message or notification.
+
+--------------------------------------------------
 Send a message through a LINE Bot:
 --------------------------------------------------
 
@@ -2067,6 +2095,96 @@ String mqttSendImage(String topic, bool capture, bool base64 = false) {
         return "Connect to MQTT Server Failed";
     }
 	
+}
+
+// Capture a still image from camera and upload it to Telegram as JPEG.
+String telegramSendCapturedImage(String token, String chat_id, bool frames) {
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  WiFiSSLClient client;
+
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      Camera.getImage(0, &imageAddress, &imageLength);
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      return "Previous image does not exist";
+    }
+
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    String head =
+      "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
+      + chat_id +
+      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+
+    String tail = "\r\n--Taiwan--\r\n";
+
+    size_t imageLen = imageLength;
+    size_t extraLen = head.length() + tail.length();
+    size_t totalLen = imageLen + extraLen;
+
+    client.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(totalLen));
+    client.println("Content-Type: multipart/form-data; boundary=Taiwan");
+    client.println();
+
+    client.print(head);
+
+    // Send JPEG data in chunks
+    for (size_t n=0;n<fbLen;n=n+1024) {
+      if (n+1024<fbLen) {
+        client.write(fbBuf, 1024);
+        fbBuf += 1024;
+      }
+      else if (fbLen%1024>0) {
+        size_t remainder = fbLen%1024;
+        client.write(fbBuf, remainder);
+      }
+    }
+
+    client.print(tail);
+
+    int waitTime = 10000;
+    unsigned long startTime = millis();
+    bool state = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (state)
+          getBody += String(c);
+
+        if (c == '\n') {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+
+    client.stop();
+    Serial.println();
+
+  } else {
+    getBody="Connected to api.telegram.org failed.";
+    Serial.println("Connected to api.telegram.org failed.");
+  }
+
+  return getBody;
 }
 
 // Cleans a text string by removing timestamps, workId, and truncating at any task tag
@@ -3184,6 +3302,20 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
+  	else if (command == "/telegramSendImage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+	  bool frames = params["frames"].as<bool>();
+	  
+      String response = telegramSendCapturedImage(token, chatId, frames);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}		
   	else if (command == "/lineSendMessage") {
       String token = params["token"].as<String>();
 	  String targetId = params["targetId"].as<String>();

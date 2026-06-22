@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-21 21:00
+Build Date: 2026-06-22 00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -108,6 +108,7 @@ Supported Tools
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
 /telegramSendMessage      Send a message to Telegram Bot
+/telegramSendImage        Send a video snapshot to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Persistent Files
@@ -1000,6 +1001,34 @@ Send a message through a Telegram Bot:
 Requirements:
 
 token, chatId and message are required.
+chatId specifies the target Telegram chat.
+The target may be:
+Private user chat
+Group chat
+Supergroup
+Channel
+If the token is unavailable, the agent MUST ask the user before calling this tool.
+If the target chat is unknown, the agent MUST ask the user before calling this tool.
+The tool call MUST NOT be generated until all required parameters are available.
+Use this tool when the user requests sending a Telegram message or notification.
+
+--------------------------------------------------
+Send a screen snapshot through a Telegram Bot:
+--------------------------------------------------
+
+{
+  "type": "tool_call",
+  "method": "/telegramSendImage",
+  "params": {
+    "token": "<access token>",	
+    "chatId": "<chat id>",
+	"frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>"
+  }
+}
+
+Requirements:
+
+token and chatId are required.
 chatId specifies the target Telegram chat.
 The target may be:
 Private user chat
@@ -3148,6 +3177,20 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
+  	else if (command == "/telegramSendImage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+	  bool frames = params["frames"].as<bool>();
+	  
+      String response = telegramSendCapturedImage(token, chatId, frames);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
   	else if (command == "/lineSendMessage") {
       String token = params["token"].as<String>();
 	  String targetId = params["targetId"].as<String>();
