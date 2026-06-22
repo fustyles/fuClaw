@@ -3737,6 +3737,8 @@ void getTelegramMessage() {
     while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
       vTaskDelay(500 / portTICK_PERIOD_MS);
   }
+
+  vTaskDelay(5 / portTICK_PERIOD_MS);
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.
@@ -4049,6 +4051,9 @@ void task_getRequestStream(void *param) {
       }
       delay(1);
       client.stop();
+    }
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
     }
   }
 }
