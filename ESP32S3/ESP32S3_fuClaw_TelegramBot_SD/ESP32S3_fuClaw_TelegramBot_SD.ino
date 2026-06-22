@@ -2186,14 +2186,14 @@ String buildGeminiMessage(String role, String message, bool comma = true) {
 }
 
 // Load file context from SD card
-// ESP32-S3 PORT: AmebaFatFS (fs.begin/getRootPath/open/end) -> SD_MMC.
-// SD_MMC.begin() is idempotent (safe to call repeatedly) on ESP32 Arduino
-// core, so the original begin/.../end bracketing pattern is kept as-is
-// for minimal behavioral change, even though it isn't strictly required.
 String getStringFromFile(String fileNname) {
   String data = "";
 
-  SD_MMC.begin();
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed");
+    return "";
+  }
+
   String path = "/" + fileNname;
 
   file = SD_MMC.open(path, FILE_READ);
@@ -2218,12 +2218,12 @@ String getStringFromFile(String fileNname) {
 }
 
 // Backup existing historical messages file and save updated messages to SD card
-// ESP32-S3 PORT: AmebaFatFS (fs.*) -> SD_MMC. exists/remove/rename keep
-// the same method names and semantics on SD_MMC, so the backup/rotate
-// logic below is otherwise unchanged from the original.
 void storeDataToFile(String filename, String data, bool timestamp = false) {
   
-  SD_MMC.begin();
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed");
+    return;
+  }
   
   String file_path = "";
   String currentFile = file_path + "/" + filename;
@@ -3734,7 +3734,7 @@ void getTelegramMessage() {
 
     unsigned long start = millis();
 
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
       vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
@@ -3869,9 +3869,9 @@ void task_getRequest(void *param) {
             storeDataToFile(deviceFilename, currentLine);
             devicesDefinition = currentLine;
 			
-			devicesDefinitionFinal = devicesDefinition;
-			devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
-			devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+            devicesDefinitionFinal = devicesDefinition;
+            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
             systemContentReset();            
 			
@@ -3978,7 +3978,9 @@ void task_getRequest(void *param) {
 
       client.stop();
     }
-	
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
   }
 }
 
@@ -4346,19 +4348,12 @@ void task_time_scheduling(void *param) {
 }
 
 // Initialize WiFi
-// ESP32-S3 PORT: WiFi.enableConcurrent()/WiFi.apbegin() (Ameba-specific
-// concurrent AP+STA bring-up) -> WiFi.mode(WIFI_AP_STA) + WiFi.softAP().
-// ESP32 supports AP+STA concurrently natively via WIFI_AP_STA mode, so
-// this achieves the same "AP always up, STA connects if configured"
-// behavior as the original.
 void initWiFi() {
-	
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(apSsid.c_str(), apPassword.c_str());
     
-  for (int i=0;i<2;i++) {
+  for (int i=0 ; i<2 ; i++) {
 
-    if (wifiSsid=="")
+    if (wifiSsid == "")
       break;
 
     WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
@@ -4373,10 +4368,12 @@ void initWiFi() {
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
 
-      if ((StartTime+5000) < millis())
+      if ((StartTime + 15000) < millis())
         break;
     }
   }
+
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());  
   
 }
 
@@ -4399,7 +4396,7 @@ void setEnvironmentSettings(String jsonString) {
   geminiModel =  obj["gemini_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>();  
-  
+
 }
 
 String Ip2String(IPAddress ip) {
@@ -4412,27 +4409,13 @@ void setup() {
 
   //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
-  if (!initCamera()) {
-    Serial.println("[DEBUG] Camera initialization failed. Still images / vision / stream will not work.");
-  }
-
-  // Indicator LED  
-  pinMode(LED_BUILTIN, OUTPUT);
-
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
-
-  if (!SD_MMC.begin()) {
-    Serial.println("Card Mount Failed");
-    return;
-  }
   
   String env = getStringFromFile(envFilename);
   Serial.println("env.json len: " + String(env.length())); 
   if (env != "")
     setEnvironmentSettings(env);
 
-  initWiFi();
-  
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
@@ -4449,7 +4432,7 @@ void setup() {
   if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
 	  Serial.println("System configuration failed. Restarting the MCU...");
 	  delay(5000);
-	  ESP.restart();   // ESP32-S3 PORT: NVIC_SystemReset() -> ESP.restart()
+	  ESP.restart();
   }
 
   String skill = getStringFromFile(skillFilename);
@@ -4475,6 +4458,15 @@ void setup() {
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
     historicalMessages = memory;
+
+  if (!initCamera()) {
+    Serial.println("[DEBUG] Camera initialization failed. Still images / vision / stream will not work.");
+  }
+  else {
+    Serial.println("Camera initialization successful.");
+  }
+
+  initWiFi();  
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
@@ -4508,7 +4500,6 @@ void setup() {
   time(&rawtime);
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
-
 
   server.begin(); 
   serverStream.begin();  
@@ -4575,7 +4566,11 @@ void setup() {
   }   
 
 */   
-  
+
+  botClient.setInsecure();
+
+  // Indicator LED  
+  pinMode(LED_BUILTIN, OUTPUT);  
 }
 
 // Main loop
