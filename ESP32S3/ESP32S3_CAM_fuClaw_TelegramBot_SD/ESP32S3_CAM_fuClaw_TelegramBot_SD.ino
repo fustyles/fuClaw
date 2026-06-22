@@ -4350,7 +4350,7 @@ String Ip2String(IPAddress ip) {
 void setup() {
   Serial.begin(115200);
 
-  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  
 
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
   
