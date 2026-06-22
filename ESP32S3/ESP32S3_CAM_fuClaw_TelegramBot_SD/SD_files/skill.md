@@ -4,7 +4,7 @@ BUILT-IN SKILLS REGISTRY
 ==================================================
 
 ==================================================
-SKILL: anti_theft_detection (Cancelled)
+SKILL: anti_theft_detection
 ==================================================
 
 Goal:

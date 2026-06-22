@@ -14,7 +14,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
-ESP32-S3 Port (ESP32-S3-WROOM-CAM board)
+ESP32-S3 Port (ESP32-S3-WROOM board)
 
 Build Date: 2026-06-23 00:00:00
 
@@ -22,22 +22,20 @@ Build Date: 2026-06-23 00:00:00
 Overview
 ------------------------------------------------------------
 fuClaw is an embedded multimodal AI agent framework, run on
-ESP32-S3 (camera-equipped boards).
+ESP32-S3.
 
 It combines:
 - Telegram Bot API (HTTPS long polling)
 - Gemini Chat Web Interface
 - Google Gemini generateContent API
 - Gemini grounded web search
-- Gemini multimodal vision reasoning
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
-- Camera capture and image upload
 - Persistent conversation memory
 - FreeRTOS concurrent task scheduling
 
 The runtime acts as a hybrid autonomous agent:
-Conversation + Reasoning + Tools + Vision + Memory + Hardware
+Conversation + Reasoning + Tools + Memory + Hardware
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
@@ -57,7 +55,7 @@ ArduinoJson validation
       ↓
 Tool Dispatcher
       ↓
-Hardware / Search / Vision Execution
+Hardware / Search
       ↓
 Result injection into memory
       ↓
@@ -92,8 +90,6 @@ Supported Tools
 /analogread               GPIO analog input
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
-/still                    Capture image
-/vision                   Capture + multimodal analysis
 /search                   Grounded web search
 /delay                    Pause execution for specified milliseconds
 /getMemory                Runtime memory diagnostics
@@ -164,15 +160,12 @@ Software Stack (ESP32-S3 port)
 - WiFiClientSecure
 - ArduinoJson
 - FreeRTOS (built into ESP32 Arduino core)
-- esp_camera.h (ESP32 Camera driver)
 - SD_MMC (built into ESP32 Arduino core)
-- Local Base64 helper (no external dependency)
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
 - Conversation history grows over time
 - String-heavy heap fragmentation risk
-- Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
 - Gemini response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
@@ -194,7 +187,6 @@ String telegrambotChatId = "xxxxxxxxxx";
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
-  "/still capture and send a camera image\n"
   "/syncrtc update the hardware RTC\n" 
   "/getrtc get the hardware RTC current time\n"
   "/getSchedule Get all scheduled tasks\n"
@@ -212,7 +204,7 @@ String systemCommand =
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 
-String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -227,7 +219,7 @@ String deviceName = "fuClaw";
 
 // Array of task-related tags used as stop markers when parsing text
 // Every tag MUST be enclosed in angle brackets '<' and '>'.
-const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>" };
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -756,18 +748,6 @@ Error response:
 }
 
 --------------------------------------------------
-Capture image from device camera:
---------------------------------------------------  
-{
-  "type":"tool_call",
-  "method":"/still",
-  "params": {
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis, If none, return NONE.>"    
-  }
-}
-
---------------------------------------------------
 Recent information query:
 --------------------------------------------------
 {
@@ -776,19 +756,6 @@ Recent information query:
   "params":{
     "query":"<what to search>",
     "task":"<what to do after search result, If none, return NONE."
-  }
-}
-
---------------------------------------------------
-Device camera vision analysis:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/vision",
-  "params": {
-    "query": "what to analyze in the image",
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "what to do after analysis, If none, return NONE."
   }
 }
 
@@ -1029,61 +996,6 @@ If the destination is unknown, the agent MUST ask the user before calling this t
 The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a LINE message or notification.
 
---------------------------------------------------
-Servo motor control:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/servo",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
-    "angle": "<Desired absolute angle from 0 to 180>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/servo",
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/servo",
-  "reason":"<error reason>",
-  "workId": "<system-provided>"
-}
-
---------------------------------------------------
-Reading the DHT11 temperature and humidity sensor:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/dht11",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/dht11",
-  "temperature": <temperature value>,
-  "humidity": <humidity value>,
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/dht11", 
-  "reason":"<error reason>",  
-  "workId": "<system-provided>"
-}
-
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
@@ -1100,57 +1012,6 @@ After /search returns:
    UNLESS execution is initiated by an authorized system process
    (scheduled task, scheduler execution, autonomous workflow, or approved automation).
 8. Only after confirmation or authorized automatic execution → tool_call JSON
-
-==================================================
-VISION FOLLOW-UP RULES
-==================================================
-
-After /vision returns:
-
-1. Analyze observation result
-2. Combine with user task
-3. Do NOT directly execute hardware
-4. If a hardware action is required, it MUST go through user confirmation,
-   UNLESS execution is initiated by an authorized system process.
-5. Only after confirmation or authorized automatic execution → tool_call JSON
-
-==================================================
-IMAGE TOOL ROUTING RULES
-==================================================
-
-/still:
-- Capture image and send to Telegram only
-- MUST NOT analyze image
-- MUST NOT make decisions
-- MUST NOT trigger hardware actions
-
-/vision:
-- Capture image from device camera and analyze it
-- Use previously cached image and analyze it if frames is false
-- query MUST use the SAME language as the user input 
-- task MUST use the SAME language as the user input
-- MUST return observation result only
-- MUST NOT directly trigger hardware actions
-
-Tool selection rules:
-
-Use /still when user explicitly requests:
-
-- capture image
-- send photo
-- take snapshot
-- show camera image
-
-Use /vision when user requests:
-
-- inspect scene
-- analyze image content
-- detect person/object
-- make condition-based decisions from camera input
-
-Never use /still as a substitute for /vision.
-
-Never use /vision when user only wants photo capture.
 
 ==================================================
 SCHEDULE TASK CREATION RULES
@@ -1250,8 +1111,6 @@ Strict execution order:
 
 1. /digitalread (if needed)
 2. /analogread (if needed)
-3. /still (if needed)
-4. /vision (if needed)
 5. /search (if needed)
 6. planner decision
 7. confirm (if hardware action AND not authorized automatic execution)
@@ -1519,37 +1378,16 @@ WiFiServer serverStream(82);
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "esp_camera.h"
 #include "FS.h"
 #include "SD_MMC.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include "Base64.h"
 
-// Camera pins
-#define PWDN_GPIO_NUM     -1
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM     15
-#define SIOD_GPIO_NUM     4
-#define SIOC_GPIO_NUM     5
-
-#define Y9_GPIO_NUM       16
-#define Y8_GPIO_NUM       17
-#define Y7_GPIO_NUM       18
-#define Y6_GPIO_NUM       12
-#define Y5_GPIO_NUM       10
-#define Y4_GPIO_NUM       8
-#define Y3_GPIO_NUM       9
-#define Y2_GPIO_NUM       11
-#define VSYNC_GPIO_NUM    6
-#define HREF_GPIO_NUM     7
-#define PCLK_GPIO_NUM     13
-
 // SD_MMC pins
 #define SD_MMC_CLK  39
 #define SD_MMC_CMD  38
 #define SD_MMC_D0   40
-
 
 // File object for SD card access
 File file;
@@ -1601,86 +1439,6 @@ String getRtcTimeString(bool filename);
 void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
-
-// Captured image buffer address and length
-// Kept as uint32_t/uint8_t* pointer pair for compatibility with all the
-// original Camera.getImage() call sites further down in this file.
-uint32_t imageAddress = 0;
-uint32_t imageLength = 0;
-
-// Initializes the ESP32 camera driver. Called once from setup().
-bool initCamera() {
-  camera_config_t config;
-  config.ledc_channel = LEDC_CHANNEL_0;
-  config.ledc_timer   = LEDC_TIMER_0;
-  config.pin_d0 = Y2_GPIO_NUM;
-  config.pin_d1 = Y3_GPIO_NUM;
-  config.pin_d2 = Y4_GPIO_NUM;
-  config.pin_d3 = Y5_GPIO_NUM;
-  config.pin_d4 = Y6_GPIO_NUM;
-  config.pin_d5 = Y7_GPIO_NUM;
-  config.pin_d6 = Y8_GPIO_NUM;
-  config.pin_d7 = Y9_GPIO_NUM;
-  config.pin_xclk = XCLK_GPIO_NUM;
-  config.pin_pclk = PCLK_GPIO_NUM;
-  config.pin_vsync = VSYNC_GPIO_NUM;
-  config.pin_href = HREF_GPIO_NUM;
-  config.pin_sscb_sda = SIOD_GPIO_NUM;
-  config.pin_sscb_scl = SIOC_GPIO_NUM;
-  config.pin_pwdn = PWDN_GPIO_NUM;
-  config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
-  config.pixel_format = PIXFORMAT_JPEG;
-
-  if (psramFound()) {
-    config.frame_size = FRAMESIZE_VGA;
-    config.jpeg_quality = 10;           
-    config.fb_count = 2;
-  } else {
-    config.frame_size = FRAMESIZE_QVGA;
-    config.jpeg_quality = 12;
-    config.fb_count = 1;
-  }
-
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    return false;
-  }
-
-  return true;
-}
-
-// Drop-in replacement for the original `Camera.getImage(0, &addr, &len)`.
-// Captures a fresh frame, copies it into a malloc'd buffer referenced by
-// imageAddress/imageLength (freeing any previous buffer first), then
-// returns the frame buffer to the camera driver. This preserves the
-// original semantics where imageAddress/imageLength can be reused by
-// later code (e.g. replyUserImage with frames=false) without needing
-// the camera driver's internal buffer to stay valid.
-void captureImage() {
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) {
-    Serial.println("[DEBUG] Camera capture failed");
-    return;
-  }
-
-  if (imageAddress != 0) {
-    free((void*)imageAddress);
-    imageAddress = 0;
-    imageLength = 0;
-  }
-
-  uint8_t *buf = (uint8_t*)malloc(fb->len);
-  if (buf) {
-    memcpy(buf, fb->buf, fb->len);
-    imageAddress = (uint32_t)buf;
-    imageLength = (uint32_t)fb->len;
-  } else {
-    Serial.println("[DEBUG] malloc failed for camera frame copy");
-  }
-
-  esp_camera_fb_return(fb);
-}
 
 #include <stdio.h>
 #include <time.h>
@@ -2008,97 +1766,6 @@ String lineSendMessage(String token, String targetId, String message) {
   return getBody;
 }
 
-// Capture a still image from camera and upload it to Telegram as JPEG.
-String telegramSendCapturedImage(String token, String chat_id, bool frames) {
-  const char* myDomain = "api.telegram.org";
-  String getAll="", getBody = "";
-  WiFiClientSecure client;
-  client.setInsecure();
-
-  if (client.connect(myDomain, 443)) {
-
-    if (frames)
-      captureImage();
-    else if (!frames && imageLength == 0) {
-      client.stop();
-      return "Previous image does not exist";
-    }
-
-    uint8_t *fbBuf = (uint8_t*)imageAddress;
-    size_t fbLen = imageLength;
-
-    String head =
-      "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
-      + chat_id +
-      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
-
-    String tail = "\r\n--Taiwan--\r\n";
-
-    size_t imageLen = imageLength;
-    size_t extraLen = head.length() + tail.length();
-    size_t totalLen = imageLen + extraLen;
-
-    client.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
-    client.println("Host: " + String(myDomain));
-    client.println("Content-Length: " + String(totalLen));
-    client.println("Content-Type: multipart/form-data; boundary=Taiwan");
-    client.println();
-
-    client.print(head);
-
-    // Send JPEG data in chunks
-    for (size_t n=0;n<fbLen;n=n+1024) {
-      if (n+1024<fbLen) {
-        client.write(fbBuf, 1024);
-        fbBuf += 1024;
-      }
-      else if (fbLen%1024>0) {
-        size_t remainder = fbLen%1024;
-        client.write(fbBuf, remainder);
-      }
-    }
-
-    client.print(tail);
-
-    int waitTime = 10000;
-    unsigned long startTime = millis();
-    bool state = false;
-
-    while ((startTime + waitTime) > millis()) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-
-      while (client.available()) {
-        char c = client.read();
-
-        if (state)
-          getBody += String(c);
-
-        if (c == '\n') {
-          if (getAll.length()==0)
-            state=true;
-          getAll = "";
-        }
-        else if (c != '\r')
-          getAll += String(c);
-
-        startTime = millis();
-      }
-
-      if (getBody.length()>0)
-        break;
-    }
-
-    client.stop();
-    Serial.println();
-
-  } else {
-    getBody="Connected to api.telegram.org failed.";
-    Serial.println("Connected to api.telegram.org failed.");
-  }
-
-  return getBody;
-}
-
 // Cleans a text string by removing timestamps, workId, and truncating at any task tag
 // Returns "NONE" if the text is empty or explicitly marked as none
 String removeTimestamps(String workId, String timestamps, String text) {
@@ -2135,35 +1802,6 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 		mainPageHTML += text +"\n";
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
-}
-
-String replyUserImage(String workId, bool frames) {
-  if (workId.startsWith(String(taskTags[0]))) {
-      if (frames)
-          captureImage();
-          
-      uint8_t* fbBuf = (uint8_t*)imageAddress;
-      size_t   fbLen = imageLength;
-
-      char *input = (char *)fbBuf;
-      char output[base64_enc_len(3)];
-                  
-      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
-      String imageFile = "<img src='data:image/jpeg;base64,";
-      imageFile.reserve(estimatedSize);
-      
-      for (int i = 0; i < fbLen; i++) {
-          base64_encode(output, (input++), 3);
-          if (i % 3 == 0) imageFile += String(output);
-      }
-      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
-	  
-	  return "Image file created.";
-  }
-  else
-    return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
-
-  return "";
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
@@ -2562,129 +2200,6 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   return responseText;
 }
 
-// Capture camera frame and send it to Gemini Vision for multimodal analysis
-String geminiVisionRequest(String workId, String message, bool frames = true) {
-  String timestamps = "\n" + workId;
-
-  message = message + "\n\nRTC current time: " + getRtcTimeString();
-  
-  historicalMessages += buildGeminiMessage("user", message + timestamps);
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  String responseText = "";
-  const char* myDomain = "generativelanguage.googleapis.com";
-	  
-  client.setTimeout(10000);
-	
-  if (client.connect(myDomain, 443)) {
-
-    if (frames)
-      captureImage();
-    else if (!frames && imageLength == 0) {
-      client.stop();
-      
-      responseText = "Previous image does not exist";
-      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
-
-      return responseText;
-    }
-    
-    uint8_t *fbBuf = (uint8_t*)imageAddress;
-    size_t fbLen = imageLength;
-
-    char *input = (char *)fbBuf;
-    char output[base64_enc_len(3)];
-    String imageFile = "";
-    
-    for (size_t i = 0; i < fbLen; i++) {
-      base64_encode(output, (input++), 3);
-      if (i % 3 == 0) imageFile += String(output);
-    }
-
-    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
-                  "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
-                  imageFile + "\"}}]}]}";
-
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
-    client.println("Host: " + String(myDomain));
-    client.println("Content-Type: application/json; charset=utf-8");
-    client.println("Content-Length: " + String(Data.length()));
-    client.println("Connection: close");
-    client.println();
-    
-    for (size_t i = 0; i < Data.length(); i += 1024) {
-      client.print(Data.substring(i, i + 1024));
-    }
-
-    String body = "";
-    unsigned long timeout = millis() + 20000;
-    bool headersEnded = false;
-    String line = "";
-
-    while ((client.connected() || client.available()) && millis() < timeout) {
-      while (client.available()) {
-        char c = client.read();
-
-        if (!headersEnded) {
-          if (c == '\n') {
-            if (line.length() <= 1) {
-              headersEnded = true;
-            }
-            line = "";
-          } else if (c != '\r') {
-            line += c;
-          }
-        } else {
-          body += c;
-          timeout = millis() + 20000;
-        }
-      }
-      vTaskDelay(1);
-    }
-    
-    client.stop();   
-
-    int jsonStart = body.indexOf('{'); 
-    if (jsonStart != -1) { 
-      body = body.substring(jsonStart);
-    }
-
-    DynamicJsonDocument doc(8192);
-    DeserializationError error = deserializeJson(doc, body);
-
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed (geminiSearchRequest):\n" + body);
-      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
-    } 
-    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
-      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    } 
-    else if (doc["error"]) {
-      responseText = "[DEBUG] Gemini API (Vision) Error: " + doc["error"]["message"].as<String>();
-      Serial.println(responseText);
-	  responseText = "Gemini API (Vision) Error";
-    } 
-    else {
-      responseText = "Unexpected response from Gemini Vision.";
-    }
-
-  } else {
-    Serial.println("Failed to connect to Gemini API (Vision)");
-    responseText = "Connection failed";
-  }
-
-  if (responseText == "") {
-    responseText = "Gemini Vision did not respond. Please try again.";
-  }
-
-  responseText = removeTimestamps(workId, timestamps, responseText);
-  
-  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
-
-  return responseText;
-}
-
 // Get current memory usage information
 String getMemoryInfo() {
   String msg = "";
@@ -2848,27 +2363,6 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
 
       evaluateWorkflowContinuation(workId, reCheck); 
-      
-    } 
-    else if (command == "/still") {
-      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
-      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-      String res = replyUserImage(workId, frames);
-
-      res.replace("\\", "\\\\");
-      res.replace("\"", "\\\"");   
-       
-      String response =
-        "{\"method\":\"/still\","
-        "\"result\":\"" + res + "\","
-        "\"workId\":\"" + workId + "\"}";
-		
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
-
-      evaluateWorkflowContinuation(workId, reCheck, task);
       
     } 
     else if (command == "/syncrtc") {
@@ -3147,18 +2641,6 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       evaluateWorkflowContinuation(workId, reCheck);
         
     } 
-    else if (command == "/vision") {
-      String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
-      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
-      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-	  
-      String response = geminiVisionRequest(workId, query, frames);
-      handleAgentResponse(workId, response);
-	  
-      executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
-      
-      evaluateWorkflowContinuation(workId, reCheck, task);
-    }
   	else if (command == "/reboot") {
   	  replyUserMessage(workId, "Rebooting the device, please wait...");
 
@@ -3987,78 +3469,6 @@ void task_getRequest(void *param) {
   }
 }
 
-// Stream.
-void task_getRequestStream(void *param) {
-  (void)param;
-  while (1) {
-    WiFiClient client = serverStream.available();
-    
-    if (client) {
-      String currentLine = "";
-
-      while (client.connected()) {
-        if (client.available()) {
-          char c = client.read();
-          if (c == '\n') {
-            if (currentLine.length() == 0) {
-             String head = "--Taiwan\r\nContent-Type: image/jpeg\r\n\r\n";
-            client.println("HTTP/1.1 200 OK");
-            client.println("Access-Control-Allow-Origin: *");
-            client.println("Connection: keep-alive");
-            client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
-            client.println();
-            while(client.connected()) {
-              // ESP32-S3 PORT: Camera.getImage() -> esp_camera_fb_get()/
-              // esp_camera_fb_return(). Unlike captureImage() used
-              // elsewhere, this streaming loop fetches and immediately
-              // returns each frame buffer directly (no malloc/copy)
-              // since nothing needs to persist it between frames.
-              camera_fb_t *fb = esp_camera_fb_get();
-              if (!fb) {
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                continue;
-              }
-              uint8_t *fbBuf = fb->buf;
-              size_t fbLen = fb->len;
-              client.print(head);
-              for (size_t n=0;n<fbLen;n=n+1024) {
-                  if (n+1024<fbLen) {
-                    client.write(fbBuf, 1024);
-                    fbBuf += 1024;
-                }
-                else if (fbLen%1024>0) {
-                  size_t remainder = fbLen%1024;
-                  client.write(fbBuf, remainder);
-                }
-              }
-              client.print("\r\n");
-              esp_camera_fb_return(fb);
-              
-              vTaskDelay(10 / portTICK_PERIOD_MS);
-            }
-            break;
-            } else {
-              currentLine = "";
-            }
-          }
-          else if (c != '\r') {
-            currentLine += c;
-          }
-
-          if (currentLine.indexOf(" HTTP/1.")!=-1) {
-            currentLine="";
-          }
-        }
-      }
-      delay(1);
-      client.stop();
-    }
-    else {
-      vTaskDelay(5 / portTICK_PERIOD_MS);
-    }
-  }
-}
-
 // Background task for continuous Telegram polling
 void task_getTelegramMessage(void *param) {
   (void)param;
@@ -4069,33 +3479,6 @@ void task_getTelegramMessage(void *param) {
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     
   }
-}
-
-// Periodic system check task
-void task_theft_detection(void *param) {
-  (void)param;
-  while (1) {
-	  
-    vTaskDelay(300000 / portTICK_PERIOD_MS);
-    
-    // Wait until Telegram task is idle
-    botClient.stop();
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    
-    Serial.println("\n\nExecuting Skill: theft_detection\n\n");
-
-    String workId = String(taskTags[4]) + " " + getRtcTimeString();
-    
-    evaluateWorkflowContinuation(
-		workId, 
-		true, 
-		"Must execute skill theft_detection. Return ONLY tool_call JSON."
-	);
-
-    storeDataToFile(memoryFilename, historicalMessages);
-
-  }
-  
 }
 
 // Returns the given integer value as a zero-padded two-digit string.
@@ -4466,18 +3849,10 @@ void setup() {
   if (memory != "")
     historicalMessages = memory;
 
-  if (!initCamera()) {
-    Serial.println("[DEBUG] Camera initialization failed. Still images / vision / stream will not work.");
-  }
-  else {
-    Serial.println("Camera initialization successful.");
-  }
-
   initWiFi();  
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
-  Serial.println("Video stream: http://192.168.1.1:82"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println();  
@@ -4507,19 +3882,7 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_task_getRequest failed");
-  } 
-
-  if (xTaskCreate(
-        task_getRequestStream,
-        (const char *)"task_getRequestStream",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_getRequestStream failed");
-  }          
+  }        
 
   if (xTaskCreate(
         task_getTelegramMessage,
@@ -4544,21 +3907,6 @@ void setup() {
 
     Serial.println("Create task_time_scheduling failed");
   }  
-     
-/* 
-  if (xTaskCreate(
-        task_theft_detection,
-        (const char *)"task_theft_detection",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_theft_detection failed");
-  }   
-
-*/   
 
   // Indicator LED  
   pinMode(LED_BUILTIN, OUTPUT);  
@@ -4572,8 +3920,7 @@ void setup() {
     }
 	
     Serial.println("STA mode"); 
-    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
-    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");       
     Serial.println();
 
     historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));

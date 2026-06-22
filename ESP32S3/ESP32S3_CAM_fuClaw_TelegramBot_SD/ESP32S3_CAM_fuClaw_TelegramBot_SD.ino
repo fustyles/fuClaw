@@ -8,20 +8,21 @@ Author:
 
 Repository:
   https://github.com/fustyles/fuClaw
+
 ------------------------------------------------------------
 Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
+ESP32-S3 Port (ESP32-S3-WROOM-CAM board)
 
-Build Date: 2026-06-23 00:00
+Build Date: 2026-06-23 00:00:00
+
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
-fuClaw is an embedded multimodal AI agent framework running
-on Realtek Ameba Pro2 devices:
-- AMB82-mini
-- HUB 8735 Ultra
+fuClaw is an embedded multimodal AI agent framework, run on
+ESP32-S3 (camera-equipped boards).
 
 It combines:
 - Telegram Bot API (HTTPS long polling)
@@ -40,10 +41,10 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
-Telegram / MQTT / Web Chat User
+Telegram / Web Chat User
 ↓
 Communication Task
-(Telegram Long Polling / MQTT / Web Chat)
+(Telegram Long Polling / Web Chat)
       ↓
 Message Router
       ↓
@@ -108,7 +109,6 @@ Supported Tools
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
 /telegramSendMessage      Send a message to Telegram Bot
-/telegramSendImage        Send a video snapshot to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Persistent Files
@@ -147,38 +147,26 @@ Conversation state is restored automatically on boot.
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
-Confirmed device mappings only.
+Confirmed device mappings carried over from the Ameba Pro2
+original. VERIFY AGAINST YOUR OWN BOARD before relying on them.
 
-AMB82-mini
-- GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24
-- ADC: 9, 10, 11, 21, 22
-- PWM: 1, 2, 3, 4, 5, 6, 7, 8, 23
-- Green LED : GPIO 24
-- Blue LED  : GPIO 23
-
-HUB 8735 Ultra
-- Button    : GPIO 12 (input only, active-low)
-- GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24,25,26
-- ADC: 0, 1, 2, 9, 10
-- PWM: 11, 12, 13, 19, 20, 21, 22, 23, 24
-- Green LED : GPIO 25
-- Blue LED  : GPIO 26
-- Fill LED  : GPIO 13
-
-External Modules (Confirmed)
+ESP32-S3-WROOM-1-N16R8
+GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 
 Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
 ------------------------------------------------------------
-Software Stack
+Software Stack (ESP32-S3 port)
 ------------------------------------------------------------
-- WiFi.h
-- WiFiSSLClient
+- WiFi.h (ESP32 Arduino core)
+- WiFiClientSecure
 - ArduinoJson
-- FreeRTOS
-- VideoStream
-- Base64
-- AmebaFatFS
+- FreeRTOS (built into ESP32 Arduino core)
+- esp_camera.h (ESP32 Camera driver)
+- SD_MMC (built into ESP32 Arduino core)
+- Local Base64 helper (no external dependency)
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
@@ -206,7 +194,6 @@ String telegrambotChatId = "xxxxxxxxxx";
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
-  "/still capture and send a camera image\n"
   "/syncrtc update the hardware RTC\n" 
   "/getrtc get the hardware RTC current time\n"
   "/getSchedule Get all scheduled tasks\n"
@@ -768,18 +755,6 @@ Error response:
 }
 
 --------------------------------------------------
-Capture image from device camera:
---------------------------------------------------  
-{
-  "type":"tool_call",
-  "method":"/still",
-  "params": {
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis, If none, return NONE.>"    
-  }
-}
-
---------------------------------------------------
 Recent information query:
 --------------------------------------------------
 {
@@ -788,19 +763,6 @@ Recent information query:
   "params":{
     "query":"<what to search>",
     "task":"<what to do after search result, If none, return NONE."
-  }
-}
-
---------------------------------------------------
-Device camera vision analysis:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/vision",
-  "params": {
-    "query": "what to analyze in the image",
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "what to do after analysis, If none, return NONE."
   }
 }
 
@@ -1014,34 +976,6 @@ The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a Telegram message or notification.
 
 --------------------------------------------------
-Send a screen snapshot through a Telegram Bot:
---------------------------------------------------
-
-{
-  "type": "tool_call",
-  "method": "/telegramSendImage",
-  "params": {
-    "token": "<access token>",	
-    "chatId": "<chat id>",
-	"frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>"
-  }
-}
-
-Requirements:
-
-token and chatId are required.
-chatId specifies the target Telegram chat.
-The target may be:
-Private user chat
-Group chat
-Supergroup
-Channel
-If the token is unavailable, the agent MUST ask the user before calling this tool.
-If the target chat is unknown, the agent MUST ask the user before calling this tool.
-The tool call MUST NOT be generated until all required parameters are available.
-Use this tool when the user requests sending a Telegram message or notification.
-
---------------------------------------------------
 Send a message through a LINE Bot:
 --------------------------------------------------
 
@@ -1068,6 +1002,61 @@ If the token is unavailable, the agent MUST ask the user before calling this too
 If the destination is unknown, the agent MUST ask the user before calling this tool.
 The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a LINE message or notification.
+
+--------------------------------------------------
+Servo motor control:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/servo",
+  "params": {
+    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
+    "angle": "<Desired absolute angle from 0 to 180>"
+  }
+}
+
+Success response:
+{
+  "status": "success",
+  "method": "/servo",
+  "workId": "<system-provided>"
+}
+
+Error response:
+{
+  "status": "error",
+  "method": "/servo",
+  "reason":"<error reason>",
+  "workId": "<system-provided>"
+}
+
+--------------------------------------------------
+Reading the DHT11 temperature and humidity sensor:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/dht11",
+  "params": {
+    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
+  }
+}
+
+Success response:
+{
+  "status": "success",
+  "method": "/dht11",
+  "temperature": <temperature value>,
+  "humidity": <humidity value>,
+  "workId": "<system-provided>"
+}
+
+Error response:
+{
+  "status": "error",
+  "method": "/dht11", 
+  "reason":"<error reason>",  
+  "workId": "<system-provided>"
+}
 
 ==================================================
 SEARCH FOLLOW-UP RULES
@@ -1098,44 +1087,6 @@ After /vision returns:
 4. If a hardware action is required, it MUST go through user confirmation,
    UNLESS execution is initiated by an authorized system process.
 5. Only after confirmation or authorized automatic execution → tool_call JSON
-
-==================================================
-IMAGE TOOL ROUTING RULES
-==================================================
-
-/still:
-- Capture image and send to Telegram only
-- MUST NOT analyze image
-- MUST NOT make decisions
-- MUST NOT trigger hardware actions
-
-/vision:
-- Capture image from device camera and analyze it
-- Use previously cached image and analyze it if frames is false
-- query MUST use the SAME language as the user input 
-- task MUST use the SAME language as the user input
-- MUST return observation result only
-- MUST NOT directly trigger hardware actions
-
-Tool selection rules:
-
-Use /still when user explicitly requests:
-
-- capture image
-- send photo
-- take snapshot
-- show camera image
-
-Use /vision when user requests:
-
-- inspect scene
-- analyze image content
-- detect person/object
-- make condition-based decisions from camera input
-
-Never use /still as a substitute for /vision.
-
-Never use /vision when user only wants photo capture.
 
 ==================================================
 SCHEDULE TASK CREATION RULES
@@ -1486,30 +1437,55 @@ int scheduleTimeout = 5;    // minutes
 String executedTodayTasks = "";
 int executedTodayDate = 0;
 
-// Indicator LED output pin
-int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
-
 // Last Telegram message ID
 long lastMessageId = 0;
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 // SSL client for secure Telegram polling
-WiFiSSLClient botClient;
+// NOTE: setInsecure() disables certificate verification, matching the
+// original Ameba WiFiSSLClient behavior (no cert pinning). For production
+// use consider supplying a root CA with botClient.setCACert(...).
+WiFiClientSecure botClient;
 
-char channel_ap[] = "2";
 WiFiServer server(81);
 WiFiServer serverStream(82);
 
-#include "Base64.h"
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "esp_camera.h"
+#include "FS.h"
+#include "SD_MMC.h"
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+#include "Base64.h"
 
-#include "AmebaFatFS.h"
+// Camera pins
+#define PWDN_GPIO_NUM     -1
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM     15
+#define SIOD_GPIO_NUM     4
+#define SIOC_GPIO_NUM     5
 
-// FAT file system instance
-AmebaFatFS fs;
+#define Y9_GPIO_NUM       16
+#define Y8_GPIO_NUM       17
+#define Y7_GPIO_NUM       18
+#define Y6_GPIO_NUM       12
+#define Y5_GPIO_NUM       10
+#define Y4_GPIO_NUM       8
+#define Y3_GPIO_NUM       9
+#define Y2_GPIO_NUM       11
+#define VSYNC_GPIO_NUM    6
+#define HREF_GPIO_NUM     7
+#define PCLK_GPIO_NUM     13
+
+// SD_MMC pins
+#define SD_MMC_CLK  39
+#define SD_MMC_CMD  38
+#define SD_MMC_D0   40
+
 
 // File object for SD card access
 File file;
@@ -1562,19 +1538,94 @@ void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
 
-#include "VideoStream.h"
-
-// Camera video configuration
-VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
-//VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
-
 // Captured image buffer address and length
+// Kept as uint32_t/uint8_t* pointer pair for compatibility with all the
+// original Camera.getImage() call sites further down in this file.
 uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
 
+// Initializes the ESP32 camera driver. Called once from setup().
+bool initCamera() {
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer   = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  config.pixel_format = PIXFORMAT_JPEG;
+
+  if (psramFound()) {
+    config.frame_size = FRAMESIZE_VGA;
+    config.jpeg_quality = 10;           
+    config.fb_count = 2;
+  } else {
+    config.frame_size = FRAMESIZE_QVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+  }
+
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    return false;
+  }
+
+  return true;
+}
+
+// Drop-in replacement for the original `Camera.getImage(0, &addr, &len)`.
+// Captures a fresh frame, copies it into a malloc'd buffer referenced by
+// imageAddress/imageLength (freeing any previous buffer first), then
+// returns the frame buffer to the camera driver. This preserves the
+// original semantics where imageAddress/imageLength can be reused by
+// later code (e.g. replyUserImage with frames=false) without needing
+// the camera driver's internal buffer to stay valid.
+void captureImage() {
+  camera_fb_t *fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("[DEBUG] Camera capture failed");
+    return;
+  }
+
+  if (imageAddress != 0) {
+    free((void*)imageAddress);
+    imageAddress = 0;
+    imageLength = 0;
+  }
+
+  uint8_t *buf = (uint8_t*)malloc(fb->len);
+  if (buf) {
+    memcpy(buf, fb->buf, fb->len);
+    imageAddress = (uint32_t)buf;
+    imageLength = (uint32_t)fb->len;
+  } else {
+    Serial.println("[DEBUG] malloc failed for camera frame copy");
+  }
+
+  esp_camera_fb_return(fb);
+}
+
 #include <stdio.h>
 #include <time.h>
-#include "rtc.h"
+
+// ---------------------------------------------------------------------
+// Time / RTC (NTP + ESP32 internal RTC replaces Ameba rtc.h hardware RTC)
+// getRtcTimeString() / isExecutedToday() / etc. further down still call
+// the same epoch-based logic; only the time source changed.
+// ---------------------------------------------------------------------
 struct tm *timeinfo;
 int rtcYear = 0;
 int rtcMonth = 0;
@@ -1584,8 +1635,6 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
-
-#define CONFIG_INIC_IPC_HIGH_TP
 
 // Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
@@ -1634,7 +1683,8 @@ String getGeminiDatetime() {
                    geminiMaxOutputTokens +
                    ", \"temperature\": " + geminiTemperature + "}}";
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   String getDatetime = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
@@ -1688,11 +1738,15 @@ String getGeminiDatetime() {
   
 }
 
+// Returns the current local time as a formatted string.
+// ESP32-S3 PORT: reads from the ESP32 internal RTC (kept in sync by NTP,
+// see rtcInitialTime() below) via the standard time() call, replacing
+// the original Ameba hardware rtc.Read() epoch read. Call sites and
+// output format are unchanged.
 String getRtcTimeString(bool filename = false) {
 
-  long long epoch = rtc.Read();
-
-  time_t rawtime = (time_t)epoch;
+  time_t rawtime;
+  time(&rawtime);
 
   struct tm *timeinfo = localtime(&rawtime);
 
@@ -1726,67 +1780,64 @@ String getRtcTimeString(bool filename = false) {
   return String(buffer);
 }
 
-// Initialize the RTC using Gemini-synchronized local time.
+// Returns the UTC offset in seconds for the configured timeZone string.
+// ESP32-S3 PORT helper: configTime() needs a numeric GMT offset rather
+// than an IANA name, so common zones used by this project are mapped
+// here. Add more entries if you operate in a different timeZone.
+long timeZoneToGmtOffsetSec(String tz) {
+  if (tz == "Asia/Taipei" || tz == "Asia/Shanghai" || tz == "Asia/Singapore")
+    return 8 * 3600;
+  if (tz == "Asia/Tokyo" || tz == "Asia/Seoul")
+    return 9 * 3600;
+  if (tz == "UTC" || tz == "Etc/UTC")
+    return 0;
+  if (tz == "America/New_York")
+    return -5 * 3600;
+  if (tz == "America/Los_Angeles")
+    return -8 * 3600;
+  if (tz == "Europe/London")
+    return 0;
+  // Default fallback: Asia/Taipei (matches this project's default timeZone)
+  return 8 * 3600;
+}
+
+// Initialize / synchronize the ESP32-S3 internal clock via NTP.
+// ESP32-S3 PORT: replaces the original Ameba hardware RTC initialization
+// (which asked Gemini for the current datetime and wrote it into a
+// dedicated RTC chip). ESP32-S3 has no standalone RTC chip, so this
+// function performs a standard NTP sync instead. The function name and
+// call sites (setup(), /syncrtc tool) are kept unchanged.
 void rtcInitialTime(String workName) {
-	
+
   rtcUpdateStatus = true;
-  
-  String prompt =
-    "Convert this GMT datetime to " + timeZone + ".\n"
-    "GMT datetime: " + getGeminiDatetime() + "\n\n"
-	
-    "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
-    "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n" 
 
-    "Output requirements:\n"
-    "- Return ONLY a raw JSON object.\n"
-    "- Do NOT use markdown.\n"
-    "- Do NOT use code fences.\n"
-    "- Do NOT explain anything.\n"
-    "- Do NOT add extra text.\n"
-    "- First character must be {.\n"
-    "- Last character must be }.\n\n"
+  long gmtOffsetSec = timeZoneToGmtOffsetSec(timeZone);
+  const long daylightOffsetSec = 0;
+  const char* ntpServer1 = "pool.ntp.org";
+  const char* ntpServer2 = "time.google.com";
 
-    "Required JSON format:\n"
-    "{\n"
-    "\"rtcYear\":2026,\n"
-    "\"rtcMonth\":5,\n"
-    "\"rtcDay\":28,\n"
-    "\"rtcHour\":11,\n"
-    "\"rtcMinute\":35,\n"
-    "\"rtcSecond\":0\n"
-    "}";
+  configTime(gmtOffsetSec, daylightOffsetSec, ntpServer1, ntpServer2);
 
-  String message = geminiChatRequest(String(taskTags[1]), prompt, -1);
-
-  if (message.startsWith("{") && message.endsWith("}")) {
-
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, message);
-
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed\n" + message);
-      replyUserMessage(workName, "RTC time update failed.", "");
-      
-    }
-
-    JsonObject obj = doc.as<JsonObject>();
-
-    rtcYear   = obj["rtcYear"]   | 0;
-    rtcMonth  = obj["rtcMonth"]  | 0;
-    rtcDay    = obj["rtcDay"]    | 0;
-    rtcHour   = obj["rtcHour"]   | 0;
-    rtcMinute = obj["rtcMinute"] | 0;
-    rtcSecond = obj["rtcSecond"] | 0;
-
-  } else {
-    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-    replyUserMessage(workName, "RTC time update failed.", "");
+  struct tm timeinfoLocal;
+  int retries = 0;
+  // getLocalTime() blocks briefly and returns false until NTP responds.
+  while (!getLocalTime(&timeinfoLocal) && retries < 20) {
+    delay(500);
+    retries++;
   }
 
-  rtc.Init();
-  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
-  rtc.Write(initTime);
+  if (retries >= 20) {
+    Serial.println("[DEBUG] NTP time sync failed (rtcInitialTime)");
+    replyUserMessage(workName, "RTC time update failed.", "");
+    return;
+  }
+
+  rtcYear   = timeinfoLocal.tm_year + 1900;
+  rtcMonth  = timeinfoLocal.tm_mon + 1;
+  rtcDay    = timeinfoLocal.tm_mday;
+  rtcHour   = timeinfoLocal.tm_hour;
+  rtcMinute = timeinfoLocal.tm_min;
+  rtcSecond = timeinfoLocal.tm_sec;
 }
 
 // Send text message to Telegram bot
@@ -1799,7 +1850,8 @@ String telegramSendMessage(String token, String chatid, String text, String keyb
   if (keyboard!="")
     request += "&reply_markup="+keyboard;
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   if (client.connect(myDomain, 443)) {
     client.println("POST /bot"+token+"/sendMessage HTTP/1.1");
     client.println("Host: " + String(myDomain));
@@ -1853,7 +1905,8 @@ String lineSendMessage(String token, String targetId, String message) {
 	
   const char* myDomain = "api.line.me";
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
 
   if (client.connect(myDomain, 443)) {
     client.println("POST /v2/bot/message/push HTTP/1.1");
@@ -1895,12 +1948,13 @@ String lineSendMessage(String token, String targetId, String message) {
 String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
 
   if (client.connect(myDomain, 443)) {
 
     if (frames)
-      Camera.getImage(0, &imageAddress, &imageLength);
+      captureImage();
     else if (!frames && imageLength == 0) {
       client.stop();
       return "Previous image does not exist";
@@ -2022,7 +2076,7 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 String replyUserImage(String workId, bool frames) {
   if (workId.startsWith(String(taskTags[0]))) {
       if (frames)
-          Camera.getImage(0, &imageAddress, &imageLength);
+          captureImage();
           
       uint8_t* fbBuf = (uint8_t*)imageAddress;
       size_t   fbLen = imageLength;
@@ -2071,17 +2125,21 @@ String buildGeminiMessage(String role, String message, bool comma = true) {
 String getStringFromFile(String fileNname) {
   String data = "";
 
-  fs.begin();
-  String path = String(fs.getRootPath()) + "/" + fileNname;
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed");
+    return "";
+  }
 
-  file = fs.open(path);
+  String path = "/" + fileNname;
+
+  file = SD_MMC.open(path, FILE_READ);
 
   if (file) {
     uint32_t len = file.size();
     char *buf = (char*)malloc(len + 1);
 
     if (buf) {
-      file.read(buf, len);
+      file.read((uint8_t*)buf, len);
       buf[len] = '\0';
       data = String(buf);
       free(buf);
@@ -2090,7 +2148,7 @@ String getStringFromFile(String fileNname) {
     file.close();
   }
 
-  fs.end();
+  SD_MMC.end();
   
   return data;
 }
@@ -2098,27 +2156,30 @@ String getStringFromFile(String fileNname) {
 // Backup existing historical messages file and save updated messages to SD card
 void storeDataToFile(String filename, String data, bool timestamp = false) {
   
-  fs.begin();
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed");
+    return;
+  }
   
-  String file_path = String(fs.getRootPath());
+  String file_path = "";
   String currentFile = file_path + "/" + filename;
   
   String backupFile = currentFile + ".bak";
   if (timestamp == true)
 	  backupFile = currentFile + "_" + getRtcTimeString(true) + ".bak"; 
   
-  if (fs.exists(currentFile)) {
+  if (SD_MMC.exists(currentFile)) {
     
-    if (fs.exists(backupFile)) {
+    if (SD_MMC.exists(backupFile)) {
       
-      fs.remove(backupFile);
+      SD_MMC.remove(backupFile);
     }
     delay(100);
     
-    fs.rename(currentFile, backupFile);
+    SD_MMC.rename(currentFile, backupFile);
   }
       
-  file = fs.open(currentFile); 
+  file = SD_MMC.open(currentFile, FILE_WRITE); 
   
   if (file) {
     
@@ -2128,7 +2189,7 @@ void storeDataToFile(String filename, String data, bool timestamp = false) {
   else
 	  Serial.println("[DEBUG] File open failed: " + currentFile);
   
-  fs.end();
+  SD_MMC.end();
 }
 
 //   Send a message to another device or agent over TCP
@@ -2138,7 +2199,7 @@ String tcpSendMessage(String workId, String domain, String request) {
   
   if (client.connect(domain.c_str(), 81)) {
 	  
-    client.setRecvTimeout(20000);
+    client.setTimeout(20000);
 	
     client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
     client.println("Host: " + domain);
@@ -2235,10 +2296,11 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
                    geminiMaxOutputTokens +
                    ", \"temperature\": " + geminiTemperature + "}}";
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   String responseText = "";
 	  
-  client.setRecvTimeout(10000);
+  client.setTimeout(10000);
 		  
   if (client.connect("generativelanguage.googleapis.com", 443)) {
 
@@ -2348,10 +2410,11 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
                    geminiMaxOutputTokens +
                    ", \"temperature\": " + geminiTemperature + "}}";
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   String responseText = "";
 	  
-  client.setRecvTimeout(10000);
+  client.setTimeout(10000);
 	
   if (client.connect("generativelanguage.googleapis.com", 443)) {
 
@@ -2443,16 +2506,17 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   String responseText = "";
   const char* myDomain = "generativelanguage.googleapis.com";
 	  
-  client.setRecvTimeout(10000);
+  client.setTimeout(10000);
 	
   if (client.connect(myDomain, 443)) {
 
     if (frames)
-      Camera.getImage(0, &imageAddress, &imageLength);
+      captureImage();
     else if (!frames && imageLength == 0) {
       client.stop();
       
@@ -2964,8 +3028,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     else if (command == "/reset") {
       geminiChatReset();  
             
-	  String response = "New chat started.";
-      replyUserMessage(workId, response); 
+      String response = "New chat started.";
+      replyUserMessage(workId, response);
 
     } 
     else if (command == "/getMemory") {
@@ -3039,7 +3103,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   	  Serial.println("User requested reboot the device.");
   	  vTaskDelay(2000 / portTICK_PERIOD_MS);
   		
-  	  NVIC_SystemReset();
+  	  ESP.restart();   // ESP32-S3 PORT: NVIC_SystemReset() -> ESP.restart()
   	}
   	else if (command == "/tcpSendMessage") {
       String device = params["device"].as<String>();
@@ -3068,20 +3132,6 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
-  	else if (command == "/telegramSendImage") {
-      String token = params["token"].as<String>();
-	  String chatId = params["chatId"].as<String>();
-	  bool frames = params["frames"].as<bool>();
-	  
-      String response = telegramSendCapturedImage(token, chatId, frames);
-	  
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
-
-      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
-
-      evaluateWorkflowContinuation(workId, reCheck);
-	}	
   	else if (command == "/lineSendMessage") {
       String token = params["token"].as<String>();
 	  String targetId = params["targetId"].as<String>();
@@ -3269,7 +3319,8 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
 
   free(encodedData);
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   if (!client.connect("generativelanguage.googleapis.com", 443)) {
     Serial.println("[STT] Connection to Gemini failed");
     return "Connected to Gemini failed.";
@@ -3350,7 +3401,8 @@ uint8_t* downloadTelegramFile(String filePath) {
   if (!voiceFile) return NULL;
 
   downloadedFileSize = 0;
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
 
   if (client.connect("api.telegram.org", 443)) {
 
@@ -3402,7 +3454,8 @@ uint8_t* downloadTelegramFile(String filePath) {
  */
 String getTelegramFilePath(String fileId) {
 
-  WiFiSSLClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   String filePath = "";
   String getAll = "", getBody = "";
 
@@ -3619,9 +3672,10 @@ void getTelegramMessage() {
 
     unsigned long start = millis();
 
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
       vTaskDelay(500 / portTICK_PERIOD_MS);
   }
+
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.
@@ -3754,9 +3808,9 @@ void task_getRequest(void *param) {
             storeDataToFile(deviceFilename, currentLine);
             devicesDefinition = currentLine;
 			
-			devicesDefinitionFinal = devicesDefinition;
-			devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
-			devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+            devicesDefinitionFinal = devicesDefinition;
+            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
             systemContentReset();            
 			
@@ -3874,8 +3928,6 @@ void task_getRequestStream(void *param) {
   (void)param;
   while (1) {
     WiFiClient client = serverStream.available();
-    uint32_t img_addr = 0;
-    uint32_t img_len = 0;
     
     if (client) {
       String currentLine = "";
@@ -3892,9 +3944,18 @@ void task_getRequestStream(void *param) {
             client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
             client.println();
             while(client.connected()) {
-              Camera.getImage(0, &img_addr, &img_len);
-              uint8_t *fbBuf = (uint8_t*)img_addr;
-              size_t fbLen = img_len;
+              // ESP32-S3 PORT: Camera.getImage() -> esp_camera_fb_get()/
+              // esp_camera_fb_return(). Unlike captureImage() used
+              // elsewhere, this streaming loop fetches and immediately
+              // returns each frame buffer directly (no malloc/copy)
+              // since nothing needs to persist it between frames.
+              camera_fb_t *fb = esp_camera_fb_get();
+              if (!fb) {
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+                continue;
+              }
+              uint8_t *fbBuf = fb->buf;
+              size_t fbLen = fb->len;
               client.print(head);
               for (size_t n=0;n<fbLen;n=n+1024) {
                   if (n+1024<fbLen) {
@@ -3907,6 +3968,7 @@ void task_getRequestStream(void *param) {
                 }
               }
               client.print("\r\n");
+              esp_camera_fb_return(fb);
               
               vTaskDelay(10 / portTICK_PERIOD_MS);
             }
@@ -3926,6 +3988,9 @@ void task_getRequestStream(void *param) {
       }
       delay(1);
       client.stop();
+    }
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
     }
   }
 }
@@ -3980,10 +4045,11 @@ String twoDigits(int value) {
 
 // Checks whether a recurring task (year == 0) has already been executed today.
 // Automatically resets the daily execution record when the calendar day changes.
+// ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
 bool isExecutedToday(String task) {
 
-  long long epoch = rtc.Read();
-  time_t rawtime = (time_t)epoch;
+  time_t rawtime;
+  time(&rawtime);
   struct tm *now = localtime(&rawtime);
   int today = now->tm_mday;
 
@@ -3997,9 +4063,10 @@ bool isExecutedToday(String task) {
 
 // Marks a recurring task as executed for today by appending its name
 // to the in-memory daily execution record.
+// ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
 void markExecutedToday(const String &task) {
-  long long epoch = rtc.Read();
-  time_t rawtime = (time_t)epoch;
+  time_t rawtime;
+  time(&rawtime);
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
   executedTodayTasks += "|" + task + "|";
@@ -4065,8 +4132,9 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
   
   JsonArray tasks = doc.as<JsonArray>();
   
-  long long epoch = rtc.Read();
-  time_t rawtime = (time_t)epoch;
+  // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+  time_t rawtime;
+  time(&rawtime);
   struct tm *now = localtime(&rawtime);
 
   DynamicJsonDocument resultDoc(8192);
@@ -4223,16 +4291,14 @@ void task_time_scheduling(void *param) {
 
 // Initialize WiFi
 void initWiFi() {
-	
-  WiFi.enableConcurrent();
-  WiFi.apbegin((char*)apSsid.c_str(), (char*)apPassword.c_str(), channel_ap, 0);
+  WiFi.mode(WIFI_AP_STA);
     
-  for (int i=0;i<2;i++) {
+  for (int i=0 ; i<2 ; i++) {
 
-    if (wifiSsid=="")
+    if (wifiSsid == "")
       break;
 
-    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
     delay(1000);
 
     Serial.println();
@@ -4244,10 +4310,13 @@ void initWiFi() {
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
 
-      if ((StartTime+5000) < millis())
+      if ((StartTime + 15000) < millis())
         break;
     }
+
   }
+
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());  
   
 }
 
@@ -4270,7 +4339,7 @@ void setEnvironmentSettings(String jsonString) {
   geminiModel =  obj["gemini_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>();  
-  
+
 }
 
 String Ip2String(IPAddress ip) {
@@ -4281,21 +4350,15 @@ String Ip2String(IPAddress ip) {
 void setup() {
   Serial.begin(115200);
 
-  // Indicator LED  
-  pinMode(ledPin, OUTPUT);
+  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  
+
+  SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
   
   String env = getStringFromFile(envFilename);
   Serial.println("env.json len: " + String(env.length())); 
   if (env != "")
     setEnvironmentSettings(env);
 
-  initWiFi();
-
-  config.setRotation(0);
-  Camera.configVideoChannel(0, config);
-  Camera.videoInit();
-  Camera.channelBegin(0); 
-  
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
@@ -4312,7 +4375,7 @@ void setup() {
   if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
 	  Serial.println("System configuration failed. Restarting the MCU...");
 	  delay(5000);
-	  NVIC_SystemReset();
+	  ESP.restart();
   }
 
   String skill = getStringFromFile(skillFilename);
@@ -4339,38 +4402,26 @@ void setup() {
   if (memory != "")
     historicalMessages = memory;
 
+  initWiFi();  
+
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
   Serial.println("Video stream: http://192.168.1.1:82"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println(); 
-
-  if (WiFi.status() == WL_CONNECTED) {
-    for (int i=0 ; i<3 ; i++) {
-      digitalWrite(ledPin, 1);
-      delay(300);
-      digitalWrite(ledPin, 0);
-      delay(300);      
-    }
-	
-    Serial.println("STA mode"); 
-    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
-    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
-    Serial.println();
-
-    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
-  }  
+  Serial.println();  
 
   rtcInitialTime("RTC Initial Time");
   replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
-  long long epoch = rtc.Read();
-  time_t rawtime = (time_t)epoch;
+  // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+  time_t rawtime;
+  time(&rawtime);
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
 
+  botClient.setInsecure();
 
   server.begin(); 
   serverStream.begin();  
@@ -4437,7 +4488,26 @@ void setup() {
   }   
 
 */   
-  
+
+  // Indicator LED  
+  pinMode(LED_BUILTIN, OUTPUT);  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(LED_BUILTIN, 1);
+      delay(300);
+      digitalWrite(LED_BUILTIN, 0);
+      delay(300);      
+    }
+	
+    Serial.println("STA mode"); 
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
+    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
+    Serial.println();
+
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+  } 
+
 }
 
 // Main loop

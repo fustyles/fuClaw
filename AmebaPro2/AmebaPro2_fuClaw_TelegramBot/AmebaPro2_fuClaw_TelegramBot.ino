@@ -13,7 +13,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-22 00:00
+Build Date: 2026-06-23 00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -2210,6 +2210,8 @@ void getTelegramMessage() {
         }
       }
     }
+
+    vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -2362,7 +2364,9 @@ void task_getRequest(void *param) {
 
       client.stop();
     }
-	
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
   }
 }
 

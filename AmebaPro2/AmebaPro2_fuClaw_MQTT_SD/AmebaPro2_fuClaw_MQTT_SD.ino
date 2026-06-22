@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-22 00:00
+Build Date: 2026-06-23 00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -3743,7 +3743,9 @@ void task_getRequest(void *param) {
 
       client.stop();
     }
-	
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
   }
 }
 
