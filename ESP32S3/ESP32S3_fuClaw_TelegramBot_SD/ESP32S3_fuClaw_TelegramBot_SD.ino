@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3 Port (ESP32-S3-WROOM-CAM board)
 
-Build Date: 2026-06-22 00:00:00
+Build Date: 2026-06-23 00:00:00
 
 ------------------------------------------------------------
 Overview
@@ -3726,6 +3726,8 @@ void getTelegramMessage() {
         }
       }
     }
+
+    vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -3738,7 +3740,6 @@ void getTelegramMessage() {
       vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 
-  vTaskDelay(5 / portTICK_PERIOD_MS);
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.
@@ -4376,6 +4377,7 @@ void initWiFi() {
       if ((StartTime + 15000) < millis())
         break;
     }
+
   }
 
   WiFi.softAP(apSsid.c_str(), apPassword.c_str());  
@@ -4412,7 +4414,7 @@ String Ip2String(IPAddress ip) {
 void setup() {
   Serial.begin(115200);
 
-  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+  //WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  
 
   SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0);
   
@@ -4478,23 +4480,7 @@ void setup() {
   Serial.println("Video stream: http://192.168.1.1:82"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
-  Serial.println(); 
-
-  if (WiFi.status() == WL_CONNECTED) {
-    for (int i=0 ; i<3 ; i++) {
-      digitalWrite(LED_BUILTIN, 1);
-      delay(300);
-      digitalWrite(LED_BUILTIN, 0);
-      delay(300);      
-    }
-	
-    Serial.println("STA mode"); 
-    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
-    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
-    Serial.println();
-
-    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
-  }  
+  Serial.println();  
 
   rtcInitialTime("RTC Initial Time");
   replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
@@ -4505,6 +4491,8 @@ void setup() {
   time(&rawtime);
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
+
+  botClient.setInsecure();
 
   server.begin(); 
   serverStream.begin();  
@@ -4572,10 +4560,25 @@ void setup() {
 
 */   
 
-  botClient.setInsecure();
-
   // Indicator LED  
   pinMode(LED_BUILTIN, OUTPUT);  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(LED_BUILTIN, 1);
+      delay(300);
+      digitalWrite(LED_BUILTIN, 0);
+      delay(300);      
+    }
+	
+    Serial.println("STA mode"); 
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
+    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
+    Serial.println();
+
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+  } 
+
 }
 
 // Main loop
