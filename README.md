@@ -223,7 +223,7 @@ Known Limitations
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
 
 ------------------------------------------------------------
-Claude Evaluation
+AI Evaluation
 ------------------------------------------------------------
 
 # fuClaw AI Framework
