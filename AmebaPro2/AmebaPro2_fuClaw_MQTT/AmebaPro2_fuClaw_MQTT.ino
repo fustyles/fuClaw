@@ -597,7 +597,15 @@ String mqttSendText(String topic, String text) {
   
     // Attempt to connect (no-op if already connected)
     if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
-      bool isPublished = mqttClient.publish(topic.c_str(), text.c_str());
+
+      mqttClient.beginPublish(topic.c_str(), text.length(), false);
+
+      mqttClient.write(
+          (const uint8_t*)text.c_str(),
+          text.length()
+      );
+
+      bool isPublished = mqttClient.endPublish();          
 
       if (isPublished)
           return "Publishing message to MQTT Successfully";
@@ -2345,6 +2353,8 @@ void reconnect() {
             // Re-subscribe to the inbound command topic after each reconnect
             mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
         } else {
+            Serial.print("MQTT connection failed, state=");
+            Serial.println(mqttClient.state());			
             // Wait before retrying to prevent rapid reconnect storms
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }

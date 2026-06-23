@@ -120,10 +120,25 @@ String generateMqttClientId() {
  * @param text   UTF-8 payload to publish.
  */
 void mqttSendText(String topic, String text) {
-    // Attempt to connect (no-op if already connected)
     if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
-        mqttClient.publish(topic.c_str(), text.c_str());
+
+      mqttClient.beginPublish(topic.c_str(), text.length(), false);
+
+      mqttClient.write(
+          (const uint8_t*)text.c_str(),
+          text.length()
+      );
+
+      bool isPublished = mqttClient.endPublish();          
+
+      if (isPublished)
+          Serial.println("Publishing message to MQTT Successfully");
+      else
+          Serial.println("Publishing message to MQTT Failed");
     }
+    else
+    	Serial.println("Connect to MQTT Server Failed");
+	
 }
 
 // ============================================================
