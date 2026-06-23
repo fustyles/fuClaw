@@ -2104,7 +2104,15 @@ String mqttSendText(String topic, String text) {
   
     // Attempt to connect (no-op if already connected)
     if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
-      bool isPublished = mqttClient.publish(topic.c_str(), text.c_str());
+
+      mqttClient.beginPublish(topic.c_str(), text.length(), false);
+
+      mqttClient.write(
+          (const uint8_t*)text.c_str(),
+          text.length()
+      );
+
+      bool isPublished = mqttClient.endPublish();          
 
       if (isPublished)
           return "Publishing message to MQTT Successfully";
@@ -2378,8 +2386,9 @@ void replyUserMessage(String workId, String text) {
 
 	if (workId.startsWith(String(taskTags[0])))
 		mainPageHTML += text +"\n";
-	else
+	else {
 		mqttSendText(mqttPublishTextTopic, text);
+  }
 }
 
 String replyUserImage(String workId, bool frames) {
@@ -4236,7 +4245,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
         message[length] = '\0';            // Append null terminator
 
     		String text = String(message);   // Dispatch to command handler
-    
+
     		if (text == "help") {
     		  executeTool(workId, "/help", JsonObject());
     		  
@@ -4277,6 +4286,8 @@ void reconnect() {
             mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
         } else {
             // Wait before retrying to prevent rapid reconnect storms
+            Serial.print("MQTT connection failed, state=");
+            Serial.println(mqttClient.state());
             vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
     }
