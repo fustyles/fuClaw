@@ -25,7 +25,7 @@ fuClaw is an embedded multimodal AI agent framework, run on
 ESP32-S3 (camera-equipped boards).
 
 It combines:
-- Telegram Bot API (HTTPS long polling)
+- MQTT messaging
 - Gemini Chat Web Interface
 - Google Gemini generateContent API
 - Gemini grounded web search
@@ -41,10 +41,10 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
-Telegram / Web Chat User
-↓
+MQTT / Web Chat User
+      ↓
 Communication Task
-(Telegram Long Polling / Web Chat)
+(MQTT / Web Chat)
       ↓
 Message Router
       ↓
@@ -108,14 +108,15 @@ Supported Tools
 /modifySchedule           Modify or delete scheduled tasks
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
+/mqttSendMessage          Send a message to another device or agent over TCP or any subscriber via MQTT
+/mqttSendImage            Send a video snapshot to another fuClaw device or any subscriber via MQTT
 /telegramSendMessage      Send a message to Telegram Bot
-/telegramSendImage        Send a video snapshot to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
 env.json
-  WiFi / Telegram / Gemini credentials / Time zone
+  Device name / WiFi / MQTT / Gemini credentials / Time zone
 
 device.md
   Devices definition
@@ -163,6 +164,7 @@ Software Stack (ESP32-S3 port)
 ------------------------------------------------------------
 - WiFi.h (ESP32 Arduino core)
 - WiFiClientSecure
+- PubSubClient
 - ArduinoJson
 - FreeRTOS (built into ESP32 Arduino core)
 - esp_camera.h (ESP32 Camera driver)
@@ -188,10 +190,6 @@ String wifiPassword = "xxxxxxxxxx";
 String apSsid = "fuclaw";
 String apPassword = "12345678";
 
-// Telegram bot configuration
-String telegrambotToken = "xxxxxxxxxx";
-String telegrambotChatId = "xxxxxxxxxx";
-
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
@@ -212,7 +210,21 @@ String systemCommand =
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 
-String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+// MQTT broker settings
+String mqttServer   = "mqttgo.io";                          // Broker hostname or IP
+uint16_t mqttPort   = 1883;                                  // Standard MQTT port (unencrypted)
+String mqttUser     = "";                                    // Leave empty if no auth required
+String mqttPassword = "";                                    // Leave empty if no auth required
+
+// MQTT topic strings
+//   Subscribe topic : broker pushes incoming commands here
+//   Publish topics  : device pushes text replies and camera images here
+String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
+String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
+String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+
+// Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
+String wifiClientId = "";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -1539,14 +1551,14 @@ long lastMessageId = 0;
 
 // ------------------------------------------------------------
 // FreeRTOS mutex handles
-// botClientMutex : protects the shared botClient SSL connection
+// mqttClientMutex : protects the shared mqttClient SSL connection
 // stateMutex     : protects historicalMessages, scheduleTasks,
 //                  executedTodayTasks, executeToolHistory and
 //                  any other shared String state
 // sdMutex        : serialises all SD_MMC.begin/end access
 //                  (SD_MMC driver is NOT re-entrant)
 // ------------------------------------------------------------
-SemaphoreHandle_t botClientMutex = NULL;
+SemaphoreHandle_t mqttClientMutex = NULL;
 SemaphoreHandle_t stateMutex     = NULL;
 SemaphoreHandle_t sdMutex        = NULL;
 SemaphoreHandle_t imageMutex     = NULL;
@@ -1577,11 +1589,8 @@ SemaphoreHandle_t imageMutex     = NULL;
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
-// SSL client for secure Telegram polling
-// NOTE: setInsecure() disables certificate verification, matching the
-// original Ameba WiFiSSLClient behavior (no cert pinning). For production
-// use consider supplying a root CA with botClient.setCACert(...).
-WiFiClientSecure botClient;
+// Underlying TCP socket used by PubSubClient
+WiFiClient wifiClient;
 
 WiFiServer server(81);
 WiFiServer serverStream(82);
@@ -1595,6 +1604,11 @@ WiFiServer serverStream(82);
 
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
+
+#include <PubSubClient.h> // MQTT client (Nick O'Leary / knolleary)
+
+// MQTT client instance bound to the WiFi socket
+PubSubClient mqttClient(wifiClient);
 
 #include "FS.h"
 #include "SD_MMC.h"
@@ -1635,6 +1649,7 @@ String skillFilename = "skill.md";
 String configpageFilename = "index.html";    // Configuration manager
 String agentpageFilename = "index_agent.html";    // Agent Manager
 String chatpageFilename = "index_chat.html";    // Web Chat
+String mqttchatpageFilename = "index_mqtt_chat.html";    // MQTT Chat
 String schedulepageFilename = "index_schedule.html";    // Schedule manager
 
 // schedule tasks
@@ -1646,10 +1661,9 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
 String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString(bool filename);
-void replyUserMessage(String workId, String text, String keyboard);
+void replyUserMessage(String workId, String text);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
-
 
 // Captured image buffer address and length
 uint32_t imageAddress = 0;
@@ -1752,6 +1766,17 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
+
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
 
 // Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
@@ -1945,7 +1970,7 @@ void rtcInitialTime(String workName) {
 
   if (retries >= 20) {
     Serial.println("[DEBUG] NTP time sync failed (rtcInitialTime)");
-    replyUserMessage(workName, "RTC time update failed.", "");
+    replyUserMessage(workName, "RTC time update failed.");
     return;
   }
 
@@ -2059,6 +2084,161 @@ String lineSendMessage(String token, String targetId, String message) {
   }
   
   return getBody;
+}
+
+// ============================================================
+//  MQTT: Send Text Message
+// ============================================================
+
+/**
+ * @brief Publish a plain-text message to an MQTT topic.
+ *
+ * Connects (or re-uses an existing connection) to the broker and
+ * publishes a single UTF-8 string payload.  The MQTT QoS level used
+ * by PubSubClient::publish() is QoS 0 (at-most-once / fire-and-forget).
+ *
+ * @param topic  Destination MQTT topic string.
+ * @param text   UTF-8 payload to publish.
+ */
+String mqttSendText(String topic, String text) {
+  
+    // Attempt to connect (no-op if already connected)
+    if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+      bool isPublished = mqttClient.publish(topic.c_str(), text.c_str());
+
+      if (isPublished)
+          return "Publishing message to MQTT Successfully";
+      else
+          return "Publishing message to MQTT Failed";
+    }
+    else
+    	return "Connect to MQTT Server Failed";
+	
+}
+
+// ============================================================
+//  MQTT: Capture & Send Still Image
+// ============================================================
+
+/**
+ * @brief Capture a JPEG frame from the camera and publish it to an MQTT topic.
+ *
+ * Two encoding modes are supported:
+ *   - Raw binary  (base64 = false, default): the JPEG bytes are streamed
+ *     directly in MQTT_MAX_PACKET_SIZE chunks via beginPublish / write /
+ *     endPublish.  Suitable for subscribers that can receive binary payloads.
+ *   - Base64       (base64 = true): the JPEG is Base64-encoded and prefixed
+ *     with a data-URI header ("data:image/jpeg;base64,…").  Useful for
+ *     web-based MQTT dashboards that render <img src="…"> tags directly.
+ *
+ * @param topic    Destination MQTT topic string.
+ * @param capture  true  = call Camera.getImage() to grab a fresh frame before
+ *                         publishing (normal use case for /still command).
+ *                 false = reuse the last frame already stored in img_addr /
+ *                         img_len (e.g. to publish the same frame to a second
+ *                         topic without incurring another capture latency).
+ * @param base64   true  = encode the frame as a Base64 data-URI string.
+ *                 false = publish raw binary JPEG bytes (default).
+ */
+String mqttSendImage(String topic, bool capture, bool base64 = false) {
+	
+	if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+		return "Image buffer busy, please try again.";
+	}	
+	
+	String response = "";
+
+    // Attempt to connect (or re-use the existing session)
+    if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+
+		if (capture)
+		  captureImage();
+		else if (!capture && imageLength == 0) {
+		  xSemaphoreGive(imageMutex);
+		  return "Previous image does not exist";
+		}
+
+        // Cast the DMA buffer address to a byte pointer for MQTT write operations
+        uint8_t* fbBuf = (uint8_t*)imageAddress;
+        size_t   fbLen = imageLength;
+
+        boolean isPublished;
+
+        if (!base64) {
+            // ---- Raw binary path ----------------------------------------
+            // Open a "large payload" MQTT publish transaction.
+            // PubSubClient::beginPublish() writes the fixed MQTT header and
+            // the payload-length field; subsequent write() calls stream the
+            // body; endPublish() flushes and finalises the packet.
+            mqttClient.beginPublish(topic.c_str(), fbLen, false);
+
+            // Stream the JPEG in MQTT_MAX_PACKET_SIZE-byte slices to stay
+            // within the library's internal packet buffer limit.
+            int ps = MQTT_MAX_PACKET_SIZE;
+            for (int i = 0; i < (int)fbLen; i += ps) {
+                // Clamp the last chunk so it does not exceed remaining bytes
+                int s = ((fbLen - i) < (size_t)ps) ? (fbLen - i) : ps;
+                mqttClient.write((uint8_t*)fbBuf + i, s);
+            }
+
+            isPublished = mqttClient.endPublish();
+
+        } else {
+          
+            // Cast the DMA frame buffer to a char pointer for byte-by-byte Base64 encoding
+            char *input = (char *)fbBuf;
+            
+            // Output buffer for one Base64-encoded group (4 chars + null terminator per 3 input bytes)
+            char output[base64_enc_len(3)];
+            
+            // Pre-calculate the final string length to avoid repeated heap reallocations during +=
+            //   23            : length of the data-URI prefix "data:image/jpeg;base64,"
+            //   (fbLen+2)/3*4 : Base64 expands every 3 bytes → 4 chars (ceiling division handles padding)
+            //    1            : null terminator
+            size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+            
+            // Initialise the String with the data-URI prefix (small initial allocation)
+            String imageFile = "data:image/jpeg;base64,";
+            
+            // Reserve the full estimated capacity in one shot so subsequent += calls
+            // write into already-allocated space without triggering further heap reallocations
+            imageFile.reserve(estimatedSize);
+            
+            // Encode the raw JPEG bytes to Base64 and append to imageFile.
+            for (int i = 0; i < fbLen; i++) {
+                base64_encode(output, (input++), 3);
+                if (i % 3 == 0) imageFile += String(output);
+            }
+            
+            // Capture the final encoded string length for the MQTT packet header
+            size_t imageFileSize = imageFile.length();
+            
+            // Open the MQTT publish transaction and declare the total payload length upfront.
+            // 'false' = non-retained message (broker will not store it for late subscribers)
+            mqttClient.beginPublish(topic.c_str(), imageFileSize, false);
+            
+            // Stream the Base64 string in 1024-character chunks.
+            for (int index = 0; index < (int)imageFileSize; index += 1024) {
+                mqttClient.print(imageFile.substring(index, index + 1024));
+            }
+            
+        }
+
+        // Finalise and flush the MQTT publish packet
+        isPublished = mqttClient.endPublish();
+
+        if (isPublished)
+            response = "Publishing Photo to MQTT Successfully";
+        else
+            response = "Publishing Photo to MQTT Failed";
+
+    } else {
+        response = "Connect to MQTT Server Failed";
+    }
+	
+  xSemaphoreGive(imageMutex);
+
+  return response;
 }
 
 // Capture a still image from camera and upload it to Telegram as JPEG.
@@ -2193,18 +2373,15 @@ String removeTimestamps(String workId, String timestamps, String text) {
     return text;
 }
 
-void replyUserMessage(String workId, String text, String keyboard = "") {
+void replyUserMessage(String workId, String text) {
 	if (text.length() == 0 || text.startsWith("NONE")) return;
-	
+
 	if (workId.startsWith(String(taskTags[0])))
 		mainPageHTML += text +"\n";
 	else
-		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+		mqttSendText(mqttPublishTextTopic, text);
 }
 
-// NOTE: imageMutex is held for the whole capture + base64-encode +
-// publish sequence so the buffer can't be freed/replaced underneath us
-// by a concurrent captureImage() call from another task.
 String replyUserImage(String workId, bool frames) {
   if (workId.startsWith(String(taskTags[0]))) {
 
@@ -2248,8 +2425,7 @@ String replyUserImage(String workId, bool frames) {
 
 	  return "Image file created.";
   }
-  else
-    return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+    return mqttSendImage(mqttPublishImageTopic, frames);
 
   return "";
 }
@@ -3424,16 +3600,53 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String message = params["message"].as<String>();
 	  
       String response = tcpSendMessage(workId, device, message);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/mqttSendMessage") {
+      String publishTopic = params["publishTopic"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = mqttSendText(
+        publishTopic,
+        message +
+		"\n\n<metadata>\n" +
+		"Default response topic rule:\n" +
+		"When a response is required, use " + mqttSubscribeTextTopic + " as the response topic.\n" +
+		"</metadata>"
+      );
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
-        executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
-        xSemaphoreGive(stateMutex);
-      }
-
-      evaluateWorkflowContinuation(workId, reCheck);
-	}
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }	  
+	}	
+  	else if (command == "/mqttSendImage") {
+      String publishTopic = params["publishTopic"].as<String>();
+	  
+      String response = mqttSendImage(publishTopic, true);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }	 
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
+	}	
   	else if (command == "/telegramSendMessage") {
       String token = params["token"].as<String>();
 	  String chatId = params["chatId"].as<String>();
@@ -3461,7 +3674,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         historicalMessages += buildGeminiMessage("user", command + timestamps);
         historicalMessages += buildGeminiMessage("model", response + timestamps);	  
         executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
-        xSemaphoreGive(stateMutex);
+        
+		xSemaphoreGive(stateMutex);
       }	  
 
       evaluateWorkflowContinuation(workId, reCheck);
@@ -3489,11 +3703,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       command.replace("<memory>", mem);
       command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
       
-      replyUserMessage(workId, command, telegrambotKeyboard);
+      replyUserMessage(workId, command);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
         historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
         historicalMessages += buildGeminiMessage("model", command + timestamps);
+		
         xSemaphoreGive(stateMutex);
       }
       
@@ -3634,403 +3849,6 @@ void handleAgentResponse(String workId, String message) {
   }
 }
 
-// Base64-encode an audio buffer and send it to Gemini for transcription.
-
-String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
-
-  int   encodedLen  = base64_enc_len(fileSize);
-  char* encodedData = (char*)malloc(encodedLen);
-  if (!encodedData) {
-    Serial.println("[STT] malloc failed for Base64 buffer");
-    return "Malloc failed for Base64 encoding.";
-  }
-  base64_encode(encodedData, (char*)fileinput, fileSize);
-
-  prompt.replace("\n", "");
-  prompt.replace("\"", "\\\"");
-
-  String request =
-    "{\"contents\": [{\"role\": \"user\", \"parts\": ["
-    "{\"inline_data\": {\"data\": \"" + String(encodedData) + "\","
-    "\"mime_type\": \"" + mimeType + "\"}},"
-    "{\"text\": \"" + prompt + "\"}"
-    "]}]}";
-
-  free(encodedData);
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  if (!client.connect("generativelanguage.googleapis.com", 443)) {
-    Serial.println("[STT] Connection to Gemini failed");
-    return "Connected to Gemini failed.";
-  }
-
-  client.println("POST /v1beta/models/" + geminiModel +
-                 ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
-  client.println("Host: generativelanguage.googleapis.com");
-  client.println("Content-Type: application/json; charset=utf-8");
-  client.println("Content-Length: " + String(request.length()));
-  client.println("Connection: close");
-  client.println();
-
-  for (int i = 0; i < (int)request.length(); i += 1024) {
-    client.print(request.substring(i, i + 1024));
-  }
-
-  String body = "";
-  unsigned long timeout = millis() + 20000;
-  bool headersEnded = false;
-  String line = "";
-
-  while (client.connected() && millis() < timeout) {
-    while (client.available()) {
-      char c = client.read();
-
-      if (!headersEnded) {
-        if (c == '\n') {
-          if (line.length() <= 1) {
-            headersEnded = true;
-          }
-          line = "";
-        } else if (c != '\r') {
-          line += c;
-        }
-      } else {
-        body += c;
-      }
-    }
-    esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during voice file Gemini response
-    vTaskDelay(1);
-  }
-
-  client.stop();
-
-  int jsonStart = body.indexOf('{');
-  if (jsonStart != -1) body = body.substring(jsonStart);
-
-  DynamicJsonDocument doc(8192);
-  DeserializationError err = deserializeJson(doc, body);
-
-  if (err) {
-    Serial.println("[DEBUG] JSON parse failed: (sendFileToGemini)\n" + body);
-    return "JSON parse failed (sendFileToGemini). Please try again.";
-  }
-
-  if (doc.containsKey("error")) {
-    String msg = "Gemini STT Error: " + doc["error"]["message"].as<String>();
-    return msg;
-  }
-
-  if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
-    String result = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    result.replace("\n", "");
-    return result;
-  }
-
-  return "No text returned from Gemini.";
-}
-
-// ============================================================
-//  Telegram: Download File by Path
-// ============================================================
-
-// Download a file from Telegram's CDN into a heap-allocated buffer.
-
-uint8_t* downloadTelegramFile(String filePath) {
-
-  uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
-  if (!voiceFile) return NULL;
-
-  downloadedFileSize = 0;
-  WiFiClientSecure client;
-  client.setInsecure();
-
-  if (client.connect("api.telegram.org", 443)) {
-
-    // HTTP/1.0 prevents chunked transfer encoding so the body is pure binary
-    client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
-    client.println("Host: api.telegram.org");
-    client.println("Connection: close");
-    client.println();
-
-    // Skip HTTP headers: accumulate characters until "\r\n\r\n" is found
-    String header    = "";
-    long   startTime = millis();
-
-    while (client.connected() || client.available()) {
-      if (millis() - startTime > 10000) break;
-      if (client.available()) {
-        char c = client.read();
-        header += c;
-        if (header.endsWith("\r\n\r\n")) break;   // Headers fully consumed
-      }
-    }
-
-    // Read binary body directly into the output buffer
-    startTime = millis();
-    while ((client.connected() || client.available()) &&
-           downloadedFileSize < MAX_FILE_SIZE) {
-      if (millis() - startTime > 10000) break;
-      if (client.available()) {
-        voiceFile[downloadedFileSize++] = client.read();
-        startTime = millis();   // Reset timeout on each received byte
-      }
-    }
-
-    client.stop();
-  }
-
-  return voiceFile;
-}
-
-// ============================================================
-//  Telegram: Resolve File ID → Download Path
-// ============================================================
-
-/**
- * @brief Call Telegram's getFile API to convert a file_id into a download path.
- *
- * @param fileId  Telegram file_id (e.g. from a voice message object)
- * @return        Relative file path string, e.g. "voice/file_123.oga"
- */
-String getTelegramFilePath(String fileId) {
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  String filePath = "";
-  String getAll = "", getBody = "";
-
-  if (client.connect("api.telegram.org", 443)) {
-
-    client.println("GET /bot" + telegrambotToken +
-                   "/getFile?file_id=" + fileId + " HTTP/1.1");
-    client.println("Host: api.telegram.org");
-    client.println("Connection: close");
-    client.println();
-
-    int     waitTime  = 5000;
-    long    startTime = millis();
-    boolean state     = false;
-
-    while ((startTime + waitTime) > millis()) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-
-      while (client.available()) {
-        char c = client.read();
-
-        if (c == '\n') {
-          if (getAll.length() == 0) state = true;
-          getAll = "";
-        } else if (c != '\r') {
-          getAll += String(c);
-        }
-
-        if (state == true) getBody += String(c);
-
-        startTime = millis();
-      }
-
-      if (getBody.length() > 0) break;
-    }
-
-    // Extract file_path from the JSON response
-    DynamicJsonDocument doc(8192);
-    deserializeJson(doc, getBody);
-    filePath = doc["result"]["file_path"].as<String>();
-  }
-
-  return filePath;
-}
-
-// Poll Telegram Bot API for latest user message
-void getTelegramMessage() {
-
-  const char* myDomain  = "api.telegram.org";
-  String      getAll    = "";
-  String      getTime   = "";
-  String      getBody   = "";
-
-  JsonObject          obj;
-  DynamicJsonDocument doc(8192);
-
-  String text        = "";
-  String voiceFileId = "";
-  long   message_id  = 0;
-
-  // Reuse existing connection if still alive; reconnect only when needed
-  if (!botClient.connected()) {
-    if (lastMessageId == 0)
-      Serial.println("Connect to " + String(myDomain));
-
-    if (!botClient.connect(myDomain, 443))
-      return;
-
-    if (lastMessageId == 0)
-      Serial.println("Connection successful");
-  }
-
-  while (botClient.connected()) {
-
-    getAll  = "";
-    getTime = "";
-    getBody = "";
-
-    String request = "limit=1&offset=-1&allowed_updates=message";
-
-    botClient.println("POST /bot" + telegrambotToken + "/getUpdates HTTP/1.1");
-    botClient.println("Host: "           + String(myDomain));
-    botClient.println("Content-Length: " + String(request.length()));
-    botClient.println("Content-Type: application/x-www-form-urlencoded");
-    botClient.println("Connection: keep-alive");
-    botClient.println();
-    botClient.print(request);
-
-    int           waitTime    = 5000;
-    unsigned long startTime   = millis();
-    bool          state       = false;
-    bool          dataReceived = false;
-
-    while ((startTime + waitTime) > millis()) {
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout while waiting for Telegram response
-
-      while (botClient.available()) {
-        char c = botClient.read();
-
-        if (c == '\n') {
-          if (getAll.length() == 0)
-            state = true;
-          getAll = "";
-        } else if (c != '\r') {
-          getAll += String(c);
-        }
-
-        if (state) {
-          getBody += String(c);
-        } else {
-          if      (getTime.indexOf("Date:") != -1)
-            getTime  = "";
-          else if (getTime.indexOf("Content-Type") != -1)
-            getTime += "";
-          else
-            getTime += String(c);
-        }
-
-        startTime = millis();
-      }
-
-      // Break as soon as body is received
-      if (getBody.length() > 0) {
-        dataReceived = true;
-        break;
-      }
-    }
-
-    getTime.replace("Content-Type", "");
-
-    String workId = String(taskTags[1]) + " " + getTime;
-
-    if (!dataReceived || getBody == "") return;
-
-    DeserializationError err = deserializeJson(doc, getBody);
-    if (err) {
-      Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
-      return;
-    }
-    obj = doc.as<JsonObject>();
-
-    message_id = obj["result"][0]["message"]["message_id"].as<long>();
-
-    if (message_id && message_id != lastMessageId) {
-
-      long id_last  = lastMessageId;
-      lastMessageId = message_id;
-	  
-      String fromChatId = obj["result"][0]["message"]["chat"]["id"].as<String>();
-      if (fromChatId != telegrambotChatId) {
-        return;
-      }	  	  
-
-      if (id_last == 0) {
-        message_id = 0;
-
-      } else {
-        workId = String(taskTags[1]) + " " + getRtcTimeString();
-
-        if (obj["result"][0]["message"].containsKey("text")) {
-          text = obj["result"][0]["message"]["text"].as<String>();
-
-          if (text == "help") {
-            executeTool(workId, "/help", JsonObject());
-
-          } else if (text == "null") {
-            botClient.stop();
-
-          } else if (text.startsWith("/")) {
-            executeTool(workId, text, JsonObject());
-
-          } else {
-            text = geminiChatRequest(workId, text);
-            handleAgentResponse(workId, text);
-          }
-
-          String localHistory = "";
-          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-            localHistory = historicalMessages;
-            xSemaphoreGive(stateMutex);
-          }
-          storeDataToFile(memoryFilename, localHistory);
-
-        } else if (doc["result"][0]["message"].containsKey("voice")) {
-          voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
-
-          String   filePath  = getTelegramFilePath(voiceFileId);
-          uint8_t* voiceFile = downloadTelegramFile(filePath);
-
-          if (voiceFile && downloadedFileSize > 0) {
-            text = sendFileToGemini(
-              voiceFile, downloadedFileSize,
-              "audio/ogg; codecs=opus",
-              "Transcribe this audio to text exactly as spoken."
-            );
-
-            if (text.startsWith("/")) {
-              executeTool(workId, text, JsonObject());
-            } else {
-              text = geminiChatRequest(workId, text);
-              handleAgentResponse(workId, text);
-            }
-          }
-
-          if (voiceFile)
-            free(voiceFile);
-
-          String localHistory2 = "";
-          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-            localHistory2 = historicalMessages;
-            xSemaphoreGive(stateMutex);
-          }
-          storeDataToFile(memoryFilename, localHistory2);
-        }
-      }
-    }
-
-	esp_task_wdt_reset();
-    vTaskDelay(5 / portTICK_PERIOD_MS);
-  }
-
-  while (WiFi.status() != WL_CONNECTED) {
-    WiFi.disconnect();
-    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
-
-    unsigned long start = millis();
-
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
-      vTaskDelay(500 / portTICK_PERIOD_MS);
-  }
-
-}
-
 // fuClaw configuration web page. Users can set system parameters from the webpage.
 void task_getRequest(void *param) {
   (void)param;
@@ -4088,15 +3906,19 @@ void task_getRequest(void *param) {
             
             mainPageHTML = getStringFromFile(configpageFilename);
 			
-            mainPageHTML.replace("deviceName", deviceName);
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
-            mainPageHTML.replace("telegrambotToken", telegrambotToken);
-            mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttPort", String(mqttPort));
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
+            mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
             mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
             mainPageHTML.replace("geminiApiKey", geminiApiKey);
             mainPageHTML.replace("geminiModel", geminiModel);
-            mainPageHTML.replace("timeZone", timeZone);		
+            mainPageHTML.replace("timeZone", timeZone);
 
             currentLine = "";            
           }
@@ -4200,6 +4022,19 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }
+          else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = getStringFromFile(mqttchatpageFilename);
+      
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);   
+
+            currentLine = "";
+
+          } 		  
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = getStringFromFile(schedulepageFilename);
@@ -4374,21 +4209,102 @@ void task_getRequestStream(void *param) {
   }
 }
 
-// Background task for continuous Telegram polling
-void task_getTelegramMessage(void *param) {
-  (void)param;
-  esp_task_wdt_add(NULL);   // Register this task with the TWDT
-  while (1) {
-    esp_task_wdt_reset();
+// ============================================================
+//  MQTT: Inbound Message Callback
+// ============================================================
 
-    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-      getTelegramMessage();   // getTelegramMessage 內部已有 wdt_reset
-      xSemaphoreGive(botClientMutex);
-    }
+/**
+ * @brief PubSubClient callback invoked on every received MQTT message.
+ *
+ * PubSubClient does NOT null-terminate the payload buffer, so a local
+ * copy is allocated, null-terminated, and forwarded to executeCommand().
+ * Memory is freed immediately after the command is dispatched.
+ *
+ * @param topic    C-string of the topic on which the message arrived.
+ * @param payload  Raw (non-terminated) byte array of the message payload.
+ * @param length   Number of valid bytes in payload[].
+ */
+void callback(char* topic, byte* payload, unsigned int length) {
 
-    esp_task_wdt_reset();   // [WDT FIX] reset after mutex release (getTelegramMessage may take up to 5s)
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    String workId = String(taskTags[2]) + " " + getRtcTimeString();
+
+    // Allocate a null-terminated copy of the payload on the heap
+    char* message = (char*)malloc(length + 1);
+
+    if (message) {
+        memcpy(message, payload, length);  // Copy raw payload bytes
+        message[length] = '\0';            // Append null terminator
+
+    		String text = String(message);   // Dispatch to command handler
     
+    		if (text == "help") {
+    		  executeTool(workId, "/help", JsonObject());
+    		  
+    		} 
+    		else {
+    			if (text.startsWith("/")) 
+    				executeTool(workId, text, JsonObject()); 
+    			else {
+    				text = geminiChatRequest(workId, text);
+    				handleAgentResponse(workId, text);
+    			} 
+    
+    		}   
+      
+    		free(message);                     // Release temporary buffer
+          
+    		storeDataToFile(memoryFilename, historicalMessages);
+    }
+}
+
+// ============================================================
+//  MQTT: Reconnect Helper
+// ============================================================
+
+/**
+ * @brief Block until a successful MQTT broker connection is established.
+ *
+ * Loops indefinitely, attempting to connect with the configured client ID,
+ * username, and password.  On success, re-subscribes to the command topic
+ * to restore message delivery after a dropped connection.  On failure,
+ * waits 5 seconds before retrying to avoid hammering the broker.
+ */
+void reconnect() {
+    while (!mqttClient.connected()) {
+        
+        if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+            // Re-subscribe to the inbound command topic after each reconnect
+            mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
+        } else {
+            // Wait before retrying to prevent rapid reconnect storms
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+        }
+    }
+}
+
+/**
+ * @brief Maintain the MQTT connection and process pending inbound messages.
+ *
+ * Should be called repeatedly from a dedicated FreeRTOS task.
+ * - Detects a dropped connection and triggers reconnect().
+ * - Calls mqttClient.loop() which:
+ *     1. Sends keep-alive PINGREQ packets to the broker.
+ *     2. Reads incoming PUBLISH packets and dispatches callback().
+ *     3. Handles QoS acknowledgement handshakes (not used here at QoS 0).
+ */
+void task_getMqttMessage(void* param) {
+  (void)param;          // Suppress unused-parameter warning
+  esp_task_wdt_add(NULL);
+  while (1) {
+	esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+    
+	if (!mqttClient.connected()) {
+      reconnect();          // Re-establish connection if it was lost
+    }
+    mqttClient.loop();        // Process keep-alive and inbound messages
+	
+    vTaskDelay(pdMS_TO_TICKS(10));
+		
   }
 }
 
@@ -4405,13 +4321,6 @@ void task_theft_detection(void *param) {
       esp_task_wdt_reset();
     }
 
-    // Wait until Telegram task is idle, then take exclusive ownership
-    // of botClient before stopping it (see botClientMutex notes on
-    // getTelegramMessage()).
-    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-      botClient.stop();
-      xSemaphoreGive(botClientMutex);
-    }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
     Serial.println("\n\nExecuting Skill: theft_detection\n\n");
@@ -4605,12 +4514,6 @@ void task_time_scheduling(void *param) {
     }
     esp_task_wdt_reset();
 
-    // Stop the shared botClient connection so the Telegram task yields
-    // before we start a potentially long scheduling cycle.
-    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-      botClient.stop();
-      xSemaphoreGive(botClientMutex);
-    }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     String workId = String(taskTags[3]) + " " + rtcFormatTime;
@@ -4756,16 +4659,21 @@ void setEnvironmentSettings(String jsonString) {
   }
 
   JsonObject obj = doc.as<JsonObject>();
-  deviceName =  obj["device_name"].as<String>();  
+  deviceName =  obj["device_name"].as<String>(); 
   wifiSsid =  obj["wifi_ssid"].as<String>();
   wifiPassword =  obj["wifi_pass"].as<String>();
-  telegrambotToken =  obj["telegramBot_token"].as<String>();
-  telegrambotChatId =  obj["telegramBot_chatID"].as<String>();
+  mqttServer =  obj["mqtt_server"].as<String>();
+  mqttPort =  obj["mqtt_port"].as<uint16_t>();
+  mqttUser =  obj["mqtt_user"].as<String>();
+  mqttPassword =  obj["mqtt_password"].as<String>();
+  mqttSubscribeTextTopic =  obj["mqtt_subscribeTextTopic"].as<String>();
+  mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
+  mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
   geminiModel =  obj["gemini_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
-  timeZone = obj["timezone"].as<String>();  
-
+  timeZone = obj["timezone"].as<String>(); 
+  
 }
 
 String Ip2String(IPAddress ip) {
@@ -4783,12 +4691,12 @@ void setup() {
   // runs. setup() itself calls rtcInitialTime()/replyUserMessage(),
   // so these must exist before that point.
   // ------------------------------------------------------------
-  botClientMutex = xSemaphoreCreateMutex();
+  mqttClientMutex = xSemaphoreCreateMutex();
   stateMutex     = xSemaphoreCreateMutex();
   sdMutex        = xSemaphoreCreateMutex();
   imageMutex     = xSemaphoreCreateMutex();
   
-  if (!botClientMutex || !stateMutex || !sdMutex || !imageMutex) {
+  if (!mqttClientMutex || !stateMutex || !sdMutex || !imageMutex) {
     Serial.println("[DEBUG] Failed to create mutexes. Restarting the MCU...");
     delay(2000);
     ESP.restart();
@@ -4876,8 +4784,17 @@ void setup() {
   Serial.println("AP password : " + apPassword);
   Serial.println();  
 
+  // ---- MQTT initialisation ----
+  // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+  wifiClientId = generateMqttClientId();
+  mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
+  mqttClient.setCallback(callback);                   // Register inbound handler
+
+  // Establish the initial MQTT connection and subscribe to the command topic
+  reconnect();  
+  
   rtcInitialTime("RTC Initial Time");
-  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
+  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
   // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
@@ -4886,11 +4803,21 @@ void setup() {
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
 
-  botClient.setInsecure();
-
   server.begin(); 
   serverStream.begin();  
 
+  if (xTaskCreate(
+        task_getMqttMessage,
+        (const char *)"task_getMqttMessage",
+        32768,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getMqttMessage failed");
+  }   
+  
   if (xTaskCreate(
         task_getRequest,
         (const char *)"task_getRequest",
@@ -4902,18 +4829,6 @@ void setup() {
 
     Serial.println("Create task_task_getRequest failed");
   }        
-
-  if (xTaskCreate(
-        task_getTelegramMessage,
-        (const char *)"task_getTelegramMessage",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_getTelegramMessage failed");
-  } 
 
   if (xTaskCreate(
         task_time_scheduling,
