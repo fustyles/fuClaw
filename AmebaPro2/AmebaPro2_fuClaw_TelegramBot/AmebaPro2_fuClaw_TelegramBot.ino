@@ -2897,4 +2897,7 @@ void setup() {
 
 // Main loop
 void loop() {
+  // Main Arduino loopTask is otherwise idle; just yield. (loopTask is
+  // NOT registered with the TWDT, since it does no blocking work here.)
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
