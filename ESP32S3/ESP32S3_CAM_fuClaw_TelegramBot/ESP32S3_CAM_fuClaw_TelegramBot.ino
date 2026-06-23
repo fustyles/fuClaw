@@ -246,9 +246,38 @@ WiFiServer serverStream(82);
 #include "FreeRTOS.h"
 #include "task.h"
 #include "esp_camera.h"
+#include "esp_task_wdt.h"
 
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
+
+// ------------------------------------------------------------
+// Concurrency primitives
+// ------------------------------------------------------------
+// botClientMutex   : guards every access to the shared `botClient`
+//                     (connect/print/read/available/stop), since
+//                     task_getTelegramMessage, task_time_scheduling
+//                     and task_theft_detection can all touch it.
+// stateMutex       : guards the shared mutable global Strings that
+//                     multiple tasks read/append/replace concurrently
+//                     (historicalMessages, scheduleTasks,
+//                     executeToolHistory, mainPageHTML, executedTodayTasks,
+//                     executedTodayDate, systemContent*, geminiRole,
+//                     devicesDefinition*, skillsDefinition).
+// imageMutex       : guards the shared camera buffer
+//                     (imageAddress / imageLength) plus the act of
+//                     capturing a new frame, so two tasks never
+//                     free/realloc the buffer while another task is
+//                     still reading it.
+SemaphoreHandle_t botClientMutex = NULL;
+SemaphoreHandle_t stateMutex     = NULL;
+SemaphoreHandle_t imageMutex     = NULL;
+
+// Small RAII-style helper macros for mutex scoping with a timeout.
+// Using a timeout (instead of portMAX_DELAY) avoids a task ever being
+// stuck forever (and therefore never resetting the watchdog) if a
+// mutex owner crashes/hangs while holding it.
+#define MUTEX_TIMEOUT_TICKS (pdMS_TO_TICKS(15000))
 
 // Camera pins
 #define PWDN_GPIO_NUM     -1
@@ -330,6 +359,13 @@ bool initCamera() {
 // original semantics where imageAddress/imageLength can be reused by
 // later code (e.g. replyUserImage with frames=false) without needing
 // the camera driver's internal buffer to stay valid.
+//
+// NOTE: This function mutates the shared imageAddress/imageLength
+// globals. Callers that need a consistent imageAddress/imageLength +
+// buffer-contents view across multiple steps (capture, then encode)
+// MUST hold imageMutex for the whole sequence -- see
+// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/
+// telegramSendCapturedImage() below.
 void captureImage() {
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
@@ -682,11 +718,19 @@ String lineSendMessage(String token, String targetId, String message) {
 }
 
 // Capture a still image from camera and upload it to Telegram as JPEG.
+//
+// NOTE: imageMutex is held for the whole capture + read + send sequence
+// so the buffer this function is sending can never be freed/replaced by
+// a concurrent captureImage() call from another task mid-upload.
 String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
   WiFiClientSecure client;
   client.setInsecure();
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    return "Image buffer busy, please try again.";
+  }
 
   if (client.connect(myDomain, 443)) {
 
@@ -694,6 +738,7 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
       captureImage();
     else if (!frames && imageLength == 0) {
       client.stop();
+      xSemaphoreGive(imageMutex);
       return "Previous image does not exist";
     }
 
@@ -725,9 +770,10 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
         client.write(fbBuf, 1024);
         fbBuf += 1024;
       }
-      else if (fbLen%1024>0) {
-        size_t remainder = fbLen%1024;
-        client.write(fbBuf, remainder);
+      else {
+        size_t remainder = fbLen - n;
+        if (remainder > 0)
+          client.write(fbBuf, remainder);
       }
     }
 
@@ -769,6 +815,8 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
     Serial.println("Connected to api.telegram.org failed.");
   }
 
+  xSemaphoreGive(imageMutex);
+
   return getBody;
 }
 
@@ -804,17 +852,34 @@ String removeTimestamps(String workId, String timestamps, String text) {
 void replyUserMessage(String workId, String text, String keyboard = "") {
 	if (text.length() == 0 || text.startsWith("NONE")) return;
 	
-	if (workId.startsWith(String(taskTags[0])))
-		mainPageHTML += text +"\n";
+	if (workId.startsWith(String(taskTags[0]))) {
+		if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+			mainPageHTML += text +"\n";
+			xSemaphoreGive(stateMutex);
+		}
+	}
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
+// NOTE: imageMutex is held for the whole capture + base64-encode +
+// publish sequence so the buffer can't be freed/replaced underneath us
+// by a concurrent captureImage() call from another task.
 String replyUserImage(String workId, bool frames) {
   if (workId.startsWith(String(taskTags[0]))) {
+
+      if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+        return "Image buffer busy, please try again.";
+      }
+
       if (frames)
           captureImage();
-          
+
+      if (imageLength == 0) {
+        xSemaphoreGive(imageMutex);
+        return "Previous image does not exist";
+      }
+
       uint8_t* fbBuf = (uint8_t*)imageAddress;
       size_t   fbLen = imageLength;
 
@@ -825,12 +890,22 @@ String replyUserImage(String workId, bool frames) {
       String imageFile = "<img src='data:image/jpeg;base64,";
       imageFile.reserve(estimatedSize);
       
-      for (int i = 0; i < fbLen; i++) {
-          base64_encode(output, (input++), 3);
-          if (i % 3 == 0) imageFile += String(output);
+      // Advance by 3 bytes per base64_encode() call (it reads 3 input
+      // bytes at a time); base64_encode() handles the 1-2 byte tail
+      // padding itself when fbLen is not a multiple of 3.
+      for (size_t i = 0; i < fbLen; i += 3) {
+          base64_encode(output, input, 3);
+          input += 3;
+          imageFile += String(output);
       }
-      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
-	  
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+        xSemaphoreGive(stateMutex);
+      }
+
+      xSemaphoreGive(imageMutex);
+
 	  return "Image file created.";
   }
   else
@@ -896,6 +971,7 @@ String tcpSendMessage(String workId, String domain, String request) {
           timeout = millis() + 20000;
         }
       }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during TCP response
       vTaskDelay(1);
     }
     
@@ -919,21 +995,27 @@ String tcpSendMessage(String workId, String domain, String request) {
 // Reset conversation memory to initial system prompt state
 void geminiChatReset() {
 
-  historicalMessages = "";
-  executeToolHistory = "";
-  
-  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages = "";
+    executeToolHistory = "";
+
+    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
   
 }
 
 // Reset system Content
 void systemContentReset() {
 
-  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
   
 }
 
@@ -942,18 +1024,24 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   String timestamps = "\n" + workId;
 
   message = message + "\n\nRTC current time: " + getRtcTimeString();
-  
-  historicalMessages += buildGeminiMessage("user", message + timestamps);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
 
   String contents = "";
-  if (tools == 0)
-    contents = systemContentNoTools + historicalMessages;
-  else if (tools == 1)
-    contents = systemContentTools + historicalMessages;
-  else if (tools == 2)
-    contents = systemContent + buildGeminiMessage("user", message);
-  else
-	contents = systemContent + buildGeminiMessage("user", message);
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildGeminiMessage("user", message);
+    else
+      contents = systemContent + buildGeminiMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
 
   String request = "{\"contents\": [" + contents +
                    "],\"generationConfig\": {\"maxOutputTokens\": " +
@@ -1003,6 +1091,7 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
           timeout = millis() + 20000;
         }
       }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini response
       vTaskDelay(1);
     }
     
@@ -1047,8 +1136,11 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   }
   
   responseText = removeTimestamps(workId, timestamps, responseText);
-  
-  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
 
   return responseText;
   
@@ -1059,14 +1151,21 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   String timestamps = "\n" + workId;
 
   message = message + "\n\nRTC current time: " + getRtcTimeString();  
-  
-  historicalMessages += buildGeminiMessage("user", message + timestamps);
 
-  String contents = systemContent + buildGeminiMessage("user", message);
-  if (tools == 1)
-    contents = systemContentTools + historicalMessages;
-  else if (tools == 0)
-    contents = systemContentNoTools + historicalMessages;
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    contents = systemContent + buildGeminiMessage("user", message);
+    if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    xSemaphoreGive(stateMutex);
+  }
 
   // Build request with Google Search tool
   String request = "{\"contents\": [" + contents +
@@ -1117,6 +1216,7 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
           timeout = millis() + 20000;
         }
       }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini Search response
       vTaskDelay(1);
     }
     
@@ -1156,19 +1256,29 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   }
 
   responseText = removeTimestamps(workId, timestamps, responseText);
-  
-  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
 
   return responseText;
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
+//
+// NOTE: imageMutex is held for the whole capture + base64-encode +
+// HTTP send sequence so the buffer can't be freed/replaced underneath
+// us by a concurrent captureImage() call from another task.
 String geminiVisionRequest(String workId, String message, bool frames = true) {
   String timestamps = "\n" + workId;
 
   message = message + "\n\nRTC current time: " + getRtcTimeString();
-  
-  historicalMessages += buildGeminiMessage("user", message + timestamps);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -1176,6 +1286,15 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   const char* myDomain = "generativelanguage.googleapis.com";
 	  
   client.setTimeout(10000);
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    responseText = "Image buffer busy, please try again.";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+      xSemaphoreGive(stateMutex);
+    }
+    return responseText;
+  }
 	
   if (client.connect(myDomain, 443)) {
 
@@ -1183,9 +1302,13 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
       captureImage();
     else if (!frames && imageLength == 0) {
       client.stop();
-      
+      xSemaphoreGive(imageMutex);
+
       responseText = "Previous image does not exist";
-      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
 
       return responseText;
     }
@@ -1196,15 +1319,24 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     char *input = (char *)fbBuf;
     char output[base64_enc_len(3)];
     String imageFile = "";
-    
-    for (size_t i = 0; i < fbLen; i++) {
-      base64_encode(output, (input++), 3);
-      if (i % 3 == 0) imageFile += String(output);
+
+    // Advance by 3 bytes per base64_encode() call (it reads 3 input
+    // bytes at a time); base64_encode() handles the 1-2 byte tail
+    // padding itself when fbLen is not a multiple of 3.
+    for (size_t i = 0; i < fbLen; i += 3) {
+      base64_encode(output, input, 3);
+      input += 3;
+      imageFile += String(output);
     }
 
     String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
                   "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
                   imageFile + "\"}}]}]}";
+
+    // Image buffer has been fully encoded into Data (a String) at this
+    // point, so it's safe to release imageMutex before the network
+    // round-trip and let other tasks capture/encode a new frame.
+    xSemaphoreGive(imageMutex);
 
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Host: " + String(myDomain));
@@ -1240,6 +1372,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
           timeout = millis() + 20000;
         }
       }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini Vision response
       vTaskDelay(1);
     }
     
@@ -1272,6 +1405,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   } else {
     Serial.println("Failed to connect to Gemini API (Vision)");
     responseText = "Connection failed";
+    xSemaphoreGive(imageMutex);
   }
 
   if (responseText == "") {
@@ -1279,8 +1413,11 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   }
 
   responseText = removeTimestamps(workId, timestamps, responseText);
-  
-  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
 
   return responseText;
 }
@@ -1296,7 +1433,13 @@ String getMemoryInfo() {
   msg += String(xPortGetMinimumEverFreeHeapSize());
 
   msg += "\nHistorical messages len: ";
-  msg += String(historicalMessages.length());
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    msg += String(historicalMessages.length());
+    xSemaphoreGive(stateMutex);
+  }
+  else {
+    msg += "unavailable";
+  }
 
   return msg;
 }
@@ -1421,17 +1564,28 @@ void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "")
 void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
     String timestamps = "\n" + workId;
 
+    // Feed the watchdog at the top of every tool execution: some tools
+    // (Gemini chat/search/vision calls, /delay, schedule merges, etc.)
+    // can legitimately take several seconds, and executeTool() can also
+    // recurse via evaluateWorkflowContinuation()/handleAgentResponse().
+    // Resetting here keeps long-but-healthy chains from tripping the
+    // per-task watchdog that is registered for task_getTelegramMessage,
+    // task_time_scheduling and task_theft_detection (see registerTaskWdt()).
+    esp_task_wdt_reset();
+
     if (command == "/digitalwrite"||command == "/analogwrite") {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
       int value = params["value"].as<int>();
       
       String response = toolPinOutput(pin, pinmode, value, workId);
-    
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
     
@@ -1442,10 +1596,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       String response = toolPinInput(pin, pinmode, workId);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck); 
       
@@ -1462,11 +1618,13 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         "{\"method\":\"/still\","
         "\"result\":\"" + res + "\","
         "\"workId\":\"" + workId + "\"}";
-		
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-      executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck, task);
       
@@ -1476,20 +1634,24 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String rtcTimeResponse = "RTC START: " + getRtcTimeString();
       replyUserMessage(workId, rtcTimeResponse);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
 
     } 
     else if (command == "/getrtc") {
       String rtcTime = getRtcTimeString();
       replyUserMessage(workId, rtcTime);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
               
     }
   	else if (command == "/schedule") {
@@ -1498,11 +1660,19 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = "";
 	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
 		    task = task.substring(0, task.lastIndexOf("]") + 1);
-  			if (scheduleTasks == "")
-  				scheduleTasks = task;
-  			else {
-  				scheduleTasks += ", " + task;
-  
+
+  			bool needMerge = false;
+  			if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+  				if (scheduleTasks == "")
+  					scheduleTasks = task;
+  				else {
+  					scheduleTasks += ", " + task;
+  					needMerge = true;
+  				}
+  				xSemaphoreGive(stateMutex);
+  			}
+
+  			if (needMerge) {
         String prompt = 
           "Merge all given JSON arrays into a single valid JSON array. "
           "Output ONLY the merged array. "
@@ -1517,7 +1687,10 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   				
   				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
   				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-  				  scheduleTasks = jsonArray;
+  				  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+  				    scheduleTasks = jsonArray;
+  				    xSemaphoreGive(stateMutex);
+  				  }
   				}
   			}
                 
@@ -1534,10 +1707,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 			"\"workId\":\""+workId+"\"}";	  
   	  }   
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
     
@@ -1546,6 +1721,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String task = params["task"].as<String>();
             
       String response = "";
+
+      String currentScheduleTasks = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        currentScheduleTasks = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
       
       String prompt =
           "You are given a JSON array of scheduled tasks and a user-approved schedule modification request. "
@@ -1567,7 +1748,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
           "- The result MUST start with [ and end with ]. "
           "- Do NOT output explanations, markdown, code fences, or natural language.\n\n"
           "Current scheduled tasks:\n" +
-          scheduleTasks +
+          currentScheduleTasks +
           "\n\nUser-approved modification request:\n" +
           task;
             
@@ -1575,8 +1756,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       
       if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-    
-        scheduleTasks = jsonArray;
+
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
         
         response = 
           "{\"status\":\"success\","
@@ -1591,16 +1775,24 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         "\"workId\":\""+workId+"\"}";
       }  
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
      
     }    
     else if (command == "/updateScheduleStatus") {
       String response = "";
+
+      String currentScheduleTasks = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        currentScheduleTasks = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
       
       String prompt =
           "You are given a JSON array of scheduled tasks and a tool execution history. "
@@ -1610,14 +1802,17 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
           "Output ONLY the updated JSON array. "
           "The result MUST start with [ and end with ]. "
           "Do NOT change any other fields.\n\n"
-          + scheduleTasks;
+          + currentScheduleTasks;
             
       String jsonArray = geminiChatRequest(workId, prompt);
       
       if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-		
-        scheduleTasks = jsonArray;
+
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
         
         response = 
           "{\"status\":\"success\","
@@ -1632,53 +1827,75 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         "\"workId\":\""+workId+"\"}";
       }  
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
      
     }
     else if (command == "/getSchedule") {
+      String currentScheduleTasks = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        currentScheduleTasks = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+
       String prompt =
         "Please organize the following scheduled tasks and respond in the user's current language. "
         "Present the information in a clear and well-structured bullet-point format for better readability: "
-        + scheduleTasks;
+        + currentScheduleTasks;
 
       String response = geminiChatRequest(workId, prompt);
       replyUserMessage(workId, response); 
-          
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
      
     }    
     else if (command == "/getUnfinishedSchedule") {
-      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
-            scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
-            
-      String response = getUnfinishedScheduleTasksJson(scheduleTasks);
+      String response = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+              scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+
+        response = getUnfinishedScheduleTasksJson(scheduleTasks);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
       replyUserMessage(workId, response);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
  
     }
     else if (command == "/clearSchedule") {
-      scheduleTasks = "";
-      executedTodayTasks = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        scheduleTasks = "";
+        executedTodayTasks = "";
+        xSemaphoreGive(stateMutex);
+      }
       
       String response = "Scheduled tasks have been cleared.";
       replyUserMessage(workId, response);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";           
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
     }
     else if (command == "/reset") {
       geminiChatReset();  
@@ -1691,19 +1908,25 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String msg = getMemoryInfo();
       replyUserMessage(workId, msg);
 
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", msg + timestamps);
-
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", msg + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);          
 
     } 
     else if (command == "/getLog") {
-      Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
+      String logSnapshot = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        logSnapshot = executeToolHistory;
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+      Serial.println("\n\nExecute tools history:\n\n"+logSnapshot+"\n\n");
       replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
-
-      executeToolHistory += workId + " " + command + "\n";
       
     } 
     else if (command == "/chat") {
@@ -1717,8 +1940,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
       String response = geminiSearchRequest(workId, query, false);
       handleAgentResponse(workId, response);
-	  
-      executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
       
       evaluateWorkflowContinuation(workId, reCheck, task);
 
@@ -1731,9 +1957,16 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   
       while (millis() - start < milliseconds) {
           vTaskDelay(10 / portTICK_PERIOD_MS);
+          // Long delays are broken into 10ms slices already; explicitly
+          // resetting here too guards against watchdog timeout configs
+          // shorter than the requested delay.
+          esp_task_wdt_reset();
       }
-  
-      executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
+        xSemaphoreGive(stateMutex);
+      }
   
       evaluateWorkflowContinuation(workId, reCheck);
         
@@ -1745,15 +1978,21 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 	  
       String response = geminiVisionRequest(workId, query, frames);
       handleAgentResponse(workId, response);
-	  
-      executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
       
       evaluateWorkflowContinuation(workId, reCheck, task);
     }
   	else if (command == "/reboot") {
   	  replyUserMessage(workId, "Rebooting the device, please wait...");
 
-      executeToolHistory += workId + " " + command + "\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
   		
   	  Serial.println("User requested reboot the device.");
   	  vTaskDelay(2000 / portTICK_PERIOD_MS);
@@ -1765,11 +2004,13 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String message = params["message"].as<String>();
 	  
       String response = tcpSendMessage(workId, device, message);
-	  
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
-      executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
@@ -1779,11 +2020,13 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String message = params["message"].as<String>();
 	  
       String response = telegramSendMessage(token, chatId, message);
-	  
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
-      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
@@ -1793,11 +2036,13 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String message = params["message"].as<String>();
 	  
       String response = lineSendMessage(token, targetId, message);
-	  
-      historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
 
-      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}	
@@ -1810,8 +2055,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       
       replyUserMessage(workId, command, telegrambotKeyboard);
 
-      historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
-      historicalMessages += buildGeminiMessage("model", command + timestamps);
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
+        historicalMessages += buildGeminiMessage("model", command + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
       
     }      
     else {
@@ -2015,6 +2263,8 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
         body += c;
       }
     }
+    esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during voice file Gemini response
+    vTaskDelay(1);
   }
 
   client.stop();
@@ -2078,6 +2328,9 @@ uint8_t* downloadTelegramFile(String filePath) {
         header += c;
         if (header.endsWith("\r\n\r\n")) break;   // Headers fully consumed
       }
+      else {
+        vTaskDelay(1);
+      }
     }
 
     // Read binary body directly into the output buffer
@@ -2088,6 +2341,9 @@ uint8_t* downloadTelegramFile(String filePath) {
       if (client.available()) {
         voiceFile[downloadedFileSize++] = client.read();
         startTime = millis();   // Reset timeout on each received byte
+      }
+      else {
+        vTaskDelay(1);
       }
     }
 
@@ -2157,6 +2413,14 @@ String getTelegramFilePath(String fileId) {
 }
 
 // Poll Telegram Bot API for latest user message
+//
+// NOTE: every access to the shared `botClient` object in this function
+// is wrapped by botClientMutex, since task_time_scheduling and
+// task_theft_detection both call botClient.stop() from a different
+// task before doing their own work. Without the lock, a stop() from
+// another task while this function is mid-read/mid-write on the same
+// TLS session is a use-after-free / heap-corruption hazard (the
+// underlying mbedTLS session buffers get torn down concurrently).
 void getTelegramMessage() {
 
   const char* myDomain  = "api.telegram.org";
@@ -2171,13 +2435,19 @@ void getTelegramMessage() {
   String voiceFileId = "";
   long   message_id  = 0;
 
+  if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    return; // could not get exclusive access to botClient this cycle
+  }
+
   // Reuse existing connection if still alive; reconnect only when needed
   if (!botClient.connected()) {
     if (lastMessageId == 0)
       Serial.println("Connect to " + String(myDomain));
 
-    if (!botClient.connect(myDomain, 443))
+    if (!botClient.connect(myDomain, 443)) {
+      xSemaphoreGive(botClientMutex);
       return;
+    }
 
     if (lastMessageId == 0)
       Serial.println("Connection successful");
@@ -2206,6 +2476,7 @@ void getTelegramMessage() {
 
     while ((startTime + waitTime) > millis()) {
       vTaskDelay(100 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
 
       while (botClient.available()) {
         char c = botClient.read();
@@ -2243,11 +2514,15 @@ void getTelegramMessage() {
 
     String workId = String(taskTags[1]) + " " + getTime;
 
-    if (!dataReceived || getBody == "") return;
+    if (!dataReceived || getBody == "") {
+      xSemaphoreGive(botClientMutex);
+      return;
+    }
 
     DeserializationError err = deserializeJson(doc, getBody);
     if (err) {
       Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+      xSemaphoreGive(botClientMutex);
       return;
     }
     obj = doc.as<JsonObject>();
@@ -2261,6 +2536,7 @@ void getTelegramMessage() {
 	  
       String fromChatId = obj["result"][0]["message"]["chat"]["id"].as<String>();
       if (fromChatId != telegrambotChatId) {
+        xSemaphoreGive(botClientMutex);
         return;
       }	  	  
 
@@ -2273,11 +2549,23 @@ void getTelegramMessage() {
         if (obj["result"][0]["message"].containsKey("text")) {
           text = obj["result"][0]["message"]["text"].as<String>();
 
+          // executeTool()/geminiChatRequest()/handleAgentResponse() can
+          // run long Gemini round-trips and recursive tool chains; we
+          // must NOT hold botClientMutex while they run, or the bot
+          // would be unable to poll Telegram for the entire duration.
+          // botClient itself isn't touched again until next loop
+          // iteration, so it's safe to release the lock here and let
+          // the rest of this iteration run unlocked.
+          xSemaphoreGive(botClientMutex);
+
           if (text == "help") {
             executeTool(workId, "/help", JsonObject());
 
           } else if (text == "null") {
-            botClient.stop();
+            if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              botClient.stop();
+              xSemaphoreGive(botClientMutex);
+            }
 
           } else if (text.startsWith("/")) {
             executeTool(workId, text, JsonObject());
@@ -2287,8 +2575,15 @@ void getTelegramMessage() {
             handleAgentResponse(workId, text);
           }
 
+          return;
+
         } else if (doc["result"][0]["message"].containsKey("voice")) {
           voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+
+          // Same reasoning as above: release botClientMutex before the
+          // (potentially slow) voice download + Gemini transcription +
+          // tool execution sequence.
+          xSemaphoreGive(botClientMutex);
 
           String   filePath  = getTelegramFilePath(voiceFileId);
           uint8_t* voiceFile = downloadTelegramFile(filePath);
@@ -2310,6 +2605,8 @@ void getTelegramMessage() {
 
           if (voiceFile)
             free(voiceFile);
+
+          return;
 		
         }
       }
@@ -2318,14 +2615,18 @@ void getTelegramMessage() {
     vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 
+  xSemaphoreGive(botClientMutex);
+
   while (WiFi.status() != WL_CONNECTED) {
     WiFi.disconnect();
     WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
 
     unsigned long start = millis();
 
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000)
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 15000) {
       vTaskDelay(500 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
   }
 
 }
@@ -2333,7 +2634,10 @@ void getTelegramMessage() {
 // fuClaw configuration web page. Users can set system parameters from the webpage.
 void task_getRequest(void *param) {
   (void)param;
+  esp_task_wdt_add(NULL);
   while (1) {
+
+    esp_task_wdt_reset();
 	  
     WiFiClient client = server.available();
 
@@ -2342,14 +2646,20 @@ void task_getRequest(void *param) {
       
 
       while (client.connected()) {
+        esp_task_wdt_reset();
+
         if (client.available()) {
           char c = client.read();
 
           if (c == '\n') {
             if (currentLine.length() == 0) {
             
-              String pageToSend = mainPageHTML;
-              mainPageHTML = "";
+              String pageToSend;
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                pageToSend = mainPageHTML;
+                mainPageHTML = "";
+                xSemaphoreGive(stateMutex);
+              }
             
               client.println("HTTP/1.1 200 OK");
               client.println("Content-Type: text/html; charset=utf-8");
@@ -2366,6 +2676,7 @@ void task_getRequest(void *param) {
                 int written = client.write((const uint8_t*)(ptr + sent), chunk);
                 if (written > 0) sent += written;
                 else delay(5);
+                esp_task_wdt_reset();
               }
               client.flush();
             
@@ -2382,17 +2693,22 @@ void task_getRequest(void *param) {
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
-            mainPageHTML = String(INDEX_HTML);
-			
-            mainPageHTML.replace("deviceName", deviceName);
-            mainPageHTML.replace("wifiSsid", wifiSsid);
-            mainPageHTML.replace("wifiPassword", wifiPassword);
-            mainPageHTML.replace("telegrambotToken", telegrambotToken);
-            mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
-            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
-            mainPageHTML.replace("geminiApiKey", geminiApiKey);
-            mainPageHTML.replace("geminiModel", geminiModel);
-            mainPageHTML.replace("timeZone", timeZone);		
+            String page = String(INDEX_HTML);
+
+            page.replace("deviceName", deviceName);
+            page.replace("wifiSsid", wifiSsid);
+            page.replace("wifiPassword", wifiPassword);
+            page.replace("telegrambotToken", telegrambotToken);
+            page.replace("telegrambotChatId", telegrambotChatId);
+            page.replace("scheduleTimeout", String(scheduleTimeout));            
+            page.replace("geminiApiKey", geminiApiKey);
+            page.replace("geminiModel", geminiModel);
+            page.replace("timeZone", timeZone);
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = page;
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";            
           }
@@ -2405,20 +2721,30 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              
-              mainPageHTML = "Configuration updated successfully.";
+
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                mainPageHTML = "Configuration updated successfully.";
+                xSemaphoreGive(stateMutex);
+              }
               executeTool(workId, "/reboot", JsonObject());
               
             }
-            else
-              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+            else {
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                mainPageHTML = "Configuration updated failed. JSON parse failed.";
+                xSemaphoreGive(stateMutex);
+              }
+            }
 
             currentLine = "";
             
           }
           else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = geminiRole;
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = geminiRole;
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
@@ -2428,8 +2754,11 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSoul?", "");
             currentLine.replace(" HTTP/1.", "");
-            
-            geminiRole = currentLine;
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              geminiRole = currentLine;
+              xSemaphoreGive(stateMutex);
+            }
             systemContentReset();
             
             currentLine = "";        
@@ -2437,23 +2766,29 @@ void task_getRequest(void *param) {
           }		  
           else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = devicesDefinition;
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = devicesDefinition;
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
           }
-		      else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateDevice?", "");
             currentLine.replace(" HTTP/1.", "");
-            
-            devicesDefinition = currentLine;
-			
-            devicesDefinitionFinal = devicesDefinition;
-            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
-            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-			
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              devicesDefinition = currentLine;
+
+              devicesDefinitionFinal = devicesDefinition;
+              devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+              devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+              xSemaphoreGive(stateMutex);
+            }
+
             systemContentReset();            
 			
             currentLine = "";        
@@ -2461,7 +2796,10 @@ void task_getRequest(void *param) {
           }
           else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = skillsDefinition;
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = skillsDefinition;
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
@@ -2471,8 +2809,11 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSkill?", "");
             currentLine.replace(" HTTP/1.", "");
-            
-            skillsDefinition = currentLine;
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              skillsDefinition = currentLine;
+              xSemaphoreGive(stateMutex);
+            }
             systemContentReset();
             
             currentLine = "";        
@@ -2480,21 +2821,30 @@ void task_getRequest(void *param) {
           }		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = String(INDEX_CHAT_HTML);
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = String(INDEX_CHAT_HTML);
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
           }
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = String(INDEX_SCHEDULE_HTML);
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = String(INDEX_SCHEDULE_HTML);
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
           }
           else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            mainPageHTML = scheduleTasks;
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = scheduleTasks;
+              xSemaphoreGive(stateMutex);
+            }
 
             currentLine = "";
 
@@ -2508,16 +2858,22 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
-              scheduleTasks = currentLine;
-              
-              mainPageHTML = "Schedule updated successfully.";
-              
-              historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
-              historicalMessages += buildGeminiMessage("model", mainPageHTML);  
+
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                scheduleTasks = currentLine;
+                mainPageHTML = "Schedule updated successfully.";
+                historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+                historicalMessages += buildGeminiMessage("model", mainPageHTML);
+                xSemaphoreGive(stateMutex);
+              }
 
             }
-            else
-              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+            else {
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                mainPageHTML = "Schedule updated failed. JSON parse failed.";
+                xSemaphoreGive(stateMutex);
+              }
+            }
 
             currentLine = "";        
             
@@ -2526,7 +2882,10 @@ void task_getRequest(void *param) {
             
             mainPageStatus = true;
 
-            mainPageHTML = "";
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = "";
+              xSemaphoreGive(stateMutex);
+            }
             
             String workId = String(taskTags[0]) + " " + getRtcTimeString();       
 
@@ -2567,13 +2926,18 @@ void task_getRequest(void *param) {
 // Stream.
 void task_getRequestStream(void *param) {
   (void)param;
+  esp_task_wdt_add(NULL);
   while (1) {
+    esp_task_wdt_reset();
+
     WiFiClient client = serverStream.available();
     
     if (client) {
       String currentLine = "";
 
       while (client.connected()) {
+        esp_task_wdt_reset();
+
         if (client.available()) {
           char c = client.read();
           if (c == '\n') {
@@ -2585,6 +2949,7 @@ void task_getRequestStream(void *param) {
             client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
             client.println();
             while(client.connected()) {
+              esp_task_wdt_reset();
               // ESP32-S3 PORT: Camera.getImage() -> esp_camera_fb_get()/
               // esp_camera_fb_return(). Unlike captureImage() used
               // elsewhere, this streaming loop fetches and immediately
@@ -2603,9 +2968,10 @@ void task_getRequestStream(void *param) {
                     client.write(fbBuf, 1024);
                     fbBuf += 1024;
                 }
-                else if (fbLen%1024>0) {
-                  size_t remainder = fbLen%1024;
-                  client.write(fbBuf, remainder);
+                else {
+                  size_t remainder = fbLen - n;
+                  if (remainder > 0)
+                    client.write(fbBuf, remainder);
                 }
               }
               client.print("\r\n");
@@ -2641,10 +3007,13 @@ void task_getRequestStream(void *param) {
 // Background task for continuous Telegram polling
 void task_getTelegramMessage(void *param) {
   (void)param;
+  esp_task_wdt_add(NULL);
   while (1) {
-    
+    esp_task_wdt_reset();
+
     getTelegramMessage();
-    
+
+    esp_task_wdt_reset();   // [WDT FIX] reset after getTelegramMessage (may take up to 5s + Gemini round-trip)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     
   }
@@ -2653,12 +3022,23 @@ void task_getTelegramMessage(void *param) {
 // Periodic system check task
 void task_theft_detection(void *param) {
   (void)param;
+  esp_task_wdt_add(NULL);
   while (1) {
-	  
-    vTaskDelay(300000 / portTICK_PERIOD_MS);
-    
-    // Wait until Telegram task is idle
-    botClient.stop();
+
+    // Long sleep broken into slices so the watchdog is reset
+    // periodically instead of once every 5 minutes.
+    for (int i = 0; i < 300000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
+
+    // Wait until Telegram task is idle, then take exclusive ownership
+    // of botClient before stopping it (see botClientMutex notes on
+    // getTelegramMessage()).
+    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      botClient.stop();
+      xSemaphoreGive(botClientMutex);
+    }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
     Serial.println("\n\nExecuting Skill: theft_detection\n\n");
@@ -2670,6 +3050,7 @@ void task_theft_detection(void *param) {
 		true, 
 		"Must execute skill theft_detection. Return ONLY tool_call JSON."
 	);
+    esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
 
   }
   
@@ -2687,6 +3068,11 @@ String twoDigits(int value) {
 // Checks whether a recurring task (year == 0) has already been executed today.
 // Automatically resets the daily execution record when the calendar day changes.
 // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+//
+// NOTE: caller (task_time_scheduling, getUnfinishedScheduleTasksJson,
+// getExecuteScheduleTasksJson) is expected to already hold stateMutex,
+// since this touches executedTodayTasks/executedTodayDate. Kept lock-free
+// internally to avoid recursive-mutex requirements; see call sites.
 bool isExecutedToday(String task) {
 
   time_t rawtime;
@@ -2705,6 +3091,9 @@ bool isExecutedToday(String task) {
 // Marks a recurring task as executed for today by appending its name
 // to the in-memory daily execution record.
 // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+//
+// NOTE: caller (task_time_scheduling) is expected to already hold
+// stateMutex when this mutates shared state.
 void markExecutedToday(const String &task) {
   time_t rawtime;
   time(&rawtime);
@@ -2713,6 +3102,8 @@ void markExecutedToday(const String &task) {
   executedTodayTasks += "|" + task + "|";
 }
 
+// NOTE: caller must hold stateMutex while this runs (it reads/writes
+// executedTodayTasks/executedTodayDate via isExecutedToday()).
 String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, scheduleTasksJson);
@@ -2762,6 +3153,9 @@ String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
 // Recurring tasks (year == 0) are excluded if already executed today.
 // One-time tasks (year > 0) are excluded if "executed" is true.
 // Returns a JSON array string of due tasks, or "[]" if none qualify.
+//
+// NOTE: caller must hold stateMutex while this runs (it reads/writes
+// executedTodayTasks/executedTodayDate via isExecutedToday()).
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument doc(16384);
   DeserializationError err = deserializeJson(doc, scheduleTasksJson);
@@ -2840,12 +3234,23 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
 // execution state, and persists daily execution records and chat history to SD card.
 void task_time_scheduling(void *param) {
   (void)param;
+  esp_task_wdt_add(NULL);
   while (1) {
-	  
-    vTaskDelay(60000 / portTICK_PERIOD_MS);
 
-    // Wait until Telegram task is idle
-    botClient.stop();
+    // Long sleep broken into slices so the watchdog is reset
+    // periodically instead of once every 60 seconds.
+    for (int i = 0; i < 60000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
+
+    // Wait until Telegram task is idle, then take exclusive ownership
+    // of botClient before stopping it (see botClientMutex notes on
+    // getTelegramMessage()).
+    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      botClient.stop();
+      xSemaphoreGive(botClientMutex);
+    }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     String workId = String(taskTags[3]) + " " + rtcFormatTime;
@@ -2857,10 +3262,27 @@ void task_time_scheduling(void *param) {
         continue;
     }
 
-    if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
-      scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
- 
-      String unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(scheduleTasks);
+    String currentScheduleTasks = "";
+    bool haveTasks = false;
+
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
+        scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+        currentScheduleTasks = scheduleTasks;
+        haveTasks = true;
+      }
+      xSemaphoreGive(stateMutex);
+    }
+
+    if (haveTasks) {
+
+      String unfinishedScheduleTasksJson;
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        // getExecuteScheduleTasksJson() mutates executedTodayTasks via
+        // isExecutedToday(), so it must run under stateMutex.
+        unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(currentScheduleTasks);
+        xSemaphoreGive(stateMutex);
+      }
 
       if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
         unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
@@ -2872,12 +3294,14 @@ void task_time_scheduling(void *param) {
         DeserializationError err = deserializeJson(doc, unfinishedScheduleTasksJson);
         if (err) {
           Serial.println("[DEBUG] JSON parse failed: (task_time_scheduling)\n" + unfinishedScheduleTasksJson);
-          return;
+          continue;
         }  
 
         JsonArray tasks = doc.as<JsonArray>();
         
         for (JsonObject obj : tasks) {
+
+          esp_task_wdt_reset();
 
           String taskName = obj["task"].as<String>();
 
@@ -2912,10 +3336,15 @@ void task_time_scheduling(void *param) {
             "10. Do not stop after the first eligible task.";
 
           response = geminiChatRequest(workId, prompt);
+          esp_task_wdt_reset();   // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
 
           handleAgentResponse(workId, response);
+          esp_task_wdt_reset();   // [WDT FIX] handleAgentResponse may chain another Gemini call
 
-          markExecutedToday(schedule + " " + item);
+          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+            markExecutedToday(schedule + " " + item);
+            xSemaphoreGive(stateMutex);
+          }
         }
         
         if (tasks.size()>0) {
@@ -2990,6 +3419,38 @@ void setup() {
   Serial.begin(115200);
 
   // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
+  // ------------------------------------------------------------
+  // Create mutexes before any task or function that might use them
+  // runs. setup() itself calls rtcInitialTime()/replyUserMessage(),
+  // so these must exist before that point.
+  // ------------------------------------------------------------
+  botClientMutex = xSemaphoreCreateMutex();
+  stateMutex     = xSemaphoreCreateMutex();
+  imageMutex     = xSemaphoreCreateMutex();
+
+  if (!botClientMutex || !stateMutex || !imageMutex) {
+    Serial.println("[DEBUG] Failed to create mutexes. Restarting the MCU...");
+    delay(2000);
+    ESP.restart();
+  }
+
+  // ------------------------------------------------------------
+  // Task Watchdog Timer (TWDT) configuration.
+  // Each long-running task explicitly registers itself
+  // (esp_task_wdt_add(NULL)) and resets the watchdog
+  // (esp_task_wdt_reset()) at safe points -- see each task_xxx()
+  // function and executeTool(). This catches a task that hangs
+  // (e.g. stuck in a network read, or a forgotten blocking call)
+  // well before it can starve the IDLE task and trigger the
+  // *global* IDLE/abort watchdog panic seen previously.
+  // ------------------------------------------------------------
+  esp_task_wdt_config_t twdtConfig = {
+    .timeout_ms = 30000,                 // 30s: generous enough for slow Gemini/Telegram round-trips
+    .idle_core_mask = (1 << 0) | (1 << 1), // also watch both IDLE tasks
+    .trigger_panic = true
+  };
+  esp_task_wdt_reconfigure(&twdtConfig);
 
   if (!initCamera()) {
     Serial.println("[DEBUG] Camera initialization failed. Still images / vision / stream will not work.");
@@ -3122,4 +3583,7 @@ void setup() {
 
 // Main loop
 void loop() {
+  // Main Arduino loopTask is otherwise idle; just yield. (loopTask is
+  // NOT registered with the TWDT, since it does no blocking work here.)
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
