@@ -3401,6 +3401,8 @@ void task_getRequest(void *param) {
       
 
       while (client.connected()) {
+		esp_task_wdt_reset();
+		  
         if (client.available()) {
           char c = client.read();
 
