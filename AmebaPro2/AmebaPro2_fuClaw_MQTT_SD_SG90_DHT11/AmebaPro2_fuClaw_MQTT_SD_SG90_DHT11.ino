@@ -126,7 +126,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  WiFi / Telegram / Gemini credentials / Time zone
+  Device name / WiFi / MQTT / Gemini credentials / Time zone
 
 device.md
   Devices definition
@@ -4049,9 +4049,14 @@ void task_getMqttMessage(void* param) {
     (void)param;          // Suppress unused-parameter warning
     while (1) {
       if (!mqttClient.connected()) {
+		esp_task_wdt_reset();
+		
         reconnect();          // Re-establish connection if it was lost
       }
       mqttClient.loop();        // Process keep-alive and inbound messages
+	  
+	  esp_task_wdt_reset();
+	  vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 

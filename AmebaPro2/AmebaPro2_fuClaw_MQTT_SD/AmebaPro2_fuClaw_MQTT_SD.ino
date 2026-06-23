@@ -55,7 +55,7 @@ Communication Task
 Message Router
       ↓
 Gemini Agent Engine
-(Chat / Search / Vision)
+(Chat / Search / Vision / Workflow)
       ↓
 JSON tool_call output
       ↓
@@ -124,7 +124,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  WiFi / Telegram / Gemini credentials / Time zone
+  Device name / WiFi / MQTT / Gemini credentials / Time zone
 
 device.md
   Devices definition
@@ -3900,6 +3900,8 @@ void task_getMqttMessage(void* param) {
         reconnect();          // Re-establish connection if it was lost
       }
       mqttClient.loop();        // Process keep-alive and inbound messages
+	  
+      vTaskDelay(pdMS_TO_TICKS(10));	  
     }
 }
 
