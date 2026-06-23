@@ -109,6 +109,7 @@ Supported Tools
 /clearSchedule            Clear scheduled tasks
 /tcpSendMessage           Send a message to another device or agent over TCP
 /telegramSendMessage      Send a message to Telegram Bot
+/telegramSendImage        Send a video snapshot to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
 Persistent Files
@@ -2030,6 +2031,22 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
+  	else if (command == "/telegramSendImage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+	  bool frames = params["frames"].as<bool>();
+	  
+      String response = telegramSendCapturedImage(token, chatId, frames);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }	  
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
   	else if (command == "/lineSendMessage") {
       String token = params["token"].as<String>();
 	  String targetId = params["targetId"].as<String>();
@@ -3011,7 +3028,10 @@ void task_getTelegramMessage(void *param) {
   while (1) {
     esp_task_wdt_reset();
 
-    getTelegramMessage();
+    if (xSemaphoreTake(botClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      getTelegramMessage();   // getTelegramMessage 內部已有 wdt_reset
+      xSemaphoreGive(botClientMutex);
+    }
 
     esp_task_wdt_reset();   // [WDT FIX] reset after getTelegramMessage (may take up to 5s + Gemini round-trip)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
