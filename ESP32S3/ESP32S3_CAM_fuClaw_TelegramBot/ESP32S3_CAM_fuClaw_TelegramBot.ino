@@ -92,7 +92,7 @@ Supported Tools
 /analogread               GPIO analog input
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
-/still                    Capture image
+/still                    Capture a still image and send it to the user.
 /vision                   Capture + multimodal analysis
 /search                   Grounded web search
 /delay                    Pause execution for specified milliseconds
