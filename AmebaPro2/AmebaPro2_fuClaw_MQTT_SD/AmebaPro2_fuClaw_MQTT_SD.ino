@@ -100,7 +100,7 @@ Supported Tools
 /analogread               GPIO analog input
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
-/still                    Capture image
+/still                    Capture a still image and send it to the user.
 /vision                   Capture + multimodal analysis
 /search                   Grounded web search
 /delay                    Pause execution for specified milliseconds
@@ -784,7 +784,7 @@ Error response:
 }
 
 --------------------------------------------------
-Capture image from device camera:
+Capture image from device camera and send it to the user:
 --------------------------------------------------  
 {
   "type":"tool_call",
@@ -1151,7 +1151,7 @@ IMAGE TOOL ROUTING RULES
 ==================================================
 
 /still:
-- Capture image and send to Telegram only
+- Capture image and send it to the user
 - MUST NOT analyze image
 - MUST NOT make decisions
 - MUST NOT trigger hardware actions

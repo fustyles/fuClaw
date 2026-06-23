@@ -265,7 +265,7 @@ Error response:
 }
 
 --------------------------------------------------
-Capture image from device camera:
+Capture image from device camera and send it to the user:
 --------------------------------------------------  
 {
   "type":"tool_call",
@@ -632,7 +632,7 @@ IMAGE TOOL ROUTING RULES
 ==================================================
 
 /still:
-- Capture image and send to Telegram only
+- Capture image and send it to the user
 - MUST NOT analyze image
 - MUST NOT make decisions
 - MUST NOT trigger hardware actions
