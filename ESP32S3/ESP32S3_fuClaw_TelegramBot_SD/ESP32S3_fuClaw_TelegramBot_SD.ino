@@ -3459,6 +3459,9 @@ void task_getRequest(void *param) {
 
     			}      
         }
+		else {
+          vTaskDelay(1); // yield so IDLE0 can reset the watchdog
+        }
       }
 
       client.stop();
