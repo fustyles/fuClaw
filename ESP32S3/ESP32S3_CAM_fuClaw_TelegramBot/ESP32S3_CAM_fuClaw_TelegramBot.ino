@@ -19,6 +19,22 @@ ESP32-S3 Port (ESP32-S3-WROOM-CAM board)
 Build Date: 2026-06-23 00:00:00
 
 ------------------------------------------------------------
+Arduino IDE settings
+------------------------------------------------------------
+Board                 : ESP32S3 Dev Module
+USB CDC On Boot       : Enabled
+CPU Frequency         : 240MHz (WiFi/BT)
+USB Firmware MSC On Boot : Disabled
+USB DFU On Boot       : Disabled
+Upload Mode           : UART0 / Hardware CDC
+Flash Mode            : QIO 80MHz
+Flash Size            : 16MB (128Mbit)
+Partition Scheme      : 16M Flash (3MB APP / 9.9MB FATFS)
+PSRAM                 : OPI PSRAM
+Arduino Runs On       : Core 1
+Events Run On         : Core 1
+
+------------------------------------------------------------
 Overview
 ------------------------------------------------------------
 fuClaw is an embedded multimodal AI agent framework, run on
@@ -226,9 +242,6 @@ String scheduleTasks = "";
 int scheduleTimeout = 5;    // minutes
 String executedTodayTasks = "";
 int executedTodayDate = 0;
-
-// Last Telegram message ID
-long lastMessageId = 0;
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
