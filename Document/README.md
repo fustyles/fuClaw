@@ -186,7 +186,7 @@ SD 卡根目錄/
  - scheduleTodayExecuted.md（SD 卡）：兩個任務均會呼叫 storeDataToFile()
  - botClient：Telegram 任務持有，週期任務執行前必須先 stop()
 
-⚠ 目前版本未實作 Mutex 保護，週期任務設計為「等待 Telegram 任務閒置後」執行
+⚠ 目前Ameba版本未實作 Mutex 保護，週期任務設計為「等待 Telegram 任務閒置後」執行
   作為教學延伸：引導學生思考如何用 xSemaphoreCreateMutex() 保護共享資源
 ```
 
