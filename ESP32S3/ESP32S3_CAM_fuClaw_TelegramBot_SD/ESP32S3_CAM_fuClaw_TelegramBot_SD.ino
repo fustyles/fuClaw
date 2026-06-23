@@ -1539,8 +1539,6 @@ void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
 
 // Captured image buffer address and length
-// Kept as uint32_t/uint8_t* pointer pair for compatibility with all the
-// original Camera.getImage() call sites further down in this file.
 uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
 
@@ -1586,7 +1584,6 @@ bool initCamera() {
   return true;
 }
 
-// Drop-in replacement for the original `Camera.getImage(0, &addr, &len)`.
 // Captures a fresh frame, copies it into a malloc'd buffer referenced by
 // imageAddress/imageLength (freeing any previous buffer first), then
 // returns the frame buffer to the camera driver. This preserves the
