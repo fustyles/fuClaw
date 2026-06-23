@@ -2725,7 +2725,7 @@ void setup() {
   devicesDefinitionFinal = devicesDefinition;
   devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
   devicesDefinitionFinal += "\nDevice timezone: " + timeZone;  
-
+  
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
