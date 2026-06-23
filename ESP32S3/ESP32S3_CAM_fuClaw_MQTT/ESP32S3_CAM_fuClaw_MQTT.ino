@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3 Port (ESP32-S3-WROOM-CAM board)
 
-Build Date: 2026-06-23 00:00:00
+Build Date: 2026-06-23 21:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -212,13 +212,10 @@ int executedTodayDate = 0;
 // stateMutex     : protects historicalMessages, scheduleTasks,
 //                  executedTodayTasks, executeToolHistory and
 //                  any other shared String state
-// sdMutex        : serialises all SD_MMC.begin/end access
-//                  (SD_MMC driver is NOT re-entrant)
 // imageMutex     : serialises all screen snapshot access
 // ------------------------------------------------------------
 SemaphoreHandle_t mqttClientMutex = NULL;
 SemaphoreHandle_t stateMutex     = NULL;
-SemaphoreHandle_t sdMutex        = NULL;
 SemaphoreHandle_t imageMutex     = NULL;
 
 // Maximum ticks to wait when taking a mutex before giving up.
@@ -2427,7 +2424,7 @@ void task_getRequest(void *param) {
               currentLine = "";
             }
           }
-          else if (c != '\r') {
+          else if (c != '\r') {place("wifiPasswotask_getRequest
             currentLine += c;
           }
           
@@ -3208,10 +3205,9 @@ void setup() {
   // ------------------------------------------------------------
   mqttClientMutex = xSemaphoreCreateMutex();
   stateMutex     = xSemaphoreCreateMutex();
-  sdMutex        = xSemaphoreCreateMutex();
   imageMutex     = xSemaphoreCreateMutex();
   
-  if (!mqttClientMutex || !stateMutex || !sdMutex || !imageMutex) {
+  if (!mqttClientMutex || !stateMutex || !imageMutex) {
     Serial.println("[DEBUG] Failed to create mutexes. Restarting the MCU...");
     delay(2000);
     ESP.restart();

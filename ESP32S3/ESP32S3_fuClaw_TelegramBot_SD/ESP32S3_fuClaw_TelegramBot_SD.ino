@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3 Port (ESP32-S3-WROOM board)
 
-Build Date: 2026-06-23 00:00:00
+Build Date: 2026-06-23 21:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -4084,12 +4084,6 @@ void setup() {
   devicesDefinitionFinal = devicesDefinition;
   devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
   devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-  
-  if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
-	  Serial.println("System configuration failed. Restarting the MCU...");
-	  delay(5000);
-	  ESP.restart();
-  }
 
   String skill = getStringFromFile(skillFilename);
   Serial.println("skill.md len: " + String(skill.length()));

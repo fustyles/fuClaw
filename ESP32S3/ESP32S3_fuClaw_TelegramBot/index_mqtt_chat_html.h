@@ -1,3 +1,7 @@
+#ifndef INDEX_MQTT_CHAT_HTML_H
+#define INDEX_MQTT_CHAT_HTML_H
+
+const char INDEX_MQTT_CHAT_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -639,7 +643,7 @@ function doConnect() {
     // Subscribe all topics
     topics.forEach(function(t) {
       mqttClient.subscribe(t.name, function(err) {
-        if (!err) sysMsg('&#128229; Subscription：' + t.name + ' [' + t.format + ']');
+        if (!err) sysMsg('&#128229; 訂閱：' + t.name + ' [' + t.format + ']');
       });
     });
   });
@@ -876,15 +880,14 @@ function onKey(e) {
   body { padding-bottom: 68px !important; }
 </style>
 <nav class="fc-nav">
-  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
-  <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
+  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Home</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
   <a href="/mqtt" id="fcn-mqtt"     title="MQTT Chat"><span class="fc-ico">&#128225;</span><span>MQTT</span></a>
 </nav>
 <script>
   (function(){
-    var map={"/":"fcn-config","":"fcn-config","/agent":"fcn-agent",
+    var map={"/":"fcn-config","":"fcn-config",
              "/schedule":"fcn-schedule","/chat":"fcn-chat",
              "/mqtt":"fcn-mqtt"};
     var seg=location.pathname.replace(/\/$/,"") || "/";
@@ -894,3 +897,6 @@ function onKey(e) {
 
 </body>
 </html>
+)rawhtml";
+
+#endif

@@ -643,7 +643,7 @@ function doConnect() {
     // Subscribe all topics
     topics.forEach(function(t) {
       mqttClient.subscribe(t.name, function(err) {
-        if (!err) sysMsg('&#128229; 訂閱：' + t.name + ' [' + t.format + ']');
+        if (!err) sysMsg('&#128229; Subscription：' + t.name + ' [' + t.format + ']');
       });
     });
   });
