@@ -167,14 +167,32 @@ Hardware Safety
 Confirmed device mappings only.
 
 AMB82-mini
-- Green LED: GPIO 24
-- Blue LED : GPIO 23
+- GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24
+- ADC: 9, 10, 11, 21, 22
+- PWM: 1, 2, 3, 4, 5, 6, 7, 8, 23
+- Green LED : GPIO 24
+- Blue LED  : GPIO 23
 
 HUB 8735 Ultra
+- Button    : GPIO 12 (input only, active-low)
+- GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24,25,26
+- ADC: 0, 1, 2, 9, 10
+- PWM: 11, 12, 13, 19, 20, 21, 22, 23, 24
 - Green LED : GPIO 25
 - Blue LED  : GPIO 26
 - Fill LED  : GPIO 13
-- Button    : GPIO 12 (input only)
+  - analog output range: 0–255
+  - recommended safe startup brightness: 5
+- Function button: pin 12
+  - digital input only
+  - active-low
+  - pressed = 0
+  - released = 1
+ 
+ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
+- GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+- ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+- PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 
 Unknown hardware mappings require clarification.
 
