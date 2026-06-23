@@ -3372,6 +3372,7 @@ void getTelegramMessage() {
       }
     }
 
+	esp_task_wdt_reset();
     vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 
@@ -3399,7 +3400,6 @@ void task_getRequest(void *param) {
     if (client) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
-
       while (client.connected()) {
 		esp_task_wdt_reset();
 		  

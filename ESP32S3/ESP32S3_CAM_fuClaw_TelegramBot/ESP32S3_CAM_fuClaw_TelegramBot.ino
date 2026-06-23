@@ -2629,6 +2629,7 @@ void getTelegramMessage() {
       }
     }
 
+	esp_task_wdt_reset();
     vTaskDelay(5 / portTICK_PERIOD_MS);
   }
 
