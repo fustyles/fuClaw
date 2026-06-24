@@ -4113,6 +4113,19 @@ void setup() {
     Serial.println("Create task_task_getRequest failed");
   }        
 
+  // 建立 FreeRTOS 任務：HTTP 請求處理（視訊串流）
+  if (xTaskCreate(
+        task_getRequestStream,
+        (const char *)"task_getRequestStream",
+        16384,              // 堆疊大小 16 KB（需要處理大型 HTML 字串）
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequestStream failed");
+  } 
+  
   // 建立 FreeRTOS 任務：Telegram 訊息輪詢
   if (xTaskCreate(
         task_getTelegramMessage,
