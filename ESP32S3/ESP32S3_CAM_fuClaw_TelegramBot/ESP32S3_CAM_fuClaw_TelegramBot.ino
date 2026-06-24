@@ -266,23 +266,13 @@ WiFiServer serverStream(82);
 #include "soc/rtc_cntl_reg.h"
 
 // ------------------------------------------------------------
-// Concurrency primitives
+// FreeRTOS mutex handles
+// botClientMutex : protects the shared botClient SSL connection
+// stateMutex     : protects historicalMessages, scheduleTasks,
+//                  executedTodayTasks, executeToolHistory and
+//                  any other shared String state
+// imageMutex     : serialises all screen snapshot access
 // ------------------------------------------------------------
-// botClientMutex   : guards every access to the shared `botClient`
-//                     (connect/print/read/available/stop), since
-//                     task_getTelegramMessage, task_time_scheduling
-//                     and task_theft_detection can all touch it.
-// stateMutex       : guards the shared mutable global Strings that
-//                     multiple tasks read/append/replace concurrently
-//                     (historicalMessages, scheduleTasks,
-//                     executeToolHistory, mainPageHTML, executedTodayTasks,
-//                     executedTodayDate, systemContent*, geminiRole,
-//                     devicesDefinition*, skillsDefinition).
-// imageMutex       : guards the shared camera buffer
-//                     (imageAddress / imageLength) plus the act of
-//                     capturing a new frame, so two tasks never
-//                     free/realloc the buffer while another task is
-//                     still reading it.
 SemaphoreHandle_t botClientMutex = NULL;
 SemaphoreHandle_t stateMutex     = NULL;
 SemaphoreHandle_t imageMutex     = NULL;
