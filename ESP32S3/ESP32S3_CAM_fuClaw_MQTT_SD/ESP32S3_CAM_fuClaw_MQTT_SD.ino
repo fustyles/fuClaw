@@ -260,12 +260,6 @@ const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<T
 String mainPageHTML = "";
 bool mainPageStatus = false;
 
-// Maximum download buffer size for Telegram voice files (256 KB)
-#define MAX_FILE_SIZE 262144
-
-// Actual number of bytes downloaded from Telegram
-size_t downloadedFileSize = 0;
-
 // Defines the core persona and behavioral guidelines for Gemini (e.g., Smart Home Assistant, Hardware Steward).
 String geminiRole = ""; 
 
@@ -1638,12 +1632,17 @@ String envFilename = "env.json";
 	"device_name": "xxxxx",
 	"wifi_ssid": "xxxxx",
 	"wifi_pass": "xxxxx",
-	"telegramBot_token": "xxxxx",
-	"telegramBot_chatID": "xxxxx",
+	"mqtt_server": "xxxxx",
+	"mqtt_port": "xxxxx",
+	"mqtt_user": "xxxxx",
+	"mqtt_password": "xxxxx",
+	"mqtt_subscribeTextTopic": "xxxxx",
+	"mqtt_publishTextTopic": "xxxxx",
+	"mqtt_publishImageTopic": "xxxxx",
 	"gemini_apikey": "xxxxx",
-	"gemini_model": "xxxxx",
+	"gemini_model": "xxxxx",  
 	"schedule_timeout": 10,
-	"timezone": "Asia/Taipei"
+	"timezone": "Asia/Taipei" 
 }
 */
 
