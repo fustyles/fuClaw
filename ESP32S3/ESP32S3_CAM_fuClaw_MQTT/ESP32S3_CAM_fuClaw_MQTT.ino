@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-06-23 21:30:00
+Build Date: 2026-06-24 21:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -3299,6 +3299,18 @@ void setup() {
     Serial.println("Create task_task_getRequest failed");
   }        
 
+  if (xTaskCreate(
+        task_getRequestStream,
+        (const char *)"task_getRequestStream",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequestStream failed");
+  }   
+  
   if (xTaskCreate(
         task_time_scheduling,
         (const char *)"task_time_scheduling",
