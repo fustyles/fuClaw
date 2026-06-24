@@ -2507,7 +2507,7 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument resultDoc(8192);
   JsonArray resultArray = resultDoc.to<JsonArray>();
 
-  String result = "Unfinished Schedule Tasks:\n\n";
+  String result = "";
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
