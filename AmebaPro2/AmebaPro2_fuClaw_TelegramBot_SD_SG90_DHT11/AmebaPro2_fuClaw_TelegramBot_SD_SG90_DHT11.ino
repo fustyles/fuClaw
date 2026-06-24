@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-23 21:30:00
+Build Date: 2026-06-23 22:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1106,9 +1106,7 @@ Reading the DHT11 temperature and humidity sensor:
 {
   "type": "tool_call",
   "method": "/dht11",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
-  }
+  "params": {}
 }
 
 Success response:
@@ -1955,21 +1953,24 @@ String lineSendMessage(String token, String targetId, String message) {
 	
     boolean state = false;
     long startTime = millis();
-    while ((startTime + 3000) > millis()) {
-      while (client.available()) {
-        char c = client.read();
-        if (c == '\n') {
-          if (getAll.length()==0) state=true;
-           getAll = "";
-        }
-        else if (c != '\r')
-          getAll += String(c);
-          if (state==true) getBody += String(c);
-          startTime = millis();
-        }
-        if (getBody.length()!= 0) break;
-      }
-      client.stop();
+	while ((startTime + 3000) > millis()) {
+		while (client.available()) {
+			char c = client.read();
+			if (c == '\n') {
+				if (getAll.length()==0) 
+					state=true;
+				getAll = "";
+			}
+			else if (c != '\r')
+				getAll += String(c);
+			if (state==true) 
+				getBody += String(c);
+			startTime = millis();
+		}
+		if (getBody.length()!= 0) 
+			break;
+	}
+	client.stop();
   }
   else {
     getBody="Connected to api.line.me failed.";
@@ -2893,7 +2894,7 @@ String tool_servo(AmebaServo &servo, int pin, int angle, String workId) {
 
 // Read temperature and humidity from a DHT11 sensor.
 // Returns a JSON result string for the agent workflow.
-String tool_dht11(int pin, String workId) {
+String tool_dht11(String workId) {
   float h = dht.readHumidity();
   // Read temperature as Celsius (the default)
   float t = dht.readTemperature();
@@ -3048,28 +3049,28 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   			else {
   				localSchedule += ", " + task;
   
-        String prompt = 
-          "Merge all given JSON arrays into a single valid JSON array. "
-          "Output ONLY the merged array. "
-          "Ensure the result is valid JSON starting with [ and ending with ]. "
-          "For every object in the arrays, keep all fields unchanged. "
-          "The value of the task field MUST remain exactly as provided. "
-          "Never translate, rewrite, summarize, localize, or modify task descriptions. "
-          "Task descriptions MUST remain in the original user language.\n\n"
-          + localSchedule;
-  				  
-  				String jsonArray = geminiChatRequest(workId, prompt, -1);
-  				
-  				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
-  				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
-  				  localSchedule = jsonArray;
-  				}
-  			}
-  			
-        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-          scheduleTasks = localSchedule;
-          xSemaphoreGive(stateMutex);
-        }
+				String prompt = 
+				  "Merge all given JSON arrays into a single valid JSON array. "
+				  "Output ONLY the merged array. "
+				  "Ensure the result is valid JSON starting with [ and ending with ]. "
+				  "For every object in the arrays, keep all fields unchanged. "
+				  "The value of the task field MUST remain exactly as provided. "
+				  "Never translate, rewrite, summarize, localize, or modify task descriptions. "
+				  "Task descriptions MUST remain in the original user language.\n\n"
+				  + localSchedule;
+					  
+				String jsonArray = geminiChatRequest(workId, prompt, -1);
+				
+				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+				  localSchedule = jsonArray;
+				}
+			}
+				
+			if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+			  scheduleTasks = localSchedule;
+			  xSemaphoreGive(stateMutex);
+			}
   			storeDataToFile(scheduleFilename, localSchedule);
                 
     		response = 
@@ -3465,14 +3466,13 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         
     }    
     else if (command == "/dht11") {
-      int pin = params["pin"].as<int>();
   
-      String response = tool_dht11(pin, workId);
+      String response = tool_dht11(workId);
   
 	  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {  
 		historicalMessages += buildGeminiMessage("user", command + timestamps);
 		historicalMessages += buildGeminiMessage("model", response + timestamps);
-		executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + response  + " ]\n";
+		executeToolHistory += workId + " " + command + " [ " + response  + " ]\n";
 		xSemaphoreGive(stateMutex);
 	  }
 		
