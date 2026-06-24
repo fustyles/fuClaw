@@ -123,7 +123,7 @@ Persistent Files
 ------------------------------------------------------------
 
 env.json
-  <br>Device name / WiFi / Telegram / Gemini credentials / Time zone
+  <br>Device name / WiFi / Telegram / MQTT / Gemini credentials / Time zone
 
 device.md
   <br>Devices definition
