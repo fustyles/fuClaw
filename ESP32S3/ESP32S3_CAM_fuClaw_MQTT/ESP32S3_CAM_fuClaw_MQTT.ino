@@ -677,18 +677,21 @@ String lineSendMessage(String token, String targetId, String message) {
     boolean state = false;
     long startTime = millis();
     while ((startTime + 3000) > millis()) {
-      while (client.available()) {
-        char c = client.read();
-        if (c == '\n') {
-          if (getAll.length()==0) state=true;
-           getAll = "";
-        }
-        else if (c != '\r')
-          getAll += String(c);
-          if (state==true) getBody += String(c);
-          startTime = millis();
-        }
-        if (getBody.length()!= 0) break;
+		while (client.available()) {
+			char c = client.read();
+			if (c == '\n') {
+				if (getAll.length()==0) 
+					state=true;
+				getAll = "";
+			}
+			else if (c != '\r')
+				getAll += String(c);
+			if (state==true) 
+				getBody += String(c);
+			startTime = millis();
+		}
+		if (getBody.length()!= 0) 
+			break;
       }
       client.stop();
   }
@@ -2958,7 +2961,7 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
   DynamicJsonDocument resultDoc(8192);
   JsonArray resultArray = resultDoc.to<JsonArray>();
 
-  String result = "Unfinished Schedule Tasks:\n\n";
+  String result = "";
   
   for (JsonObject task : tasks) {
       bool executed = task["executed"].as<bool>();
