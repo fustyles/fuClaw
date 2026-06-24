@@ -4778,7 +4778,7 @@ void setup() {
   reconnect();    
 
   rtcInitialTime("RTC Initial Time");
-  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+  replyUserMessage(String(taskTags[2]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
 
   // IMPORTANT: Must be synced with RTC date immediately after loading
   long long epoch = rtc.Read();
