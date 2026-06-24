@@ -131,7 +131,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  WiFi / Telegram / Gemini credentials / Time zone
+  Device Name / WiFi / Telegram / Gemini credentials / Time zone
 
 device.md
   Devices definition
