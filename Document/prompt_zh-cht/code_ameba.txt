@@ -1,0 +1,4069 @@
+/*
+------------------------------------------------------------
+fuClaw AI Telegram 助理（整合 Gemini）
+------------------------------------------------------------
+作者：
+  ChungYi Fu（台灣高雄）
+  https://www.facebook.com/francefu
+
+專案儲存庫：
+  https://github.com/fustyles/fuClaw
+------------------------------------------------------------
+專案簡介
+------------------------------------------------------------
+fuClaw 是一個執行於 Realtek Ameba Pro2 系列裝置的嵌入式
+多模態 AI 代理框架，支援以下硬體：
+- AMB82-mini
+- HUB 8735 Ultra
+
+整合功能：
+- Telegram Bot API（HTTPS 長輪詢）
+- Gemini 網頁聊天介面
+- Google Gemini generateContent API
+- Gemini 網路搜尋功能
+- Gemini 多模態視覺推理
+- 提示詞驅動的 JSON 工具路由
+- GPIO 數位／類比 I/O 控制
+- 相機拍照與圖片上傳
+- 對話記憶持久化
+- FreeRTOS 並行任務排程
+
+本系統作為混合自主代理運行：
+對話 + 推理 + 工具 + 視覺 + 記憶 + 硬體
+------------------------------------------------------------
+執行架構
+------------------------------------------------------------
+Telegram / 網頁聊天使用者
+↓
+通訊任務
+（Telegram 長輪詢 / 網頁聊天）
+      ↓
+訊息路由器
+      ↓
+Gemini 推理引擎
+（聊天 / 搜尋 / 視覺 / 工作流程）
+      ↓
+JSON tool_call 輸出
+      ↓
+ArduinoJson 驗證
+      ↓
+工具調度器
+      ↓
+硬體 / 搜尋 / 視覺執行
+      ↓
+結果注入記憶
+      ↓
+自然語言回覆
+------------------------------------------------------------
+執行模型
+------------------------------------------------------------
+本系統為提示詞編排的工具路由系統。
+
+Gemini 不使用原生函式呼叫 API。
+
+而是：
+- Gemini 輸出結構化 JSON tool_call 回應
+- 本地韌體驗證所有工具呼叫
+- 無效 JSON 一律拒絕
+- 執行嚴格按照順序進行
+- 硬體動作不模擬，必須實際執行
+
+原子執行規則：
+每次回應只能執行一個硬體動作：
+- 一個腳位
+- 一個操作
+- 一個數值
+
+多步驟工作流程以逐步方式執行。
+------------------------------------------------------------
+支援工具清單
+------------------------------------------------------------
+/digitalwrite             GPIO 數位輸出
+/analogwrite              GPIO 類比輸出
+/digitalread              GPIO 數位輸入
+/analogread               GPIO 類比輸入
+/syncrtc                  同步硬體 RTC 時鐘
+/getrtc                   取得硬體 RTC 目前時間
+/still                    拍攝靜態影像並傳送給使用者
+/vision                   拍照並進行多模態分析
+/search                   網路搜尋（Grounded Search）
+/delay                    暫停執行指定毫秒數
+/getMemory                顯示執行時記憶體診斷資訊
+/getLog                   顯示工具執行歷史紀錄
+/reset                    重設對話狀態
+/chat                     自然語言回覆
+/reboot                   重新開機
+/schedule                 新增排程任務
+/getSchedule              取得所有排程任務
+/getUnfinishedSchedule    取得未完成排程任務
+/updateScheduleStatus     更新排程任務執行狀態
+/modifySchedule           修改或刪除排程任務
+/clearSchedule            清除所有排程任務
+/tcpSendMessage           透過 TCP 傳送訊息給其他裝置或代理
+/telegramSendMessage      傳送訊息至 Telegram Bot
+/telegramSendImage        傳送影像快照至 Telegram Bot
+/lineSendMessage          傳送訊息至 Line Bot
+------------------------------------------------------------
+持久化檔案
+------------------------------------------------------------
+env.json
+  WiFi / Telegram / Gemini 憑證 / 時區設定
+
+device.md
+  裝置定義（連接的硬體清單）
+
+skill.md
+  技能定義（複合工作流程）
+
+soul.md
+  自訂助理人格提示詞
+
+memory.md
+  對話歷史持久化
+
+schedule.json
+  排程任務列表
+
+scheduleTodayExecuted.md
+  儲存今日已執行的排程任務
+
+index.html
+  設定管理介面（網頁聊天介面）
+
+index_schedule.html
+  排程管理介面（網頁聊天介面）
+
+index_chat.html
+  Gemini 聊天介面（網頁聊天介面）
+
+開機後自動恢復對話狀態。
+------------------------------------------------------------
+硬體安全說明
+------------------------------------------------------------
+僅允許已確認的裝置腳位映射。
+
+AMB82-mini
+- GPIO 可用腳位：0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24
+- ADC 腳位：9, 10, 11, 21, 22
+- PWM 腳位：1, 2, 3, 4, 5, 6, 7, 8, 23
+- 綠色 LED：GPIO 24
+- 藍色 LED：GPIO 23
+
+HUB 8735 Ultra
+- 按鈕：GPIO 12（僅輸入，低電位有效）
+- GPIO 可用腳位：0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24,25,26
+- ADC 腳位：0, 1, 2, 9, 10
+- PWM 腳位：11, 12, 13, 19, 20, 21, 22, 23, 24
+- 綠色 LED：GPIO 25
+- 藍色 LED：GPIO 26
+- 補光 LED：GPIO 13
+
+外部模組（已確認）
+- 緊急按鈕：GPIO 1（高電位有效）
+- 光感測器：GPIO 2（類比輸入，0-1023）
+- 警示燈：GPIO 11（PWM 輸出，0-255）
+- 窗戶致動器（SG90）：GPIO 12（伺服馬達，0-180 度）
+- DHT11 感測器：AMB82-mini → GPIO 8 / HUB 8735 Ultra → GPIO 20
+
+未知硬體映射須先確認再使用。
+GPIO 數值在執行前均須嚴格驗證。
+------------------------------------------------------------
+軟體堆疊
+------------------------------------------------------------
+- WiFi.h
+- WiFiSSLClient
+- ArduinoJson
+- FreeRTOS
+- VideoStream
+- Base64
+- AmebaFatFS
+------------------------------------------------------------
+已知限制
+------------------------------------------------------------
+- 對話歷史隨時間增長，需定期清理
+- 大量字串操作可能導致堆積記憶體碎片化
+- 視覺編碼運算量大，對 CPU 負荷較高
+- 大型 JSON 解析會影響堆積記憶體使用量
+- Gemini 回應格式由 ArduinoJson 驗證層處理
+- 遞迴工具鏈透過 reCheck 旗標與 NONE 哨兵值控制
+------------------------------------------------------------
+*/
+
+// ============================================================
+// WiFi 連線設定
+// ============================================================
+
+// 連接外部 WiFi 網路的 SSID 與密碼
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
+
+// AP 模式設定（裝置自建熱點，存取位址：http://192.168.1.1:81）
+String apSsid = "fuclaw";
+String apPassword = "12345678";
+
+// ============================================================
+// Telegram Bot 設定
+// ============================================================
+
+// Telegram Bot 的 API Token 與目標聊天室 ID
+String telegrambotToken = "xxxxxxxxxx";
+String telegrambotChatId = "xxxxxxxxxx";
+
+// /help 指令顯示的說明文字，<memory> 會在執行時替換為實際記憶體資訊
+String systemCommand =
+  "Built-in commands:\n"
+  "/help command list\n"
+  "/still capture and send a camera image\n"
+  "/syncrtc update the hardware RTC\n" 
+  "/getrtc get the hardware RTC current time\n"
+  "/getSchedule Get all scheduled tasks\n"
+  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
+  "/getMemory show system memory usage\n"
+  "/getLog show tool execution history\n"
+  "Hardware control supported:\n"
+  "- Digital output (0 or 1)\n"
+  "- Analog output (0–255)\n"
+  "- Digital input reading\n"
+  "- Analog input reading\n\n"
+  "System Status:\n<memory>"
+  "\n\nYou can chat with Gemini using natural language.\n"
+  "The system supports real-time search and vision-based analysis.\n\n"
+  "Documentation:\n"
+  "https://github.com/fustyles/fuClaw";
+
+// Telegram Bot 自訂鍵盤佈局（JSON 格式），提供常用指令快捷鍵
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/getLog\"}],[{\"text\":\"/getMemory\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/getSchedule\"},{\"text\":\"/getUnfinishedSchedule\"}]],\"resize_keyboard\":true,\"one_time_keyboard\":false}";
+
+// ============================================================
+// Gemini API 設定
+// ============================================================
+
+// Gemini API 金鑰與使用的模型名稱
+String geminiApiKey = "xxxxxxxxxx";
+String geminiModel = "gemini-3-flash-preview";
+
+// Gemini 回應的最大 Token 數（若 AI 無法傳送完整資料，請增加此數值）
+int geminiMaxOutputTokens = 8192;
+
+// Gemini 生成溫度（0.0～2.0），數值越高回應越多樣，越低越穩定
+float geminiTemperature = 1.0;
+
+// 裝置時區設定（用於 RTC 時間轉換）
+String timeZone = "Asia/Taipei";
+
+// 裝置名稱識別碼
+String deviceName = "fuClaw";
+
+// ============================================================
+// 任務標籤定義
+// ============================================================
+
+// 用於標記訊息來源的任務標籤陣列，作為解析文字時的停止標記。
+// 每個標籤必須以角括號 '<' 和 '>' 包圍。
+// 索引對應：[0]=網頁介面, [1]=Telegram Bot, [2]=MQTT, [3]=時間排程, [4]=防盜偵測
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
+
+// 網頁介面回應的 HTML 內容緩衝區
+String mainPageHTML = "";
+// 網頁介面請求處理狀態旗標
+bool mainPageStatus = false;
+
+// ============================================================
+// 系統常數定義
+// ============================================================
+
+// Telegram 語音檔案下載緩衝區的最大容量（256 KB）
+#define MAX_FILE_SIZE 262144
+
+// 實際從 Telegram 下載的檔案位元組數
+size_t downloadedFileSize = 0;
+
+// ============================================================
+// Gemini 提示詞與系統角色設定
+// ============================================================
+
+// Gemini 的核心人格與行為規範（例如：智慧家庭助理、硬體管家）
+// 從 soul.md 檔案載入
+String geminiRole = ""; 
+
+// 高層次複合工作流程與自動化巨集任務定義（例如：防盜偵測）
+// 從 skill.md 檔案載入
+String skillsDefinition = "";
+
+// 已連接硬體元件及其腳位設定清單（例如：LED、伺服馬達、DHT11）
+// 從 device.md 檔案載入
+String devicesDefinition = "";
+// devicesDefinition 加上裝置名稱與時區資訊的完整版本
+String devicesDefinitionFinal = "";
+
+// 工具呼叫的嚴格編排規則（raw string literal 格式）。
+// 限制 Gemini 只能輸出結構化 JSON 陣列，
+// 嚴格遵守工具執行 schema 與參數邊界驗證，
+// 防止模型幻覺以確保硬體安全與可預測的狀態機循環。
+String devicesRule = R"(
+
+...省略
+
+)";
+
+// 工具定義清單（提供給 Gemini 的所有可用工具說明）
+String toolsDefinition = R"(
+
+...省略
+
+)";
+
+// ============================================================
+// 系統對話脈絡（System Prompt）
+// ============================================================
+
+// 基礎系統提示詞（僅含人格定義，不含工具）
+String systemContent = "";
+// 含工具定義的系統提示詞（用於需要執行工具的對話）
+String systemContentTools = "";
+// 不含工具定義的系統提示詞（用於純對話或搜尋）
+String systemContentNoTools = "";
+
+// ============================================================
+// 對話歷史與工具紀錄
+// ============================================================
+
+// 工具執行歷史紀錄，以人類可讀格式記錄，供 /getLog 指令使用
+String executeToolHistory = "";
+  
+// 以 Gemini API JSON 格式儲存完整對話歷史，
+// 用於跨請求保留對話記憶
+String historicalMessages = "";
+
+// ============================================================
+// 排程任務設定
+// ============================================================
+
+// 排程任務 JSON 資料
+String scheduleTasks = "";
+// 排程任務執行超時容忍時間（分鐘），超過此時間的任務不再補執行
+int scheduleTimeout = 5;
+// 今日已執行的排程任務記錄
+String executedTodayTasks = "";
+// 用於追蹤今日已執行排程的日期（月份中的日數）
+int executedTodayDate = 0;
+
+// ============================================================
+// 指示 LED 設定
+// ============================================================
+
+// 指示 LED 輸出腳位（AMB82-mini: 24 / HUB 8735 Ultra: 25）
+int ledPin = 24;
+
+// 上一則 Telegram 訊息 ID（用於避免重複處理同一訊息）
+long lastMessageId = 0;
+
+// ============================================================
+// 函式庫引入
+// ============================================================
+
+#include <WiFi.h>
+
+// 用於 Telegram 安全輪詢的 SSL 客戶端
+WiFiSSLClient botClient;
+
+// AP 模式使用的 WiFi 頻道（Channel 2）
+char channel_ap[] = "2";
+// 埠號 81：網頁設定介面伺服器
+WiFiServer server(81);
+// 埠號 82：影像串流伺服器
+WiFiServer serverStream(82);
+
+#include "Base64.h"
+#include <ArduinoJson.h>
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "AmebaFatFS.h"
+
+// FAT 檔案系統實例（存取 SD 卡）
+AmebaFatFS fs;
+
+// 檔案操作物件
+File file;
+
+// ============================================================
+// 持久化檔案名稱定義
+// ============================================================
+
+// 環境設定檔（WiFi / Telegram / Gemini API 設定）
+// 格式範例：
+// {
+//   "device_name": "xxxxx",
+//   "wifi_ssid": "xxxxx",
+//   "wifi_pass": "xxxxx",
+//   "telegramBot_token": "xxxxx",
+//   "telegramBot_chatID": "xxxxx",
+//   "gemini_apikey": "xxxxx",
+//   "gemini_model": "xxxxx",
+//   "schedule_timeout": 10,
+//   "timezone": "Asia/Taipei"
+// }
+String envFilename = "env.json";
+
+// 助理人格提示詞檔案（定義 Gemini 助理行為與個性）
+String soulFilename = "soul.md";
+
+// 對話記憶持久化檔案（儲存歷史聊天脈絡）
+String memoryFilename = "memory.md";
+
+// 裝置硬體定義檔案
+String deviceFilename = "device.md";
+
+// 技能工作流程定義檔案
+String skillFilename = "skill.md";
+
+// 網頁介面 HTML 檔案
+String configpageFilename = "index.html";        // 設定管理介面
+String agentpageFilename = "index_agent.html";   // 代理管理介面
+String chatpageFilename = "index_chat.html";     // 網頁聊天介面
+String schedulepageFilename = "index_schedule.html"; // 排程管理介面
+
+// 排程相關檔案
+String scheduleFilename = "schedule.json";
+String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
+
+// ============================================================
+// 前向宣告（Forward Declarations）
+// ============================================================
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
+String buildGeminiMessage(String role, String message, bool comma);
+String getRtcTimeString(bool filename);
+void replyUserMessage(String workId, String text, String keyboard);
+void handleAgentResponse(String workId, String message);
+String geminiChatRequest(String workId, String message, int tools);
+
+// ============================================================
+// 相機設定
+// ============================================================
+
+#include "VideoStream.h"
+
+// 相機影像設定（320x240 像素，JPEG 格式，單緩衝）
+VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
+// 備用高解析度設定（VGA 模式，暫時停用）
+//VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
+
+// 已擷取影像的記憶體位址與資料長度
+uint32_t imageAddress = 0;
+uint32_t imageLength = 0;
+
+// ============================================================
+// RTC 即時時鐘設定
+// ============================================================
+
+#include <stdio.h>
+#include <time.h>
+#include "rtc.h"
+struct tm *timeinfo;
+// RTC 時間元件（年、月、日、時、分、秒）
+int rtcYear = 0;
+int rtcMonth = 0;
+int rtcDay = 0;
+int rtcHour = 0;
+int rtcMinute = 0;
+int rtcSecond = 0;
+// 格式化後的 RTC 時間字串
+String rtcFormatTime = "";
+// RTC 更新狀態旗標（true 表示正在更新中）
+bool rtcUpdateStatus = false;
+
+// ============================================================
+// 伺服馬達設定
+// ============================================================
+
+#include <AmebaServo.h>
+// GPIO 12 上的伺服馬達實例（用於窗戶開關控制）
+AmebaServo servo12;
+
+// ============================================================
+// DHT11 溫溼度感測器設定
+// ============================================================
+
+#include "DHT.h"
+// DHT11 感測器腳位（HUB 8735 Ultra 使用 GPIO 20）
+#define DHTPIN 20
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// 高吞吐量網路設定（啟用 INIC IPC 高效能模式）
+#define CONFIG_INIC_IPC_HIGH_TP
+
+// ============================================================
+// URL 編碼 / 解碼工具函式
+// ============================================================
+
+/**
+ * @brief 將 URL 百分比編碼字串解碼回原始字串。
+ *        例如：%20 → 空格，+ → 空格
+ * @param input  URL 編碼的輸入字串
+ * @return 解碼後的原始字串
+ */
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length());
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            // 將兩位十六進位字元轉換為對應的 ASCII 字元
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2;
+        } else if (input[i] == '+') {
+            // '+' 在 URL 編碼中代表空格
+            result += ' ';
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief 將純文字字串編碼為 URL 百分比編碼格式。
+ *        英數字及 -_.~ 保留原樣，其餘字元轉為 %XX 格式。
+ * @param str  要編碼的原始字串
+ * @return URL 編碼後的字串
+ */
+String urlencode(String str) {
+  const char *msg = str.c_str();
+  const char *hex = "0123456789ABCDEF";
+  String encodedMsg = "";
+  while (*msg != '\0') {
+    // 允許不編碼的字元：英數字、連字號、底線、點、波浪號
+    if (('a' <= *msg && *msg <= 'z') || ('A' <= *msg && *msg <= 'Z') || ('0' <= *msg && *msg <= '9') || *msg == '-' || *msg == '_' || *msg == '.' || *msg == '~') {
+      encodedMsg += *msg;
+    } else {
+      // 其他字元轉換為 %XX 格式
+      encodedMsg += '%';
+      encodedMsg += hex[(unsigned char)*msg >> 4];
+      encodedMsg += hex[*msg & 0xf];
+    }
+    msg++;
+  }
+  return encodedMsg;
+}
+
+// ============================================================
+// Gemini 時間取得函式
+// ============================================================
+
+/**
+ * @brief 向 Gemini API 發送請求，從 HTTP 回應標頭取得 GMT 日期時間。
+ *        此函式透過解析 Gemini 回應中的 Date: 標頭來獲取伺服器時間，
+ *        用於初始化 RTC 時鐘。
+ * @return GMT 日期時間字串，連線失敗時返回提示使用搜尋的訊息
+ */
+String getGeminiDatetime() {
+
+  // 建立只含人格提示的最小對話內容
+  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiSSLClient client;
+  String getDatetime = "";
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    // 發送 POST 請求至 Gemini generateContent API
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    // 分批傳送請求主體（每次 1024 位元組）
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    int waitTime = 5000;  // 最長等待 5 秒
+    unsigned long startTime = millis();
+    bool getStatus = false;
+
+    while ((startTime + waitTime) > millis()){
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()){
+        char c = client.read();
+
+        // 找到換行符後標記開始記錄日期時間
+        if (getStatus == true && c == '\n') {
+          waitTime = 0;  // 收到換行，結束等待
+          break;
+        }
+        // 偵測到 "Date:" 標頭，清空緩衝區並開始記錄下一行
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
+        }
+        else
+          getDatetime += String(c);
+
+        startTime = millis();  // 重置超時計時器
+      }
+    }
+    
+    client.stop();
+    
+  } else {
+    // 連線失敗時，提示 Gemini 使用搜尋取得時間
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  if (getDatetime == "") {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  return getDatetime;
+  
+}
+
+// ============================================================
+// RTC 時間字串格式化函式
+// ============================================================
+
+/**
+ * @brief 從 RTC 讀取目前時間並格式化為字串。
+ * @param filename 若為 true，輸出適合用於檔名的格式（無分隔符）；
+ *                 若為 false（預設），輸出人類可讀格式（含斜線與冒號）
+ * @return 格式化後的時間字串
+ *         例如：filename=false → "2026/6/23 21:30:00"
+ *               filename=true  → "202662321300"（適合檔名使用）
+ */
+String getRtcTimeString(bool filename = false) {
+
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  if (filename == true) {
+	  // 適合檔名使用的格式（無分隔符，月日不補零）
+	  sprintf(
+		buffer,
+		"%04d%d%d%02d%02d%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
+  else {
+	  // 人類可讀格式（含斜線與冒號）
+	  sprintf(
+		buffer,
+		"%04d/%d/%d %02d:%02d:%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
+
+  return String(buffer);
+}
+
+// ============================================================
+// RTC 時鐘初始化
+// ============================================================
+
+/**
+ * @brief 使用 Gemini 同步的當地時間初始化硬體 RTC。
+ *        流程：取得 Gemini 伺服器 GMT 時間 → 轉換為本地時區 → 加上處理延遲 → 寫入 RTC
+ * @param workName  此操作的工作識別名稱（用於日誌與回覆）
+ */
+void rtcInitialTime(String workName) {
+	
+  rtcUpdateStatus = true;
+  
+  // 建立提示詞：要求 Gemini 將 GMT 時間轉換為本地時區並輸出 JSON
+  String prompt =
+    "Convert this GMT datetime to " + timeZone + ".\n"
+    "GMT datetime: " + getGeminiDatetime() + "\n\n"
+	
+    // 加入 4 秒補償以抵消 Gemini API 呼叫的網路延遲
+    "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
+    "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n" 
+
+    "Output requirements:\n"
+    "- Return ONLY a raw JSON object.\n"
+    "- Do NOT use markdown.\n"
+    "- Do NOT use code fences.\n"
+    "- Do NOT explain anything.\n"
+    "- Do NOT add extra text.\n"
+    "- First character must be {.\n"
+    "- Last character must be }.\n\n"
+
+    "Required JSON format:\n"
+    "{\n"
+    "\"rtcYear\":2026,\n"
+    "\"rtcMonth\":5,\n"
+    "\"rtcDay\":28,\n"
+    "\"rtcHour\":11,\n"
+    "\"rtcMinute\":35,\n"
+    "\"rtcSecond\":0\n"
+    "}";
+
+  // 傳送至 Gemini（tools=-1 表示不使用工具路由，直接純文字回應）
+  String message = geminiChatRequest(String(taskTags[1]), prompt, -1);
+
+  // 驗證回應是否為合法的 JSON 物件
+  if (message.startsWith("{") && message.endsWith("}")) {
+
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed\n" + message);
+      replyUserMessage(workName, "RTC time update failed.", "");
+      
+    }
+
+    // 解析各時間欄位，若欄位不存在則預設為 0
+    JsonObject obj = doc.as<JsonObject>();
+    rtcYear   = obj["rtcYear"]   | 0;
+    rtcMonth  = obj["rtcMonth"]  | 0;
+    rtcDay    = obj["rtcDay"]    | 0;
+    rtcHour   = obj["rtcHour"]   | 0;
+    rtcMinute = obj["rtcMinute"] | 0;
+    rtcSecond = obj["rtcSecond"] | 0;
+
+  } else {
+    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
+    replyUserMessage(workName, "RTC time update failed.", "");
+  }
+
+  // 將解析出的時間寫入硬體 RTC
+  rtc.Init();
+  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
+  rtc.Write(initTime);
+}
+
+// ============================================================
+// Telegram 訊息傳送
+// ============================================================
+
+/**
+ * @brief 透過 Telegram Bot API 傳送文字訊息。
+ *        支援 HTML 格式解析與自訂鍵盤佈局。
+ * @param token    Telegram Bot Token
+ * @param chatid   目標聊天室 ID
+ * @param text     要傳送的訊息內容（HTML 格式）
+ * @param keyboard 自訂鍵盤 JSON 字串（可選）
+ * @return Telegram API 的 HTTP 回應主體
+ */
+String telegramSendMessage(String token, String chatid, String text, String keyboard = "") {
+  // 將換行符號轉換為 URL 編碼的換行（Telegram API 需求）
+  text.replace("\\n", "%0A");
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  String request = "parse_mode=HTML&chat_id="+chatid+"&text="+text;
+
+  // 若有自訂鍵盤，附加至請求參數
+  if (keyboard!="")
+    request += "&reply_markup="+keyboard;
+
+  WiFiSSLClient client;
+  if (client.connect(myDomain, 443)) {
+    // 發送 POST 請求至 Telegram sendMessage API
+    client.println("POST /bot"+token+"/sendMessage HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(request.length()));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println("Connection: close");
+    client.println();
+    client.print(request);
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool state = false;
+
+    // 等待接收 HTTP 回應（最長 5 秒）
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+	  
+      while (client.available())  {
+        char c = client.read();
+
+        // state=true 後開始記錄回應主體
+        if (state)
+          getBody += String(c);
+
+        // 空白行（CRLF 後緊接 CRLF）表示標頭結束，開始讀取主體
+        if (c == '\n')  {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();  // 重置超時計時器
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+    client.stop();
+  }
+  else {
+    getBody="Connected to api.telegram.org failed.";
+  }
+  
+  return getBody;
+}
+
+// ============================================================
+// Line Bot 訊息傳送
+// ============================================================
+
+/**
+ * @brief 透過 Line Messaging API 傳送文字訊息給指定目標。
+ * @param token     Line Bot Channel Access Token
+ * @param targetId  目標使用者 ID 或群組 ID
+ * @param message   要傳送的訊息內容
+ * @return Line API 的 HTTP 回應主體
+ */
+String lineSendMessage(String token, String targetId, String message) {
+  String getAll="", getBody="";
+  
+  // 建立 Line API 所需的 JSON 格式請求主體
+  String request = "{\"to\":\""+targetId+"\",\"messages\":[{\"type\":\"text\",\"text\":\""+message+"\"}]}";
+	
+  const char* myDomain = "api.line.me";
+
+  WiFiSSLClient client;
+
+  if (client.connect(myDomain, 443)) {
+    // 發送 POST 請求至 Line push message API
+    client.println("POST /v2/bot/message/push HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: api.line.me");
+    client.println("Authorization: Bearer " + token);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    client.println(request);
+    client.println();
+	
+    boolean state = false;
+    long startTime = millis();
+    // 等待接收回應（最長 3 秒）
+    while ((startTime + 3000) > millis()) {
+      while (client.available()) {
+        char c = client.read();
+        if (c == '\n') {
+          if (getAll.length()==0) state=true;
+           getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+        if (state==true) getBody += String(c);
+        startTime = millis();
+      }
+      if (getBody.length()!= 0) break;
+    }
+    client.stop();
+  }
+  else {
+    getBody="Connected to api.line.me failed.";
+  }
+  
+  return getBody;
+}
+
+// ============================================================
+// 相機拍照並上傳至 Telegram
+// ============================================================
+
+/**
+ * @brief 從相機擷取靜態影像並以 multipart 格式上傳至 Telegram。
+ * @param token    Telegram Bot Token
+ * @param chat_id  目標聊天室 ID
+ * @param frames   true：擷取新影像；false：使用上一張已擷取的影像
+ * @return Telegram API 的 HTTP 回應主體
+ */
+String telegramSendCapturedImage(String token, String chat_id, bool frames) {
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  WiFiSSLClient client;
+
+  if (client.connect(myDomain, 443)) {
+
+    // 依據 frames 參數決定是否重新擷取影像
+    if (frames)
+      Camera.getImage(0, &imageAddress, &imageLength);
+    else if (!frames && imageLength == 0) {
+      // 無先前影像且不擷取新影像時，直接返回錯誤
+      client.stop();
+      return "Previous image does not exist";
+    }
+
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    // multipart 格式的標頭與結尾（boundary 使用 "Taiwan"）
+    String head =
+      "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
+      + chat_id +
+      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+
+    String tail = "\r\n--Taiwan--\r\n";
+
+    size_t imageLen = imageLength;
+    size_t extraLen = head.length() + tail.length();
+    size_t totalLen = imageLen + extraLen;
+
+    // 發送 POST 請求至 Telegram sendPhoto API
+    client.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(totalLen));
+    client.println("Content-Type: multipart/form-data; boundary=Taiwan");
+    client.println();
+
+    client.print(head);
+
+    // 分塊傳送 JPEG 影像資料（每次 1024 位元組）
+    for (size_t n=0;n<fbLen;n=n+1024) {
+      if (n+1024<fbLen) {
+        client.write(fbBuf, 1024);
+        fbBuf += 1024;
+      }
+      else if (fbLen%1024>0) {
+        // 傳送剩餘不足 1024 位元組的資料
+        size_t remainder = fbLen%1024;
+        client.write(fbBuf, remainder);
+      }
+    }
+
+    client.print(tail);
+
+    int waitTime = 10000;  // 上傳影像等待最長 10 秒
+    unsigned long startTime = millis();
+    bool state = false;
+
+    // 等待接收 Telegram API 回應
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (state)
+          getBody += String(c);
+
+        if (c == '\n') {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+
+    client.stop();
+    Serial.println();
+
+  } else {
+    getBody="Connected to api.telegram.org failed.";
+    Serial.println("Connected to api.telegram.org failed.");
+  }
+
+  return getBody;
+}
+
+// ============================================================
+// 訊息清理工具函式
+// ============================================================
+
+/**
+ * @brief 清理文字字串，移除時間戳記、workId 以及任務標籤後的所有內容。
+ *        若文字為空或明確標記為 "NONE"，則返回 "NONE"。
+ * @param workId      工作識別碼（需從文字中移除）
+ * @param timestamps  時間戳記字串（需從文字中移除）
+ * @param text        要處理的原始文字
+ * @return 清理後的文字，或 "NONE"
+ */
+String removeTimestamps(String workId, String timestamps, String text) {
+
+    // 文字為空或明確為 "NONE" 時直接返回
+    if (text.length() == 0 || text.startsWith("NONE")) return "NONE";
+	
+    // 若文字中完全沒有角括號，無需進一步處理
+    if (text.indexOf("&lt;") == -1 && text.indexOf("<") == -1) return text;	
+
+    // 將 HTML 跳脫的角括號還原為原始字元
+    text.replace("&lt;", "<");
+    text.replace("&gt;", ">");
+
+    // 移除時間戳記與 workId 前綴
+    text.replace(timestamps, "");
+    text.replace(workId, "");
+
+    // 在第一個任務標籤出現處截斷文字，捨棄標籤後的所有內容
+    for (const auto& tag : taskTags) {
+        int pos = text.indexOf(tag);
+        if (pos != -1)
+            text = text.substring(0, pos);  // 只保留標籤前的部分
+    }
+
+    return text;
+}
+
+// ============================================================
+// 使用者訊息回覆路由
+// ============================================================
+
+/**
+ * @brief 根據 workId 來源將回覆訊息路由至適當目的地。
+ *        若 workId 以 <PAGE> 開頭，追加至網頁 HTML 緩衝區；
+ *        否則透過 Telegram 傳送訊息。
+ * @param workId    工作識別碼（決定回覆目的地）
+ * @param text      要回覆的文字內容
+ * @param keyboard  Telegram 自訂鍵盤（可選）
+ */
+void replyUserMessage(String workId, String text, String keyboard = "") {
+	if (text.length() == 0 || text.startsWith("NONE")) return;
+	
+	if (workId.startsWith(String(taskTags[0])))
+		mainPageHTML += text +"\n";  // 輸出至網頁介面
+	else
+		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);  // 輸出至 Telegram
+}
+
+/**
+ * @brief 根據 workId 來源回覆影像給使用者。
+ *        若 workId 以 <PAGE> 開頭，將影像以 Base64 格式嵌入 HTML；
+ *        否則透過 Telegram 傳送影像。
+ * @param workId  工作識別碼（決定回覆目的地）
+ * @param frames  true：擷取新影像；false：使用上一張影像
+ * @return 操作結果字串
+ */
+String replyUserImage(String workId, bool frames) {
+  if (workId.startsWith(String(taskTags[0]))) {
+      // 網頁介面：擷取影像並轉換為 Base64 嵌入 HTML
+      if (frames)
+          Camera.getImage(0, &imageAddress, &imageLength);
+          
+      uint8_t* fbBuf = (uint8_t*)imageAddress;
+      size_t   fbLen = imageLength;
+
+      char *input = (char *)fbBuf;
+      char output[base64_enc_len(3)];
+      
+      // 預估 Base64 編碼後的大小並預先分配記憶體
+      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+      String imageFile = "<img src='data:image/jpeg;base64,";
+      imageFile.reserve(estimatedSize);
+      
+      // 逐位元組進行 Base64 編碼
+      for (int i = 0; i < fbLen; i++) {
+          base64_encode(output, (input++), 3);
+          if (i % 3 == 0) imageFile += String(output);
+      }
+      // 建立帶有樣式的 HTML img 標籤
+      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+	  
+	  return "Image file created.";
+  }
+  else
+    // Telegram 介面：直接傳送拍攝的影像
+    return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+
+  return "";
+}
+
+// ============================================================
+// Gemini 訊息格式建構
+// ============================================================
+
+/**
+ * @brief 將角色與內容組合為 Gemini API 相容的 JSON 訊息物件。
+ *        自動處理引號跳脫以確保 JSON 格式正確。
+ * @param role     訊息角色，"user" 或 "model"
+ * @param message  訊息內容
+ * @param comma    若為 true，在物件前加上逗號（用於陣列中間元素）
+ * @return Gemini API JSON 格式的訊息字串
+ */
+String buildGeminiMessage(String role, String message, bool comma = true) {
+  
+  // 跳脫雙引號，防止 JSON 格式破損
+  message.replace("\"", "\\\"");
+  // 修正雙重反斜線（避免過度跳脫）
+  message.replace("\\\\", "\\");
+  
+  String jsonMessage = "";
+  if (comma)
+    jsonMessage = ", {\"role\": \"";   // 陣列中間元素，前置逗號
+  else
+    jsonMessage = "{\"role\": \"";     // 陣列第一個元素，不加逗號
+  jsonMessage += role;
+  jsonMessage += "\", \"parts\":[{ \"text\": \"";
+  jsonMessage += message;
+  jsonMessage += "\" }]}";
+
+  return jsonMessage;
+}
+
+// ============================================================
+// SD 卡檔案讀取
+// ============================================================
+
+/**
+ * @brief 從 SD 卡讀取指定檔案的完整內容並返回字串。
+ *        若檔案不存在或開啟失敗，返回空字串。
+ * @param fileNname  要讀取的檔案名稱
+ * @return 檔案內容字串，失敗時返回空字串
+ */
+String getStringFromFile(String fileNname) {
+  String data = "";
+
+  fs.begin();
+  String path = String(fs.getRootPath()) + "/" + fileNname;
+
+  file = fs.open(path);
+
+  if (file) {
+    uint32_t len = file.size();
+    // 動態分配緩衝區讀取整個檔案
+    char *buf = (char*)malloc(len + 1);
+
+    if (buf) {
+      file.read(buf, len);
+      buf[len] = '\0';  // 確保字串以 null 結尾
+      data = String(buf);
+      free(buf);
+    }
+
+    file.close();
+  }
+
+  fs.end();
+  
+  return data;
+}
+
+// ============================================================
+// SD 卡檔案寫入
+// ============================================================
+
+/**
+ * @brief 將資料儲存至 SD 卡上的指定檔案，並備份舊版本。
+ *        備份策略：將現有檔案重命名為 .bak，再建立新檔案。
+ * @param filename   目標檔案名稱
+ * @param data       要寫入的資料內容
+ * @param timestamp  若為 true，備份檔案名稱會附加時間戳記（保留多個備份）
+ */
+void storeDataToFile(String filename, String data, bool timestamp = false) {
+  
+  fs.begin();
+  
+  String file_path = String(fs.getRootPath());
+  String currentFile = file_path + "/" + filename;
+  
+  // 決定備份檔案名稱
+  String backupFile = currentFile + ".bak";
+  if (timestamp == true)
+	  backupFile = currentFile + "_" + getRtcTimeString(true) + ".bak";  // 附加時間戳記的備份
+  
+  // 若目標檔案存在，先備份舊版本
+  if (fs.exists(currentFile)) {
+    
+    if (fs.exists(backupFile)) {
+      // 若備份已存在，先刪除舊備份
+      fs.remove(backupFile);
+    }
+    delay(100);  // 等待檔案系統操作完成
+    
+    // 將目前檔案重命名為備份
+    fs.rename(currentFile, backupFile);
+  }
+  
+  // 建立並寫入新檔案
+  file = fs.open(currentFile); 
+  
+  if (file) {
+    file.println(data.c_str());
+    file.close();
+  }
+  else
+	  Serial.println("[DEBUG] File open failed: " + currentFile);
+  
+  fs.end();
+}
+
+// ============================================================
+// TCP 訊息傳送（裝置間通訊）
+// ============================================================
+
+/**
+ * @brief 透過 TCP 連線傳送訊息給另一個裝置或代理（fuClaw 實例）。
+ *        使用 HTTP GET 請求，目標埠固定為 81。
+ * @param workId   工作識別碼
+ * @param domain   目標裝置的 IP 位址或網域名稱
+ * @param request  要傳送的訊息內容
+ * @return 包含狀態與回應的 JSON 字串
+ */
+String tcpSendMessage(String workId, String domain, String request) {
+  
+  WiFiClient client;
+  
+  if (client.connect(domain.c_str(), 81)) {
+	  
+    client.setRecvTimeout(20000);  // 設定接收超時 20 秒
+	
+    // 傳送 HTTP GET 請求，訊息以 URL 編碼方式附在路徑上
+    client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+    client.println("Host: " + domain);
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("Content-Length: 0");
+    client.println();
+    
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    // 讀取 HTTP 回應，跳過標頭後記錄主體
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            // 空行表示標頭結束
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          // 標頭結束後，記錄回應主體並重置超時
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+    
+    // 返回成功結果 JSON
+    return 
+      "{\"status\":\"success\","
+      "\"method\":\"/tcpSendMessage\","
+      "\"response\":\"" + body + "\","   
+      "\"workId\":\"" + workId + "\"}"; 
+  }
+
+  // 連線失敗時返回錯誤 JSON
+  return 
+    "{\"status\":\"error\","
+    "\"method\":\"/tcpSendMessage\","       
+    "\"reason\":\"Connected to the device failed.\","
+    "\"workId\":\"" + workId + "\"}";
+      
+}
+
+// ============================================================
+// 對話記憶重設
+// ============================================================
+
+/**
+ * @brief 將 Gemini 對話記憶重設為初始系統提示詞狀態。
+ *        同時備份現有記憶至 SD 卡，並清空工具執行歷史。
+ */
+void geminiChatReset() {
+
+  historicalMessages = "";
+  executeToolHistory = "";
+  
+  // 備份對話記憶至 SD 卡（附加時間戳記作為備份）
+  storeDataToFile(memoryFilename, historicalMessages, true);
+  
+  // 重新建立所有系統提示詞內容
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+  
+}
+
+/**
+ * @brief 重新建立系統提示詞內容（不清除對話歷史）。
+ *        當裝置定義、技能或人格設定更新後呼叫，使變更立即生效。
+ */
+void systemContentReset() {
+
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+  
+}
+
+// ============================================================
+// Gemini 對話請求
+// ============================================================
+
+/**
+ * @brief 向 Gemini API 傳送對話請求並返回回應文字。
+ *        自動將訊息附加至對話歷史，並在回應中移除時間戳記。
+ * @param workId   工作識別碼（用於訊息追蹤）
+ * @param message  使用者訊息內容
+ * @param tools    工具模式：1=含工具定義、0=不含工具、-1 或其他=僅使用基礎角色
+ * @return Gemini 回應的純文字內容
+ */
+String geminiChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  // 在訊息中附加 RTC 目前時間，讓 Gemini 知道當前時間
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+  
+  // 將使用者訊息加入對話歷史
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
+
+  // 依據 tools 參數選擇對應的系統提示詞
+  String contents = "";
+  if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;  // 不含工具定義
+  else if (tools == 1)
+    contents = systemContentTools + historicalMessages;    // 含完整工具定義
+  else if (tools == 2)
+    contents = systemContent + buildGeminiMessage("user", message);  // 僅基礎角色（不加入歷史）
+  else
+	contents = systemContent + buildGeminiMessage("user", message);  // 同上（用於 RTC 初始化等特殊情況）
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiSSLClient client;
+  String responseText = "";
+	  
+  client.setRecvTimeout(10000);  // 設定連線超時 10 秒
+		  
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    // 使用 HTTP/1.0 避免 chunked transfer encoding
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    // 分批傳送請求主體（每次 1024 位元組）
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    // 讀取完整 HTTP 回應（跳過標頭，僅保留主體）
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) { 
+              headersEnded = true;  // 偵測到空行，標頭結束
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } 
+        else {
+          body += c;
+          timeout = millis() + 20000;  // 每收到資料就重置超時
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();
+
+    // 找到 JSON 主體的起始位置（跳過可能的非 JSON 前置字元）
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    // 解析 Gemini API JSON 回應
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    }  
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      // 成功提取回應文字
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      // API 錯誤（例如：配額超限、無效金鑰）
+      responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
+	  Serial.println(responseText);
+	  responseText = "Gemini API Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini.";
+      Serial.println("Unknown response format.");
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini did not respond. Please try again.";
+  }
+  
+  // 清理回應中的時間戳記與 workId
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
+  // 將 Gemini 回應加入對話歷史
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  return responseText;
+  
+}
+
+// ============================================================
+// Gemini 網路搜尋請求
+// ============================================================
+
+/**
+ * @brief 向 Gemini API 傳送啟用 Google Search 工具的請求。
+ *        適用於需要即時網路資訊的查詢（天氣、新聞等）。
+ * @param workId   工作識別碼
+ * @param message  搜尋查詢訊息
+ * @param tools    工具模式（同 geminiChatRequest）
+ * @return Gemini 搜尋結果的文字回應
+ */
+String geminiSearchRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();  
+  
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
+
+  String contents = systemContent + buildGeminiMessage("user", message);
+  if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;
+
+  // 在 generationConfig 中加入 google_search 工具，啟用網路搜尋功能
+  String request = "{\"contents\": [" + contents +
+                   "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiSSLClient client;
+  String responseText = "";
+	  
+  client.setRecvTimeout(10000);
+	
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    // 傳送 HTTP 請求（含搜尋工具）
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    // 讀取 HTTP 回應主體
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API (Search) Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+	  responseText = "Gemini API (Search) Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Search.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Search)");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini Search did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  return responseText;
+}
+
+// ============================================================
+// Gemini 視覺分析請求
+// ============================================================
+
+/**
+ * @brief 擷取相機影像並傳送至 Gemini 進行多模態視覺分析。
+ *        將影像以 Base64 編碼後嵌入 Gemini API 請求。
+ * @param workId   工作識別碼
+ * @param message  視覺分析的提示詞（描述要分析的內容）
+ * @param frames   true：擷取新影像；false：使用上一張已擷取的影像
+ * @return Gemini 視覺分析結果的文字回應
+ */
+String geminiVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+  
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
+
+  WiFiSSLClient client;
+  String responseText = "";
+  const char* myDomain = "generativelanguage.googleapis.com";
+	  
+  client.setRecvTimeout(10000);
+	
+  if (client.connect(myDomain, 443)) {
+
+    // 擷取影像或驗證先前影像是否存在
+    if (frames)
+      Camera.getImage(0, &imageAddress, &imageLength);
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      
+      responseText = "Previous image does not exist";
+      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+      return responseText;
+    }
+    
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    char *input = (char *)fbBuf;
+    char output[base64_enc_len(3)];
+    String imageFile = "";
+    
+    // 將 JPEG 影像逐位元組進行 Base64 編碼
+    for (size_t i = 0; i < fbLen; i++) {
+      base64_encode(output, (input++), 3);
+      if (i % 3 == 0) imageFile += String(output);
+    }
+
+    // 建立含影像的 Gemini API 請求（multimodal 格式）
+    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
+                  "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
+                  imageFile + "\"}}]}]}";
+
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(Data.length()));
+    client.println("Connection: close");
+    client.println();
+    
+    // 分批傳送影像資料（每次 1024 位元組）
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    // 讀取 HTTP 回應
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();   
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed (geminiSearchRequest):\n" + body);
+      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API (Vision) Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+	  responseText = "Gemini API (Vision) Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Vision.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Vision)");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini Vision did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+
+  return responseText;
+}
+
+// ============================================================
+// 記憶體診斷
+// ============================================================
+
+/**
+ * @brief 取得目前 FreeRTOS 堆積記憶體使用狀況與對話歷史長度。
+ * @return 格式化的記憶體診斷資訊字串
+ */
+String getMemoryInfo() {
+  String msg = "";
+
+  msg += "Free heap: ";
+  msg += String(xPortGetFreeHeapSize());        // 目前可用堆積空間
+
+  msg += "\nMin heap: ";
+  msg += String(xPortGetMinimumEverFreeHeapSize());  // 歷史最低可用堆積（監控記憶體洩漏）
+
+  msg += "\nHistorical messages len: ";
+  msg += String(historicalMessages.length());   // 對話歷史字串長度
+
+  return msg;
+}
+
+// ============================================================
+// GPIO 輸出控制
+// ============================================================
+
+/**
+ * @brief 透過數位或類比模式控制 GPIO 輸出腳位。
+ *        支援 LED、繼電器等一般用途致動器。
+ * @param pin     GPIO 腳位號碼
+ * @param mode    控制模式："digitalwrite"（0/1）或 "analogwrite"（0-255）
+ * @param value   輸出數值（digitalwrite: 0 或 1；analogwrite: 0-255）
+ * @param workId  工作識別碼
+ * @return 包含執行狀態的 JSON 字串
+ */
+String toolPinOutput(int pin, String mode, int value, String workId) {
+
+    pinMode(pin, OUTPUT);
+
+    mode.toLowerCase();  // 轉換為小寫以進行比較
+
+    if (mode == "digitalwrite") {
+
+        // 數位輸出只接受 0 或 1
+        if (value != 0 && value != 1) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/digitalwrite\","				
+				"\"reason\":\"invalid_digital_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        digitalWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogwrite") {
+
+        // 類比輸出值必須在 0-255 範圍內
+        if (value < 0 || value > 255) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/analogwrite\","				
+				"\"reason\":\"invalid_analog_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        analogWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    // 模式字串無法識別時返回錯誤
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogwrite\","		
+        "\"reason\":\"invalid_output_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// ============================================================
+// GPIO 輸入讀取
+// ============================================================
+
+/**
+ * @brief 透過數位或類比模式讀取 GPIO 輸入腳位的數值。
+ *        支援按鈕、類比感測器等一般用途感測裝置。
+ * @param pin     GPIO 腳位號碼
+ * @param mode    讀取模式："digitalread" 或 "analogread"
+ * @param workId  工作識別碼
+ * @return 包含讀取數值的 JSON 字串
+ */
+String toolPinInput(int pin, String mode, String workId) {
+
+    pinMode(pin, INPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalread") {
+
+        int value = digitalRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogread") {
+
+        int value = analogRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogread\","		
+        "\"reason\":\"invalid_input_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// ============================================================
+// 伺服馬達控制
+// ============================================================
+
+/**
+ * @brief 控制伺服馬達旋轉至指定角度。
+ *        支援 SG90 等連接至 GPIO 的伺服馬達。
+ * @param servo   伺服馬達物件參考
+ * @param pin     GPIO 腳位號碼
+ * @param angle   目標角度（0-180 度）
+ * @param workId  工作識別碼
+ * @return 包含執行狀態的 JSON 字串
+ */
+String tool_servo(AmebaServo &servo, int pin, int angle, String workId) {
+    // 若伺服馬達尚未附加，先初始化連接
+    if (!servo.attached())
+        servo.attach(pin);
+	
+	// 驗證角度範圍（SG90 支援 0-180 度）
+	if (angle < 0 || angle > 180) {
+		return 
+			"{\"status\":\"error\","
+			"\"method\":\"/servo\","				
+			"\"reason\":\"invalid_servo_angle\","
+			"\"workId\":\"" + workId + "\"}";
+	}
+		
+    servo.write(angle);  // 命令伺服馬達移動至目標角度
+		
+    return
+        "{\"status\":\"success\","
+        "\"method\":\"/servo\","
+		"\"workId\":\"" + workId + "\"}";		
+}
+
+// ============================================================
+// DHT11 溫溼度感測器讀取
+// ============================================================
+
+/**
+ * @brief 從 DHT11 感測器讀取溫度與相對濕度數值。
+ *        若讀取失敗（感測器未連接或數據錯誤），返回錯誤 JSON。
+ * @param pin     DHT11 感測器腳位（目前未使用，由全域 dht 物件固定）
+ * @param workId  工作識別碼
+ * @return 包含溫度（℃）與濕度（%）的 JSON 字串，或錯誤訊息
+ */
+String tool_dht11(int pin, String workId) {
+  float h = dht.readHumidity();      // 讀取相對濕度（%RH）
+  float t = dht.readTemperature();   // 讀取溫度（攝氏度）
+
+  // 檢查讀取值是否為 NaN（感測器通訊失敗或未連接）
+  if (isnan(h) || isnan(t)) {
+    return "{\"status\":\"error\","
+		   "\"method\":\"/dht11\","	
+           "\"reason\":\"dht11_read_failed\","
+		   "\"workId\":\"" + workId + "\"}";	
+
+  }
+
+  return
+    "{\"status\":\"success\","
+    "\"method\":\"/dht11\","
+    "\"temperature\":" + String(t) + ","
+    "\"humidity\":"    + String(h) + ","
+	"\"workId\":\"" + workId + "\"}";		
+}
+
+// ============================================================
+// 工作流程續接評估
+// ============================================================
+
+/**
+ * @brief 詢問 Gemini 目前工作流程是否已完成，並決定是否繼續執行。
+ *        若工作流程尚未完成，Gemini 將返回下一步的工具呼叫 JSON；
+ *        若已完成或只需要回覆使用者，則返回 NONE 或自然語言回覆。
+ * @param workId   工作識別碼
+ * @param reCheck  若為 false，跳過續接檢查（單步工具呼叫）
+ * @param task     原始使用者任務描述（提供上下文給 Gemini）
+ */
+void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
+
+    if (!reCheck) return;  // 不需要再次檢查時直接返回
+
+    String prompt =
+        "Analyze the execution result and determine whether the workflow is complete.\n";
+
+    // 若有原始任務描述，附加至提示詞提供上下文
+    if (task != "") {
+        prompt += "User task request:\n" + task + "\n\n";
+    }
+
+    prompt +=
+        "If additional hardware actions are strictly required, "
+        "return ONLY a valid tool_call JSON.\n"
+        "If the workflow is already complete, return EXACTLY: NONE.\n"
+        "If no tool action is required and a user-facing reply is needed, "
+        "respond naturally in the user's language.\n"
+        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
+        "Do not include explanation or extra text.";
+
+    // 傳送評估請求並處理 Gemini 的回應
+    handleAgentResponse(workId, geminiChatRequest(workId, prompt));
+}
+
+// ============================================================
+// 工具執行調度器
+// ============================================================
+
+/**
+ * @brief 執行 Gemini 返回的工具指令。
+ *        根據 command 路由至對應的工具函式，
+ *        並將執行結果加入對話歷史與工具執行記錄。
+ * @param workId   工作識別碼
+ * @param command  工具指令名稱（例如："/digitalwrite"）
+ * @param params   工具參數 JSON 物件
+ * @param reCheck  執行後是否要求 Gemini 評估工作流程是否完成
+ */
+void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
+    String timestamps = "\n" + workId;
+
+    if (command == "/digitalwrite"||command == "/analogwrite") {
+      // 讀取 GPIO 輸出所需參數
+      int pin = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>();
+      int value = params["value"].as<int>();
+      
+      String response = toolPinOutput(pin, pinmode, value, workId);
+    
+      // 將工具呼叫結果記錄至對話歷史
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      // 記錄至工具執行歷史（格式：時間戳 指令 [腳位|模式|數值]）
+      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";	  
+
+      evaluateWorkflowContinuation(workId, reCheck);
+    
+    } 
+    else if (command == "/digitalread" || command == "/analogread") {
+      int pin = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>();
+
+      String response = toolPinInput(pin, pinmode, workId);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
+
+      evaluateWorkflowContinuation(workId, reCheck); 
+      
+    } 
+    else if (command == "/still") {
+      // 擷取靜態影像並傳送給使用者
+      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
+      String res = replyUserImage(workId, frames);
+
+      // 跳脫特殊字元以確保 JSON 格式正確
+      res.replace("\\", "\\\\");
+      res.replace("\"", "\\\"");   
+       
+      String response =
+        "{\"method\":\"/still\","
+        "\"result\":\"" + res + "\","
+        "\"workId\":\"" + workId + "\"}";
+		
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck, task);
+      
+    } 
+    else if (command == "/syncrtc") {
+      // 同步 RTC 時鐘（透過 Gemini 取得最新時間）
+      rtcInitialTime(workId);
+      String rtcTimeResponse = "RTC START: " + getRtcTimeString();
+      replyUserMessage(workId, rtcTimeResponse);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+    } 
+    else if (command == "/getrtc") {
+      // 取得並回覆目前 RTC 時間
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(workId, rtcTime);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+              
+    }
+  	else if (command == "/schedule") {
+      // 新增排程任務（接受 JSON 陣列格式）
+      String task = params["task"].as<String>();
+	  
+      String response = "";
+	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
+		    task = task.substring(0, task.lastIndexOf("]") + 1);
+  			if (scheduleTasks == "")
+  				scheduleTasks = task;
+  			else {
+  				// 若已有排程任務，使用 Gemini 合併新舊任務陣列
+  				scheduleTasks += ", " + task;
+
+        String prompt = 
+          "Merge all given JSON arrays into a single valid JSON array. "
+          "Output ONLY the merged array. "
+          "Ensure the result is valid JSON starting with [ and ending with ]. "
+          "For every object in the arrays, keep all fields unchanged. "
+          "The value of the task field MUST remain exactly as provided. "
+          "Never translate, rewrite, summarize, localize, or modify task descriptions. "
+          "Task descriptions MUST remain in the original user language.\n\n"
+          + scheduleTasks;
+  				  
+  				String jsonArray = geminiChatRequest(workId, prompt, -1);
+  				
+  				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+  				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+  				  scheduleTasks = jsonArray;
+  				}
+  			}
+  			
+  			// 儲存更新後的排程任務至 SD 卡
+  			storeDataToFile(scheduleFilename, scheduleTasks);
+                
+    		response = 
+    			"{\"status\":\"success\","			
+    			"\"method\":\"/schedule\","
+    			"\"workId\":\""+workId+"\"}";				
+    	}
+    	else {
+    		response =
+			"{\"status\":\"error\","
+			"\"method\":\"/schedule\","
+			"\"reason\":\"Invalid JSON array format.\","
+			"\"workId\":\""+workId+"\"}";	  
+  	  }   
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+    
+  	}	
+    else if (command == "/modifySchedule") {
+      // 修改或刪除排程任務（使用 Gemini 進行智慧合併）
+      String task = params["task"].as<String>();
+            
+      String response = "";
+      
+      // 建立提示詞，要求 Gemini 依照使用者請求修改排程
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a user-approved schedule modification request. "
+          "Apply the requested modification or deletion to the scheduled tasks. "
+          "Rules: "
+          "- Match tasks using both schedule time and task description. "
+          "- If the request is to modify a task, update only the requested fields. "
+          "- Modifying a task includes changing the task description, schedule time, or recurrence settings. "
+          "- Any modified task MUST have its executed field set to false. "
+          "- If the request is to delete a task, remove the matching task from the array. "
+          "- Do NOT modify unrelated tasks. "
+          "- Preserve all fields of unaffected tasks. "
+          "- Preserve the executed field of unaffected tasks. "
+          "- Do NOT add new fields. "
+          "- Do NOT remove existing fields except when deleting a task. "
+          "- Preserve the original JSON schema. "
+          "- If no matching task exists, return the original array unchanged. "
+          "- Output ONLY the updated JSON array. "
+          "- The result MUST start with [ and end with ]. "
+          "- Do NOT output explanations, markdown, code fences, or natural language.\n\n"
+          "Current scheduled tasks:\n" +
+          scheduleTasks +
+          "\n\nUser-approved modification request:\n" +
+          task;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+    
+        scheduleTasks = jsonArray;
+        
+        storeDataToFile(scheduleFilename, scheduleTasks);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/modifySchedule\","
+          "\"workId\":\""+workId+"\"}";     
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/modifySchedule\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }    
+    else if (command == "/updateScheduleStatus") {
+      // 依工具執行歷史更新排程任務的 executed 狀態
+      String response = "";
+      
+      // 要求 Gemini 比對執行歷史，將已完成的一次性任務標記為 executed=true
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a tool execution history. "
+          "For each task: "
+          "- If the task's schedule has \"year\" equal to 0, it is a recurring task. Do NOT change its \"executed\" field. "
+          "- Otherwise, set \"executed\" to true ONLY if the task's corresponding action appears in the execution history as successfully completed, otherwise Do NOT change its \"executed\" field. "
+          "Output ONLY the updated JSON array. "
+          "The result MUST start with [ and end with ]. "
+          "Do NOT change any other fields.\n\n"
+          + scheduleTasks;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+		
+        scheduleTasks = jsonArray;
+          
+        storeDataToFile(scheduleFilename, scheduleTasks);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/updateScheduleStatus\","
+		  "\"workId\":\""+workId+"\"}";		  
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/updateScheduleStatus\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }
+    else if (command == "/getSchedule") {
+      // 取得所有排程任務並以使用者語言整理後回覆
+      String prompt =
+        "Please organize the following scheduled tasks and respond in the user's current language. "
+        "Present the information in a clear and well-structured bullet-point format for better readability: "
+        + scheduleTasks;
+
+      String response = geminiChatRequest(workId, prompt);
+      replyUserMessage(workId, response); 
+          
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+     
+    }    
+    else if (command == "/getUnfinishedSchedule") {
+      // 確保排程任務 JSON 格式正確後，取得未完成任務
+      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+            scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+            
+      String response = getUnfinishedScheduleTasksJson(scheduleTasks);
+      replyUserMessage(workId, response);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+ 
+    }
+    else if (command == "/clearSchedule") {
+      // 清除所有排程任務與今日執行記錄
+      scheduleTasks = "";
+      executedTodayTasks = "";
+      
+      storeDataToFile(scheduleFilename, scheduleTasks);
+      storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
+      
+      String response = "Scheduled tasks have been cleared.";
+      replyUserMessage(workId, response);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";           
+    }
+    else if (command == "/reset") {
+      // 重設對話狀態（清除對話歷史與工具執行記錄）
+      geminiChatReset();  
+            
+      String response = "New chat started.";
+      replyUserMessage(workId, response);
+
+    } 
+    else if (command == "/getMemory") {
+      // 取得並回覆記憶體使用狀況
+      String msg = getMemoryInfo();
+      replyUserMessage(workId, msg);
+
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", msg + timestamps);
+
+      executeToolHistory += workId + " " + command + "\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);          
+
+    } 
+    else if (command == "/getLog") {
+      // 輸出工具執行歷史至序列監視器（避免超出 Telegram 訊息長度限制）
+      Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
+      replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
+
+      executeToolHistory += workId + " " + command + "\n";
+      
+    } 
+    else if (command == "/chat") {
+      // 直接回覆自然語言訊息（Gemini 已決定內容，無需再次呼叫）
+      String reply = params["reply"].as<String>();
+      replyUserMessage(workId, reply);
+
+    } 
+    else if (command == "/search") {
+      // 執行 Gemini 網路搜尋並處理回應
+      String query = params["query"].as<String>();
+      String task = params["task"].as<String>();
+	  
+      String response = geminiSearchRequest(workId, query, false);
+      handleAgentResponse(workId, response);
+	  
+      executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
+      
+      evaluateWorkflowContinuation(workId, reCheck, task);
+
+    } 
+    else if (command == "/delay") {
+      // 暫停執行指定毫秒數（最大 10 秒，使用非阻塞延遲）
+      long milliseconds = params["milliseconds"].as<long>();
+      milliseconds = constrain(milliseconds, 0, 10000);  // 限制在 0-10000 ms 範圍內
+  
+      unsigned long start = millis();
+  
+      // 使用 FreeRTOS 延遲（不阻塞其他 task）
+      while (millis() - start < milliseconds) {
+          vTaskDelay(10 / portTICK_PERIOD_MS);
+      }
+  
+      executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
+  
+      evaluateWorkflowContinuation(workId, reCheck);
+        
+    } 
+    else if (command == "/vision") {
+      // 執行 Gemini 視覺分析（擷取影像並送至 Gemini 分析）
+      String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
+      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
+	  
+      String response = geminiVisionRequest(workId, query, frames);
+      handleAgentResponse(workId, response);
+	  
+      executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
+      
+      evaluateWorkflowContinuation(workId, reCheck, task);
+    }
+  	else if (command == "/reboot") {
+  	  // 重新開機（傳送通知後執行系統重置）
+  	  replyUserMessage(workId, "Rebooting the device, please wait...");
+
+      executeToolHistory += workId + " " + command + "\n";
+  		
+  	  Serial.println("User requested reboot the device.");
+  	  vTaskDelay(2000 / portTICK_PERIOD_MS);  // 等待 2 秒讓訊息傳送完成
+  		
+  	  NVIC_SystemReset();  // 執行硬體系統重置
+  	}
+  	else if (command == "/tcpSendMessage") {
+      // 透過 TCP 傳送訊息給另一個裝置
+      String device = params["device"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = tcpSendMessage(workId, device, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/telegramSendMessage") {
+      // 傳送訊息至 Telegram Bot（可指定不同 Token 和聊天室）
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      // 記錄 Token 前 5 字元（避免完整 Token 暴露在日誌中）
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/telegramSendImage") {
+      // 傳送相機影像至 Telegram Bot（可指定不同 Token 和聊天室）
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+	  bool frames = params["frames"].as<bool>();
+	  
+      String response = telegramSendCapturedImage(token, chatId, frames);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
+  	else if (command == "/lineSendMessage") {
+      // 傳送訊息至 Line Bot
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+	  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+
+      executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
+    else if (command == "/servo") {
+        // 控制伺服馬達（目前只支援 GPIO 12）
+        int pin   = params["pin"].as<int>();
+        int angle = params["angle"].as<int>();
+
+        String response = "";
+        if (pin == 12)
+            response = tool_servo(servo12, pin, angle, workId);
+        else
+            // 未定義的伺服馬達腳位返回錯誤
+            response = "{\"status\":\"error\","
+                       "\"reason\":\"undefined_servo_pin: " + String(pin) + "\","
+					   "\"workId\":\"" + workId + "\"}";						   
+
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+        executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+        
+        evaluateWorkflowContinuation(workId, reCheck);
+        
+    }    
+    else if (command == "/dht11") {
+      // 讀取 DHT11 溫溼度感測器
+      int pin = params["pin"].as<int>();
+  
+      String response = tool_dht11(pin, workId);
+  
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
+  
+      executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + response  + " ]\n";
+      
+      evaluateWorkflowContinuation(workId, reCheck);
+  
+    }	
+    else if (command == "/help" || command == "/start") {
+      // 回覆系統說明文字，自動翻譯為使用者語言
+      String mem = getMemoryInfo();
+      String command = systemCommand;
+      command.replace("<memory>", mem);  // 替換記憶體佔位符
+      command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
+      
+      replyUserMessage(workId, command, telegrambotKeyboard);
+
+      historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
+      historicalMessages += buildGeminiMessage("model", command + timestamps);
+      
+    }      
+    else {
+      // 未知指令：轉交 Gemini 處理（可能是自然語言或延伸指令）
+      String response = geminiChatRequest(workId, command);
+      handleAgentResponse(workId, response);
+      
+    }	
+}
+
+// ============================================================
+// 代理回應處理器
+// ============================================================
+
+/**
+ * @brief 解析並處理 Gemini 代理的回應。
+ *        支援三種回應格式：
+ *        1. 單一工具呼叫 JSON 物件（{...}）
+ *        2. 多工具呼叫 JSON 陣列（[...]）
+ *        3. 自然語言文字（直接回覆給使用者）
+ *        無效的 JSON 格式會被拒絕並記錄至序列監視器。
+ * @param workId   工作識別碼
+ * @param message  Gemini 回應的原始文字
+ */
+void handleAgentResponse(String workId, String message) {
+
+  String rawMessage = message;  // 保留原始訊息（供文字回覆使用）
+  
+  // 清理 JSON 中的跳脫字元與格式字元
+  message.replace("\\\"", "\""); 
+  message.replace("\\\\", "\\");             
+  message.replace("\\n", "");
+  message.replace("\n", "");
+  message.replace("\\r", "");
+  message.replace("\r", "");
+  message.replace("\\t", "");
+  message.replace("\t", "");
+  message.replace(String(char(0)), "");   // 移除 null 字元
+  // 移除 Markdown 特殊字元的跳脫
+  message.replace("\\-", "-");
+  message.replace("\\*", "*");
+  message.replace("\\_", "_");
+  message.replace("\\#", "#");              
+
+  if (message.startsWith("{") && message.indexOf("}") !=-1) {
+    // 情況 1：單一工具呼叫 JSON 物件
+    message = message.substring(0, message.lastIndexOf("}") + 1);
+    
+    JsonObject obj;
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) {
+        Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+        return;
+    }
+  
+    obj = doc.as<JsonObject>();
+    String method =  obj["method"].as<String>();
+    JsonObject params = obj["params"];
+    executeTool(workId, method, params);  // 執行工具
+  }
+  else if (message.startsWith("[") && message.indexOf("]") !=-1) {
+    // 情況 2：多工具呼叫 JSON 陣列（批次執行）
+    message = message.substring(0, message.lastIndexOf("]") + 1);
+  
+    DynamicJsonDocument doc(8192);
+  
+    DeserializationError error = deserializeJson(doc, message);
+  
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+      return;
+    }
+  
+    JsonArray toolsArray = doc.as<JsonArray>();
+    
+    int toolCount = toolsArray.size();
+    
+    // 依序執行陣列中的每個工具（僅最後一個工具觸發工作流程續接評估）
+    for (int i = 0; i < toolCount; i++) {
+      JsonObject toolObject = toolsArray[i];
+    
+      if (toolObject.isNull()) continue;
+    
+      String command = toolObject["method"].as<String>();
+      JsonObject params = toolObject["params"];
+    
+      // 若工具物件不完整，中止後續工具執行
+      if (command == "" || params.isNull()) {
+        Serial.println("Incomplete tool detected → abort remaining tools");
+        break;
+      }
+    
+      // 只有最後一個工具才觸發工作流程續接評估
+      bool isLast = (i == toolCount - 1);
+    
+      executeTool(workId, command, params, isLast);
+    }
+  }
+  else {
+    // 情況 3：非工具呼叫（自然語言或錯誤訊息）
+    if (message.startsWith("[") || message.startsWith("{")) {
+      // JSON 格式不完整（可能因為 Token 截斷）
+      Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
+      replyUserMessage(workId, "Json parse failed (handleAgentResponse). Please type \"Continue\"");
+	  
+    } else if (message != "NONE") {
+      // 自然語言回覆：還原原始訊息並清理 Markdown 格式
+      message = rawMessage;
+
+      if (workId.startsWith(String(taskTags[0]))) {
+        // 網頁介面：轉換 Markdown 為簡單文字格式
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");    // 將 Markdown 列表符號轉為符號字元
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      }
+      else {
+        // Telegram 介面：除了 Markdown 清理，還需要 HTML 跳脫特殊字元
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("&", "&amp;");   // HTML 跳脫：& → &amp;
+        message.replace("<", "&lt;");    // HTML 跳脫：< → &lt;
+        message.replace(">", "&gt;");    // HTML 跳脫：> → &gt;
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      } 
+      
+      replyUserMessage(workId, message);  // 傳送清理後的訊息給使用者
+    }
+    // message == "NONE" 時直接忽略（工作流程已完成）
+  }
+}
+
+// ============================================================
+// Gemini 語音轉文字（STT）
+// ============================================================
+
+/**
+ * @brief 將音訊資料（Buffer）進行 Base64 編碼後傳送至 Gemini 進行語音轉文字。
+ *        用於處理使用者透過 Telegram 傳送的語音訊息。
+ * @param fileinput  音訊資料的原始位元組陣列
+ * @param fileSize   音訊資料的位元組數
+ * @param mimeType   音訊格式 MIME 類型（例如："audio/ogg; codecs=opus"）
+ * @param prompt     傳送給 Gemini 的提示詞（例如："Transcribe this audio to text."）
+ * @return 轉錄後的文字字串，失敗時返回錯誤訊息
+ */
+String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
+
+  int   encodedLen  = base64_enc_len(fileSize);
+  char* encodedData = (char*)malloc(encodedLen);
+  if (!encodedData) {
+    Serial.println("[STT] malloc failed for Base64 buffer");
+    return "Malloc failed for Base64 encoding.";
+  }
+  // 將音訊資料進行 Base64 編碼
+  base64_encode(encodedData, (char*)fileinput, fileSize);
+
+  // 清理提示詞中的特殊字元
+  prompt.replace("\n", "");
+  prompt.replace("\"", "\\\"");
+
+  // 建立包含音訊資料的 Gemini API 請求
+  String request =
+    "{\"contents\": [{\"role\": \"user\", \"parts\": ["
+    "{\"inline_data\": {\"data\": \"" + String(encodedData) + "\","
+    "\"mime_type\": \"" + mimeType + "\"}},"
+    "{\"text\": \"" + prompt + "\"}"
+    "]}]}";
+
+  free(encodedData);  // 釋放 Base64 編碼緩衝區
+
+  WiFiSSLClient client;
+  if (!client.connect("generativelanguage.googleapis.com", 443)) {
+    Serial.println("[STT] Connection to Gemini failed");
+    return "Connected to Gemini failed.";
+  }
+
+  // 傳送 STT 請求至 Gemini API
+  client.println("POST /v1beta/models/" + geminiModel +
+                 ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
+  client.println("Host: generativelanguage.googleapis.com");
+  client.println("Content-Type: application/json; charset=utf-8");
+  client.println("Content-Length: " + String(request.length()));
+  client.println("Connection: close");
+  client.println();
+
+  for (int i = 0; i < (int)request.length(); i += 1024) {
+    client.print(request.substring(i, i + 1024));
+  }
+
+  String body = "";
+  unsigned long timeout = millis() + 20000;
+  bool headersEnded = false;
+  String line = "";
+
+  // 讀取 HTTP 回應主體
+  while (client.connected() && millis() < timeout) {
+    while (client.available()) {
+      char c = client.read();
+
+      if (!headersEnded) {
+        if (c == '\n') {
+          if (line.length() <= 1) {
+            headersEnded = true;
+          }
+          line = "";
+        } else if (c != '\r') {
+          line += c;
+        }
+      } else {
+        body += c;
+      }
+    }
+  }
+
+  client.stop();
+
+  int jsonStart = body.indexOf('{');
+  if (jsonStart != -1) body = body.substring(jsonStart);
+
+  DynamicJsonDocument doc(8192);
+  DeserializationError err = deserializeJson(doc, body);
+
+  if (err) {
+    Serial.println("[DEBUG] JSON parse failed: (sendFileToGemini)\n" + body);
+    return "JSON parse failed (sendFileToGemini). Please try again.";
+  }
+
+  if (doc.containsKey("error")) {
+    String msg = "Gemini STT Error: " + doc["error"]["message"].as<String>();
+    return msg;
+  }
+
+  if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
+    String result = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    result.replace("\n", "");  // 移除轉錄結果中的換行符號
+    return result;
+  }
+
+  return "No text returned from Gemini.";
+}
+
+// ============================================================
+// Telegram 檔案下載
+// ============================================================
+
+/**
+ * @brief 從 Telegram CDN 下載指定路徑的檔案至堆積記憶體緩衝區。
+ *        使用 HTTP/1.0 避免 chunked transfer encoding，確保二進位資料完整性。
+ * @param filePath  Telegram 的相對檔案路徑（例如："voice/file_123.oga"）
+ * @return 指向已下載資料的記憶體指標，失敗時返回 NULL
+ *         呼叫者負責在使用完畢後呼叫 free() 釋放記憶體
+ */
+uint8_t* downloadTelegramFile(String filePath) {
+
+  uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
+  if (!voiceFile) return NULL;  // 記憶體分配失敗
+
+  downloadedFileSize = 0;
+  WiFiSSLClient client;
+
+  if (client.connect("api.telegram.org", 443)) {
+
+    // 使用 HTTP/1.0 防止 chunked transfer encoding，確保收到的是純二進位資料
+    client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
+    client.println("Host: api.telegram.org");
+    client.println("Connection: close");
+    client.println();
+
+    // 跳過 HTTP 標頭，累積字元直到找到 "\r\n\r\n"
+    String header    = "";
+    long   startTime = millis();
+
+    while (client.connected() || client.available()) {
+      if (millis() - startTime > 10000) break;  // 標頭讀取超時 10 秒
+      if (client.available()) {
+        char c = client.read();
+        header += c;
+        if (header.endsWith("\r\n\r\n")) break;   // 標頭已完整讀取
+      }
+    }
+
+    // 直接將二進位主體讀取至輸出緩衝區
+    startTime = millis();
+    while ((client.connected() || client.available()) &&
+           downloadedFileSize < MAX_FILE_SIZE) {
+      if (millis() - startTime > 10000) break;  // 主體讀取超時 10 秒
+      if (client.available()) {
+        voiceFile[downloadedFileSize++] = client.read();
+        startTime = millis();   // 每收到一個位元組就重置超時
+      }
+    }
+
+    client.stop();
+  }
+
+  return voiceFile;
+}
+
+// ============================================================
+// Telegram 檔案 ID 解析
+// ============================================================
+
+/**
+ * @brief 呼叫 Telegram getFile API，將 file_id 轉換為可下載的檔案路徑。
+ * @param fileId  Telegram file_id（例如：語音訊息物件中的 file_id）
+ * @return 相對檔案路徑字串（例如："voice/file_123.oga"）
+ */
+String getTelegramFilePath(String fileId) {
+
+  WiFiSSLClient client;
+  String filePath = "";
+  String getAll = "", getBody = "";
+
+  if (client.connect("api.telegram.org", 443)) {
+
+    // 透過 getFile API 查詢 file_id 對應的下載路徑
+    client.println("GET /bot" + telegrambotToken +
+                   "/getFile?file_id=" + fileId + " HTTP/1.1");
+    client.println("Host: api.telegram.org");
+    client.println("Connection: close");
+    client.println();
+
+    int     waitTime  = 5000;
+    long    startTime = millis();
+    boolean state     = false;
+
+    // 等待接收 HTTP 回應（最長 5 秒）
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (c == '\n') {
+          if (getAll.length() == 0) state = true;  // 空行後開始記錄主體
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
+        }
+
+        if (state == true) getBody += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length() > 0) break;
+    }
+
+    // 從 JSON 回應中提取 file_path
+    DynamicJsonDocument doc(8192);
+    deserializeJson(doc, getBody);
+    filePath = doc["result"]["file_path"].as<String>();
+  }
+
+  return filePath;
+}
+
+// ============================================================
+// Telegram 訊息輪詢
+// ============================================================
+
+/**
+ * @brief 透過 Telegram Bot API 的長輪詢方式取得最新使用者訊息。
+ *        支援文字訊息與語音訊息兩種格式。
+ *        - 文字訊息：直接處理或轉交 Gemini
+ *        - 語音訊息：下載→STT轉錄→處理
+ *        同時驗證來源聊天室 ID，拒絕非授權使用者的訊息。
+ */
+void getTelegramMessage() {
+
+  const char* myDomain  = "api.telegram.org";
+  String      getAll    = "";
+  String      getTime   = "";
+  String      getBody   = "";
+
+  JsonObject          obj;
+  DynamicJsonDocument doc(8192);
+
+  String text        = "";
+  String voiceFileId = "";
+  long   message_id  = 0;
+
+  // 複用現有連線；僅在連線中斷時重新連接
+  if (!botClient.connected()) {
+    if (lastMessageId == 0)
+      Serial.println("Connect to " + String(myDomain));
+
+    if (!botClient.connect(myDomain, 443))
+      return;
+
+    if (lastMessageId == 0)
+      Serial.println("Connection successful");
+  }
+
+  while (botClient.connected()) {
+
+    getAll  = "";
+    getTime = "";
+    getBody = "";
+
+    // 請求最新一則訊息（offset=-1 表示取最新訊息）
+    String request = "limit=1&offset=-1&allowed_updates=message";
+
+    botClient.println("POST /bot" + telegrambotToken + "/getUpdates HTTP/1.1");
+    botClient.println("Host: "           + String(myDomain));
+    botClient.println("Content-Length: " + String(request.length()));
+    botClient.println("Content-Type: application/x-www-form-urlencoded");
+    botClient.println("Connection: keep-alive");  // 保持連線以減少重連開銷
+    botClient.println();
+    botClient.print(request);
+
+    int           waitTime    = 5000;
+    unsigned long startTime   = millis();
+    bool          state       = false;
+    bool          dataReceived = false;
+
+    // 讀取 HTTP 回應，同時從標頭中提取伺服器時間
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (botClient.available()) {
+        char c = botClient.read();
+
+        if (c == '\n') {
+          if (getAll.length() == 0)
+            state = true;  // 空行後開始記錄主體
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
+        }
+
+        if (state) {
+          getBody += String(c);
+        } else {
+          // 從 HTTP 標頭中提取日期時間（用於 workId）
+          if      (getTime.indexOf("Date:") != -1)
+            getTime  = "";
+          else if (getTime.indexOf("Content-Type") != -1)
+            getTime += "";
+          else
+            getTime += String(c);
+        }
+
+        startTime = millis();
+      }
+
+      // 收到主體後立即跳出等待迴圈
+      if (getBody.length() > 0) {
+        dataReceived = true;
+        break;
+      }
+    }
+
+    // 清理時間字串並建立 workId
+    getTime.replace("Content-Type", "");
+    String workId = String(taskTags[1]) + " " + getTime;
+
+    if (!dataReceived || getBody == "") return;
+
+    // 解析 Telegram API 回應 JSON
+    DeserializationError err = deserializeJson(doc, getBody);
+    if (err) {
+      Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+      return;
+    }
+    obj = doc.as<JsonObject>();
+
+    message_id = obj["result"][0]["message"]["message_id"].as<long>();
+
+    // 只處理新訊息（避免重複處理同一訊息）
+    if (message_id && message_id != lastMessageId) {
+
+      long id_last  = lastMessageId;
+      lastMessageId = message_id;
+	  
+      // 驗證訊息來源是否為授權聊天室
+      String fromChatId = obj["result"][0]["message"]["chat"]["id"].as<String>();
+      if (fromChatId != telegrambotChatId) {
+        return;  // 拒絕非授權使用者的訊息
+      }	  	  
+
+      if (id_last == 0) {
+        // 第一次啟動時忽略舊訊息（避免開機後重複處理之前的訊息）
+        message_id = 0;
+
+      } else {
+        // 更新 workId 使用 RTC 當前時間
+        workId = String(taskTags[1]) + " " + getRtcTimeString();
+
+        if (obj["result"][0]["message"].containsKey("text")) {
+          // 處理文字訊息
+          text = obj["result"][0]["message"]["text"].as<String>();
+
+          if (text == "help") {
+            // "help" 快捷指令
+            executeTool(workId, "/help", JsonObject());
+
+          } else if (text == "null") {
+            // 重置 Telegram 連線
+            botClient.stop();
+
+          } else if (text.startsWith("/")) {
+            // 以斜線開頭的指令直接執行
+            executeTool(workId, text, JsonObject());
+
+          } else {
+            // 一般文字訊息：傳送至 Gemini 處理後回應
+            text = geminiChatRequest(workId, text);
+            handleAgentResponse(workId, text);
+          }
+
+          // 將更新後的對話歷史儲存至 SD 卡
+          storeDataToFile(memoryFilename, historicalMessages);
+
+        } else if (doc["result"][0]["message"].containsKey("voice")) {
+          // 處理語音訊息：下載→STT轉錄→執行
+          voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+
+          // 步驟 1：取得 Telegram 語音檔案的下載路徑
+          String   filePath  = getTelegramFilePath(voiceFileId);
+          // 步驟 2：下載語音檔案至記憶體
+          uint8_t* voiceFile = downloadTelegramFile(filePath);
+
+          if (voiceFile && downloadedFileSize > 0) {
+            // 步驟 3：使用 Gemini STT 轉錄語音為文字
+            text = sendFileToGemini(
+              voiceFile, downloadedFileSize,
+              "audio/ogg; codecs=opus",
+              "Transcribe this audio to text exactly as spoken."
+            );
+
+            // 步驟 4：處理轉錄結果（指令或自然語言）
+            if (text.startsWith("/")) {
+              executeTool(workId, text, JsonObject());
+            } else {
+              text = geminiChatRequest(workId, text);
+              handleAgentResponse(workId, text);
+            }
+          }
+
+          // 釋放語音檔案記憶體
+          if (voiceFile)
+            free(voiceFile);
+
+          storeDataToFile(memoryFilename, historicalMessages);
+        }
+      }
+    }
+
+    vTaskDelay(5 / portTICK_PERIOD_MS);  // 讓出 CPU 給其他任務
+  }
+
+  // 連線中斷時嘗試重新連接 WiFi
+  while (WiFi.status() != WL_CONNECTED) {
+    WiFi.disconnect();
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
+
+    unsigned long start = millis();
+
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
+      vTaskDelay(500 / portTICK_PERIOD_MS);
+  }
+}
+
+// ============================================================
+// FreeRTOS 任務：HTTP 設定管理伺服器（埠 81）
+// ============================================================
+
+/**
+ * @brief FreeRTOS 任務：處理網頁設定介面的 HTTP 請求。
+ *        支援的路由：
+ *        GET /                     → 返回設定管理頁面（index.html）
+ *        GET /updateConfig?{json}  → 更新環境設定並重新開機
+ *        GET /agent                → 返回代理管理頁面
+ *        GET /getSoul              → 返回目前人格提示詞
+ *        GET /updateSoul?{text}    → 更新人格提示詞
+ *        GET /getDevice            → 返回裝置定義
+ *        GET /updateDevice?{text}  → 更新裝置定義
+ *        GET /getSkill             → 返回技能定義
+ *        GET /updateSkill?{text}   → 更新技能定義
+ *        GET /chat                 → 返回聊天介面
+ *        GET /schedule             → 返回排程管理介面
+ *        GET /getScheduleTasks     → 返回排程任務 JSON
+ *        GET /updateScheduleTasks? → 更新排程任務
+ *        GET /message?{text}       → 處理來自網頁介面的訊息
+ */
+void task_getRequest(void *param) {
+  (void)param;
+  while (1) {
+	  
+    WiFiClient client = server.available();
+
+    if (client) {
+      String currentLine = "";  // 累積目前 HTTP 請求行的緩衝區
+      
+      while (client.connected()) {
+        if (client.available()) {
+          char c = client.read();
+
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+            
+              // HTTP 標頭結束，準備回覆
+              String pageToSend = mainPageHTML;
+              mainPageHTML = "";
+            
+              // 回覆 HTTP 200 OK
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/html; charset=utf-8");
+              client.println("Content-Length: " + String(pageToSend.length()));
+              client.println("Access-Control-Allow-Origin: *");
+              client.println("Cache-Control: no-cache");
+              client.println();
+            
+              // 分塊傳送 HTML 內容（每次 512 位元組）
+              const char* ptr = pageToSend.c_str();
+              int total  = pageToSend.length();
+              int sent   = 0;
+              while (sent < total) {
+                int chunk   = (total - sent) > 512 ? 512 : (total - sent);
+                int written = client.write((const uint8_t*)(ptr + sent), chunk);
+                if (written > 0) sent += written;
+                else delay(5);
+              }
+              client.flush();
+            
+              break;
+
+            } else {
+              currentLine = "";
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c;
+          }
+          
+          // 路由：GET / → 回傳設定管理頁面
+          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            
+            mainPageHTML = getStringFromFile(configpageFilename);
+			
+            // 將 HTML 模板中的佔位符替換為實際設定值
+            mainPageHTML.replace("deviceName", deviceName);
+            mainPageHTML.replace("wifiSsid", wifiSsid);
+            mainPageHTML.replace("wifiPassword", wifiPassword);
+            mainPageHTML.replace("telegrambotToken", telegrambotToken);
+            mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
+            mainPageHTML.replace("geminiApiKey", geminiApiKey);
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);		
+
+            currentLine = "";            
+          }
+          else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            
+            // 路由：GET /updateConfig?{json} → 更新環境設定並重新開機
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateConfig?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine);  // 儲存設定至 SD 卡
+              
+              mainPageHTML = "Configuration updated successfully.";
+              executeTool(workId, "/reboot", JsonObject());  // 重新開機以套用新設定
+              
+            }
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+
+            currentLine = "";
+            
+          }
+          else if ((currentLine.indexOf("GET /agent") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /agent → 回傳代理管理介面
+            mainPageHTML = getStringFromFile(agentpageFilename);
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /getSoul → 回傳目前人格提示詞
+            mainPageHTML = geminiRole;
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /updateSoul?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /updateSoul?{text} → 更新人格提示詞並立即套用
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSoul?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            storeDataToFile(soulFilename, currentLine);  // 儲存至 SD 卡
+            geminiRole = currentLine;
+            systemContentReset();  // 重建系統提示詞使變更立即生效
+            
+            currentLine = "";        
+            
+          }		  
+          else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /getDevice → 回傳裝置硬體定義
+            mainPageHTML = devicesDefinition;
+            currentLine = "";
+
+          }
+		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /updateDevice?{text} → 更新裝置定義並立即套用
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateDevice?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            storeDataToFile(deviceFilename, currentLine);
+            devicesDefinition = currentLine;
+			
+            // 更新含裝置名稱與時區的完整版本
+			devicesDefinitionFinal = devicesDefinition;
+			devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+			devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			
+            systemContentReset();  // 重建系統提示詞            
+			
+            currentLine = "";        
+            
+          }
+          else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /getSkill → 回傳技能定義
+            mainPageHTML = skillsDefinition;
+            currentLine = "";
+
+          } 		  
+          else if ((currentLine.indexOf("GET /updateSkill?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /updateSkill?{text} → 更新技能定義並立即套用
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSkill?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            storeDataToFile(skillFilename, currentLine);
+            skillsDefinition = currentLine;
+            systemContentReset();
+            
+            currentLine = "";        
+            
+          }		  
+          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /chat → 回傳 Gemini 聊天介面
+            mainPageHTML = getStringFromFile(chatpageFilename);
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /schedule → 回傳排程管理介面
+            mainPageHTML = getStringFromFile(schedulepageFilename);
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            // 路由：GET /getScheduleTasks → 回傳排程任務 JSON 資料
+            mainPageHTML = scheduleTasks;
+            currentLine = "";
+
+          }                                            
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            
+            // 路由：GET /updateScheduleTasks?{json} → 更新排程任務
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateScheduleTasks?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+              storeDataToFile(scheduleFilename, currentLine);
+              scheduleTasks = currentLine;
+              
+              mainPageHTML = "Schedule updated successfully.";
+              
+              // 將更新事件記錄至對話歷史
+              historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+              historicalMessages += buildGeminiMessage("model", mainPageHTML);  
+
+              storeDataToFile(memoryFilename, historicalMessages);
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
+            
+          }
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            
+            // 路由：GET /message?{text} → 處理來自網頁介面的訊息
+            mainPageStatus = true;
+            mainPageHTML = "";
+            
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();       
+
+            currentLine.replace("GET /message?", "");
+            currentLine.replace(" HTTP/1.", "");
+
+            if (currentLine != "") {
+              currentLine = urldecode(currentLine);           
+      				
+    			// 判斷是否為指令或自然語言訊息
+    			if (currentLine.startsWith("/")) 
+    			  executeTool(workId, currentLine, JsonObject()); 
+    			else {
+    			  currentLine = geminiChatRequest(workId, currentLine);
+    			  handleAgentResponse(workId, currentLine);
+    			}
+      				
+              storeDataToFile(memoryFilename, historicalMessages);
+            }
+            
+            mainPageStatus = false;
+            currentLine = "";
+
+    		}      
+        }
+      }
+
+      client.stop();
+    }
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);  // 無連線時讓出 CPU
+    }
+  }
+}
+
+// ============================================================
+// FreeRTOS 任務：影像串流伺服器（埠 82）
+// ============================================================
+
+/**
+ * @brief FreeRTOS 任務：持續推送 MJPEG 影像串流至連接的客戶端。
+ *        使用 multipart/x-mixed-replace 格式，boundary 為 "Taiwan"。
+ *        每幀延遲約 10ms（約 100fps 上限，實際受相機 FPS 限制）。
+ */
+void task_getRequestStream(void *param) {
+  (void)param;
+  while (1) {
+    WiFiClient client = serverStream.available();
+    uint32_t img_addr = 0;
+    uint32_t img_len = 0;
+    
+    if (client) {
+      String currentLine = "";
+
+      while (client.connected()) {
+        if (client.available()) {
+          char c = client.read();
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+              // HTTP 標頭結束，開始推送影像串流
+              String head = "--Taiwan\r\nContent-Type: image/jpeg\r\n\r\n";
+              client.println("HTTP/1.1 200 OK");
+              client.println("Access-Control-Allow-Origin: *");
+              client.println("Connection: keep-alive");
+              client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
+              client.println();
+              // 持續推送影像直到客戶端斷線
+              while(client.connected()) {
+                Camera.getImage(0, &img_addr, &img_len);
+                uint8_t *fbBuf = (uint8_t*)img_addr;
+                size_t fbLen = img_len;
+                client.print(head);
+                // 分塊傳送 JPEG 影像資料
+                for (size_t n=0;n<fbLen;n=n+1024) {
+                    if (n+1024<fbLen) {
+                      client.write(fbBuf, 1024);
+                      fbBuf += 1024;
+                  }
+                  else if (fbLen%1024>0) {
+                    size_t remainder = fbLen%1024;
+                    client.write(fbBuf, remainder);
+                  }
+                }
+                client.print("\r\n");  // 每幀結尾
+                
+                vTaskDelay(10 / portTICK_PERIOD_MS);  // 控制幀率
+              }
+              break;
+            } else {
+              currentLine = "";
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c;
+          }
+
+          if (currentLine.indexOf(" HTTP/1.")!=-1) {
+            currentLine="";
+          }
+        }
+      }
+      delay(1);
+      client.stop();
+    }
+  }
+}
+
+// ============================================================
+// FreeRTOS 任務：Telegram 訊息輪詢
+// ============================================================
+
+/**
+ * @brief FreeRTOS 背景任務：持續輪詢 Telegram 訊息。
+ *        每次輪詢間隔約 1 秒（由 vTaskDelay 控制）。
+ */
+void task_getTelegramMessage(void *param) {
+  (void)param;
+  while (1) {
+    
+    getTelegramMessage();
+    
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
+  }
+}
+
+// ============================================================
+// FreeRTOS 任務：防盜偵測（預留，目前停用）
+// ============================================================
+
+/**
+ * @brief FreeRTOS 背景任務：定期執行防盜偵測技能。
+ *        每 5 分鐘觸發一次，透過 evaluateWorkflowContinuation 呼叫 Gemini 執行對應工作流程。
+ *        注意：此任務在 setup() 中被註解停用，需手動啟用。
+ */
+void task_theft_detection(void *param) {
+  (void)param;
+  while (1) {
+	  
+    vTaskDelay(300000 / portTICK_PERIOD_MS);  // 每 5 分鐘執行一次
+    
+    // 等待 Telegram 任務閒置後再執行，避免競爭
+    botClient.stop();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    Serial.println("\n\nExecuting Skill: theft_detection\n\n");
+
+    String workId = String(taskTags[4]) + " " + getRtcTimeString();
+    
+    // 要求 Gemini 執行防盜偵測技能
+    evaluateWorkflowContinuation(
+		workId, 
+		true, 
+		"Must execute skill theft_detection. Return ONLY tool_call JSON."
+	);
+
+    storeDataToFile(memoryFilename, historicalMessages);
+
+  }
+  
+}
+
+// ============================================================
+// 時間格式工具函式
+// ============================================================
+
+/**
+ * @brief 將整數數值格式化為兩位數字串（不足兩位時補零）。
+ *        用於格式化時間戳記（例如：9 → "09"）。
+ * @param value  要格式化的整數（0-99）
+ * @return 兩位數字串
+ */
+String twoDigits(int value) {
+  if (value < 10)
+    return "0" + String(value);
+  return String(value);
+
+}
+
+// ============================================================
+// 排程任務查詢
+// ============================================================
+
+/**
+ * @brief 檢查指定的週期性任務是否已在今日執行過。
+ *        日期更換時自動重置今日執行記錄，確保任務可以在新的一天再次執行。
+ * @param task  要檢查的任務識別字串（schedule JSON + 任務描述的組合）
+ * @return true：今日已執行；false：今日尚未執行
+ */
+bool isExecutedToday(String task) {
+
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  int today = now->tm_mday;
+
+  // 若日期已更換，自動重置今日執行記錄
+  if (executedTodayDate != today) {
+    executedTodayTasks = "";
+    executedTodayDate = today;
+  }
+
+  // 以 |task| 格式搜尋，確保精確匹配
+  return executedTodayTasks.indexOf("|" + task + "|") != -1;
+}
+
+/**
+ * @brief 將週期性任務標記為今日已執行。
+ *        在任務執行後呼叫，防止同一天重複執行相同的週期性任務。
+ * @param task  要標記的任務識別字串
+ */
+void markExecutedToday(const String &task) {
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
+  executedTodayTasks += "|" + task + "|";  // 以 | 分隔符包圍任務名稱
+}
+
+/**
+ * @brief 篩選出所有「尚未完成」的排程任務，格式化為人類可讀字串。
+ *        週期性任務（year==0）若今日已執行則略過。
+ *        一次性任務若 executed==true 則略過。
+ * @param scheduleTasksJson  包含所有排程任務的 JSON 陣列字串
+ * @return 格式化的未完成任務清單，或 "NULL"（若無未完成任務）
+ */
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;  // 跳過已執行的一次性任務
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+                
+      // 建立任務識別字串（用於比對今日執行記錄）
+      String scheduleStr;
+      serializeJson(task["schedule"], scheduleStr);
+      String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+      // 週期性任務（year==0）若今日已執行則跳過
+      if (year == 0 && isExecutedToday(compareTask))
+          continue;
+
+      // 格式化輸出：*** 年/月/日 時:分:秒 ***\n任務描述
+      result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
+  }
+  
+  if (result == "") result = "NULL";
+
+  return result;
+}
+
+/**
+ * @brief 篩選出所有「到期待執行」的排程任務，返回 JSON 陣列格式。
+ *        任務到期條件：排程時間 ≤ 目前 RTC 時間，且未超過 scheduleTimeout 分鐘。
+ *        週期性任務（year==0）若今日已執行則略過。
+ *        一次性任務（year>0）若 executed==true 則略過。
+ * @param scheduleTasksJson  包含所有排程任務的 JSON 陣列字串
+ * @return 到期任務的 JSON 陣列字串，無任務時返回 "[]"
+ */
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+  
+  // 取得目前 RTC 時間（Unix 時間戳）
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "Unfinished Schedule Tasks:\n\n";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;  // 跳過已完成的一次性任務
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+
+      // 週期性任務（year/month/day 為 0）使用當天日期補全
+      int resolvedYear  = (year  == 0) ? (now->tm_year + 1900) : year;
+      int resolvedMonth = (month == 0) ? (now->tm_mon  + 1)    : month;
+      int resolvedDay   = (day   == 0) ? (now->tm_mday)        : day;
+
+      // 建立任務排程時間的 tm 結構
+      struct tm tmTask = {};
+      tmTask.tm_year = resolvedYear  - 1900;
+      tmTask.tm_mon  = resolvedMonth - 1;
+      tmTask.tm_mday = resolvedDay;
+      tmTask.tm_hour = hour;
+      tmTask.tm_min  = minute;
+      tmTask.tm_sec  = sec;
+
+      time_t taskTime = mktime(&tmTask);
+      
+      // 檢查任務是否已到期
+      if (mktime(&tmTask) <= rawtime) {
+        time_t diff = rawtime - taskTime;
+        
+        // 超過 scheduleTimeout 的任務不再補執行（避免長時間停機後大量補執行）
+        if ((scheduleTimeout > 0 && rawtime > taskTime && diff > (time_t)(scheduleTimeout * 60)))
+            continue;
+                
+        // 建立任務識別字串並檢查週期性任務今日是否已執行
+        String scheduleStr;
+        serializeJson(task["schedule"], scheduleStr);
+        String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+        if (year == 0 && isExecutedToday(compareTask))
+            continue;
+
+        // 將此任務加入待執行清單
+        JsonObject item = resultArray.createNestedObject();
+        item["task"] = task["task"].as<String>();
+        item["schedule"] = schedule;
+
+      }
+  }
+
+  // 序列化結果為 JSON 字串
+  serializeJson(resultDoc, result);
+  return result;
+}
+
+// ============================================================
+// FreeRTOS 任務：時間排程執行器
+// ============================================================
+
+/**
+ * @brief FreeRTOS 任務：每 60 秒檢查並執行到期的排程任務。
+ *        流程：
+ *        1. 等待 60 秒
+ *        2. 暫停 Telegram 連線，避免資源競爭
+ *        3. 確認 RTC 已初始化（若未初始化則先同步）
+ *        4. 取得到期任務列表
+ *        5. 對每個到期任務建立提示詞並呼叫 Gemini 執行
+ *        6. 執行後更新 /updateScheduleStatus 並持久化執行記錄
+ */
+void task_time_scheduling(void *param) {
+  (void)param;
+  while (1) {
+	  
+    vTaskDelay(60000 / portTICK_PERIOD_MS);  // 每 60 秒檢查一次排程
+
+    // 暫停 Telegram 輪詢，避免與排程任務競爭網路資源
+    botClient.stop();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    String workId = String(taskTags[3]) + " " + rtcFormatTime;
+
+    // 確認 RTC 已正確初始化（rtcYear==0 表示尚未初始化）
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;  // 若 RTC 同步仍然失敗，跳過本次排程檢查
+    }
+
+    // 確認排程任務格式正確
+    if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1) {
+      scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+ 
+      // 取得本次到期應執行的任務列表
+      String unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(scheduleTasks);
+
+      if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
+        unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
+
+        String response = "";
+
+        DynamicJsonDocument doc(8192);
+      
+        DeserializationError err = deserializeJson(doc, unfinishedScheduleTasksJson);
+        if (err) {
+          Serial.println("[DEBUG] JSON parse failed: (task_time_scheduling)\n" + unfinishedScheduleTasksJson);
+          return;
+        }  
+
+        JsonArray tasks = doc.as<JsonArray>();
+        
+        // 逐一處理每個到期任務
+        for (JsonObject obj : tasks) {
+
+          String taskName = obj["task"].as<String>();
+
+          String schedule = obj["schedule"].as<String>();
+          String item = obj["task"].as<String>();           
+
+          // 建立排程執行提示詞，要求 Gemini 執行指定任務
+          String prompt =
+            "This is a deterministic scheduling execution step. "
+          
+            "\n\nUnfinished scheduled tasks:\n" +
+            item +
+          
+            "\n\nThe task list above already contains ONLY tasks that have not been executed. "
+            "Evaluate EVERY task in this list independently. "
+            "If a task's scheduled time is less than or equal to the current time, "
+            "it MUST be executed immediately. "
+            "Do NOT skip any eligible task. "
+            "More than one task may be eligible at the same time. "
+            "If multiple tasks are eligible, execute ALL of them in the same response. "
+            "Tasks whose scheduled time is still in the future must be ignored. "
+          
+            "Output rules: "
+            "1. If no task is eligible for execution, return EXACTLY: NONE. "
+            "2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
+            "3. Never return natural language. "
+            "4. Never explain. "
+            "5. Never summarize. "
+            "6. Never ask questions. "
+            "7. Never claim success without tool execution results. "
+            "8. Process every task in the provided task list. "
+            "9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
+            "10. Do not stop after the first eligible task.";
+
+          response = geminiChatRequest(workId, prompt);
+
+          handleAgentResponse(workId, response);
+
+          // 將週期性任務標記為今日已執行
+          markExecutedToday(schedule + " " + item);
+        }
+        
+        if (tasks.size()>0) {
+          // 所有任務執行完畢後，更新排程任務的執行狀態
+          executeTool(workId, "/updateScheduleStatus", JsonObject(), false);
+
+          // 持久化今日執行記錄與對話歷史
+          storeDataToFile(scheduleExecutedTodayTasksFilename, executedTodayTasks);
+          storeDataToFile(memoryFilename, historicalMessages);
+        }
+      }
+      
+    }
+  }
+}
+
+// ============================================================
+// WiFi 初始化
+// ============================================================
+
+/**
+ * @brief 初始化 WiFi 連線（同時啟用 AP 模式與 STA 模式）。
+ *        AP 模式：始終開啟，提供設定管理介面（http://192.168.1.1:81）
+ *        STA 模式：若設定了 SSID，嘗試連接外部 WiFi（最多重試 2 次）
+ */
+void initWiFi() {
+	
+  // 啟用 AP+STA 並行模式
+  WiFi.enableConcurrent();
+  // 啟動 AP 熱點（頻道 2，開放模式）
+  WiFi.apbegin((char*)apSsid.c_str(), (char*)apPassword.c_str(), channel_ap, 0);
+    
+  for (int i=0;i<2;i++) {  // 最多重試 2 次連接外部 WiFi
+
+    if (wifiSsid=="")
+      break;  // 未設定 SSID 時跳過
+
+    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
+    delay(1000);
+
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(wifiSsid);
+
+    unsigned long StartTime=millis();
+
+    // 等待連接成功，最長 5 秒
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+
+      if ((StartTime+5000) < millis())
+        break;  // 超時，進行下一次重試
+    }
+  }
+  
+}
+
+/**
+ * @brief 從 JSON 字串解析並套用環境設定。
+ *        用於開機時從 env.json 載入設定，或更新設定後套用。
+ * @param jsonString  包含環境設定的 JSON 字串
+ */
+void setEnvironmentSettings(String jsonString) {
+  
+  DynamicJsonDocument doc(8192);
+  DeserializationError error = deserializeJson(doc, jsonString);
+  if (error) {
+    Serial.println("[DEBUG] JSON parse failed : (setEnvironmentSettings)\n" + jsonString);
+    return;
+  }
+
+  // 解析並套用各設定項目
+  JsonObject obj = doc.as<JsonObject>();
+  deviceName =      obj["device_name"].as<String>();  
+  wifiSsid =        obj["wifi_ssid"].as<String>();
+  wifiPassword =    obj["wifi_pass"].as<String>();
+  telegrambotToken = obj["telegramBot_token"].as<String>();
+  telegrambotChatId = obj["telegramBot_chatID"].as<String>();
+  geminiApiKey =    obj["gemini_apikey"].as<String>();
+  geminiModel =     obj["gemini_model"].as<String>();
+  scheduleTimeout = obj["schedule_timeout"].as<int>();  
+  timeZone =        obj["timezone"].as<String>();  
+  
+}
+
+/**
+ * @brief 將 IPAddress 物件轉換為點分十進位格式字串。
+ *        例如：IPAddress(192,168,1,1) → "192.168.1.1"
+ * @param ip  IPAddress 物件
+ * @return 點分十進位格式的 IP 位址字串
+ */
+String Ip2String(IPAddress ip) {
+  return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
+}
+
+// ============================================================
+// Arduino 初始化（setup）
+// ============================================================
+
+/**
+ * @brief Arduino 主初始化函式。執行順序：
+ *        1. 初始化序列埠與 LED
+ *        2. 載入 env.json 環境設定
+ *        3. 初始化 WiFi（AP + STA 模式）
+ *        4. 初始化相機
+ *        5. 載入 soul.md（人格）、device.md（裝置）設定
+ *        6. 驗證必要設定（若缺少則重新開機）
+ *        7. 載入 skill.md（技能）、schedule.json（排程）
+ *        8. 建立 Gemini 系統提示詞
+ *        9. 載入 memory.md（對話歷史）
+ *        10. 初始化 RTC 並傳送啟動通知
+ *        11. 啟動 HTTP 伺服器
+ *        12. 建立 FreeRTOS 任務（HTTP/串流/Telegram/排程）
+ */
+void setup() {
+  Serial.begin(115200);
+
+  // 初始化指示 LED
+  pinMode(ledPin, OUTPUT);
+  
+  // 載入環境設定檔（env.json）
+  String env = getStringFromFile(envFilename);
+  Serial.println("env.json len: " + String(env.length())); 
+  if (env != "")
+    setEnvironmentSettings(env);
+
+  // 初始化 WiFi（AP + STA 模式）
+  initWiFi();
+
+  // 初始化相機（不旋轉，通道 0，JPEG 格式）
+  config.setRotation(0);
+  Camera.configVideoChannel(0, config);
+  Camera.videoInit();
+  Camera.channelBegin(0); 
+  
+  // 載入助理人格提示詞（soul.md）
+  String soul = getStringFromFile(soulFilename);
+  Serial.println("Soul.md len: " + String(soul.length()));
+  if (soul != "")
+    geminiRole = soul;
+
+  // 載入裝置硬體定義（device.md）
+  String device = getStringFromFile(deviceFilename);
+  Serial.println("device.md len: " + String(device.length()));
+  if (device != "")
+    devicesDefinition = device;
+  // 建立含裝置名稱與時區的完整裝置定義
+  devicesDefinitionFinal = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+  
+  // 驗證必要設定：人格提示詞與裝置定義缺一不可
+  if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
+	  Serial.println("System configuration failed. Restarting the MCU...");
+	  delay(5000);
+	  NVIC_SystemReset();  // 重新開機以重試載入
+  }
+
+  // 載入技能定義（skill.md）
+  String skill = getStringFromFile(skillFilename);
+  Serial.println("skill.md len: " + String(skill.length()));
+  if (skill != "")
+    skillsDefinition = skill;
+
+  // 載入排程任務（schedule.json）
+  String schedule = getStringFromFile(scheduleFilename);
+  Serial.println("schedule.md len: " + String(schedule.length()));
+  if (schedule != "")
+    scheduleTasks = schedule;
+
+  // 載入今日排程執行記錄（scheduleTodayExecuted.md）
+  String scheduleExecutedTodayTasks = getStringFromFile(scheduleExecutedTodayTasksFilename);
+  Serial.println("scheduleTodayExecuted.md len: " + String(scheduleExecutedTodayTasks.length()));
+  if (scheduleExecutedTodayTasks != "")
+    executedTodayTasks = scheduleExecutedTodayTasks;
+
+  // 建立三種版本的系統提示詞
+  systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+    
+  // 載入對話歷史記憶（memory.md）
+  String memory = getStringFromFile(memoryFilename);
+  Serial.println("memory.md len: " + String(memory.length()));
+  if (memory != "")
+    historicalMessages = memory;
+
+  // 輸出 AP 模式網址至序列監視器
+  Serial.println("AP mode"); 
+  Serial.println("fuClaw Manager: http://192.168.1.1:81");
+  Serial.println("Video stream: http://192.168.1.1:82"); 
+  Serial.println("AP ssid : " + apSsid);
+  Serial.println("AP password : " + apPassword);
+  Serial.println(); 
+
+  // 若 STA 模式連線成功，閃爍 LED 3 次並輸出 IP 位址
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(ledPin, 1);
+      delay(300);
+      digitalWrite(ledPin, 0);
+      delay(300);      
+    }
+	
+    Serial.println("STA mode"); 
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); 
+    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
+    Serial.println();
+
+    // 將 IP 位址記錄至對話歷史（讓 Gemini 知道裝置位址）
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+  }  
+
+  // 初始化伺服馬達（GPIO 12）
+  servo12.attach(12);
+
+  // 初始化 DHT11 溫溼度感測器
+  dht.begin();
+
+  // 初始化 RTC 並發送啟動通知至 Telegram
+  rtcInitialTime("RTC Initial Time");
+  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString(), telegrambotKeyboard);
+
+  // 重要：RTC 初始化後立即同步今日日期，
+  // 確保 executedTodayDate 在開機時正確設定
+  long long epoch = rtc.Read();
+  time_t rawtime = (time_t)epoch;
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
+
+  // 啟動 HTTP 設定管理伺服器（埠 81）
+  server.begin(); 
+  // 啟動影像串流伺服器（埠 82）
+  serverStream.begin();  
+
+  // 建立 HTTP 設定管理任務（堆疊 16KB，最低優先級+1）
+  if (xTaskCreate(
+        task_getRequest,
+        (const char *)"task_getRequest",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequest failed");
+  } 
+
+  // 建立影像串流任務（堆疊 16KB，最低優先級+1）
+  if (xTaskCreate(
+        task_getRequestStream,
+        (const char *)"task_getRequestStream",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getRequestStream failed");
+  }          
+
+  // 建立 Telegram 訊息輪詢任務（堆疊 16KB，最低優先級+1）
+  if (xTaskCreate(
+        task_getTelegramMessage,
+        (const char *)"task_getTelegramMessage",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getTelegramMessage failed");
+  } 
+
+  // 建立時間排程執行任務（堆疊 6KB，最低優先級+1）
+  if (xTaskCreate(
+        task_time_scheduling,
+        (const char *)"task_time_scheduling",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_time_scheduling failed");
+  }  
+     
+/* 
+  // 防盜偵測任務（預留，目前停用）
+  // 若需啟用，移除此區塊的註解符號
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
+  }   
+
+*/   
+  
+}
+
+// ============================================================
+// Arduino 主迴圈（loop）
+// ============================================================
+
+/**
+ * @brief Arduino 主迴圈（loop）。
+ *        本系統的所有工作均由 FreeRTOS 任務處理，
+ *        主迴圈（loopTask）不執行任何工作，僅呼叫 vTaskDelay 讓出 CPU。
+ *        注意：loopTask 未向 TWDT（Task Watchdog Timer）註冊，
+ *        因為它不執行任何阻塞操作。
+ */
+void loop() {
+  vTaskDelay(1000 / portTICK_PERIOD_MS);  // 每秒讓出 CPU 給其他 FreeRTOS 任務
+}
