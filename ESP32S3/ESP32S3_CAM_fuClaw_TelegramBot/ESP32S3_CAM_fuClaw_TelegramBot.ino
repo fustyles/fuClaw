@@ -2784,6 +2784,8 @@ void task_getRequest(void *param) {
               xSemaphoreGive(stateMutex);
             }
             systemContentReset();
+			
+			mainPageHTML = "Soul updated successfully.";
             
             currentLine = "";        
             
@@ -2813,7 +2815,9 @@ void task_getRequest(void *param) {
               xSemaphoreGive(stateMutex);
             }
 
-            systemContentReset();            
+            systemContentReset();
+
+			mainPageHTML = "Device updated successfully.";            
 			
             currentLine = "";        
             
@@ -2839,6 +2843,8 @@ void task_getRequest(void *param) {
               xSemaphoreGive(stateMutex);
             }
             systemContentReset();
+			
+			mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";        
             
