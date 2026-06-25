@@ -2530,8 +2530,6 @@ void task_getRequest(void *param) {
             
             skillsDefinition = currentLine;
 			
-            systemContentReset();
-			
 			mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";        

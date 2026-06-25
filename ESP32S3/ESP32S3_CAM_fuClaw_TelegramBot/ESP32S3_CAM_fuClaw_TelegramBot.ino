@@ -2811,8 +2811,6 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
 
             skillsDefinition = currentLine;
-            
-			systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";
             
