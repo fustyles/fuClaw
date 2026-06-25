@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-23 23:00:00
+Build Date: 2026-06-25 23:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -3957,7 +3957,8 @@ void task_getRequest(void *param) {
               storeDataToFile(envFilename, currentLine);
               
               mainPageHTML = "Configuration updated successfully.";
-              executeTool(workId, "/reboot", JsonObject());
+			  
+              // executeTool(workId, "/reboot", JsonObject());
               
             }
             else
@@ -3988,7 +3989,8 @@ void task_getRequest(void *param) {
             
             storeDataToFile(soulFilename, currentLine);
             geminiRole = currentLine;
-            systemContentReset();
+			
+            // systemContentReset();
 			
 			mainPageHTML = "Soul updated successfully.";
             
@@ -4015,7 +4017,7 @@ void task_getRequest(void *param) {
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
-            systemContentReset();
+            // systemContentReset();
 
 			mainPageHTML = "Device updated successfully.";
 			
@@ -4037,7 +4039,8 @@ void task_getRequest(void *param) {
             
             storeDataToFile(skillFilename, currentLine);
             skillsDefinition = currentLine;
-            systemContentReset();
+			
+            // systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";
             

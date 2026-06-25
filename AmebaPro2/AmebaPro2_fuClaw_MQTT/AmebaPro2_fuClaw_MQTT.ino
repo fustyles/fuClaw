@@ -15,7 +15,7 @@ Version
 -----------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-23 21:30:00
+Build Date: 2026-06-25 23:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -2354,7 +2354,8 @@ void task_getRequest(void *param) {
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               
               mainPageHTML = "Configuration updated successfully.";
-              executeTool(workId, "/reboot", JsonObject());
+			  
+              // executeTool(workId, "/reboot", JsonObject());
               
             }
             else
@@ -2377,7 +2378,8 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             geminiRole = currentLine;
-            systemContentReset();
+			
+            // systemContentReset();
 			
 			mainPageHTML = "Soul updated successfully.";
             
@@ -2403,7 +2405,7 @@ void task_getRequest(void *param) {
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
-            systemContentReset();
+            // systemContentReset();
 
 			mainPageHTML = "Device updated successfully.";
 			
@@ -2424,7 +2426,8 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             skillsDefinition = currentLine;
-            systemContentReset();
+			
+            // systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";
             
