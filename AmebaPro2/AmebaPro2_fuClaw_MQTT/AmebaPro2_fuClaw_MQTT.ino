@@ -2350,18 +2350,12 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
+			
+			setEnvironmentSettings(currentLine);
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              
-              mainPageHTML = "Configuration updated successfully.";
-			  
-              // executeTool(workId, "/reboot", JsonObject());
-              
-            }
-            else
-              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+            mainPageHTML = "Configuration updated successfully.";
 
-            currentLine = "";
+            currentLine = "";			
             
           }
           else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2378,12 +2372,11 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             geminiRole = currentLine;
-			
-            // systemContentReset();
+			systemContentReset(); 
 			
 			mainPageHTML = "Soul updated successfully.";
             
-            currentLine = "";        
+            currentLine = ""; 				
             
           }		  
           else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2400,16 +2393,15 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             devicesDefinition = currentLine;
+			systemContentReset(); 
 			
             devicesDefinitionFinal = devicesDefinition;
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-			
-            // systemContentReset();
 
 			mainPageHTML = "Device updated successfully.";
 			
-            currentLine = "";        
+            currentLine = "";
             
           }
           else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2426,8 +2418,6 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             skillsDefinition = currentLine;
-			
-            // systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";
             

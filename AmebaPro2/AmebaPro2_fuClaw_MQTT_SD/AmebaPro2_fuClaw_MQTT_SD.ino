@@ -3795,18 +3795,12 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              storeDataToFile(envFilename, currentLine);
-              
-              mainPageHTML = "Configuration updated successfully.";
+            storeDataToFile(envFilename, currentLine);
+            mainPageHTML = "Configuration updated successfully.";
 			  
-              // executeTool(workId, "/reboot", JsonObject());
-              
-            }
-            else
-              mainPageHTML = "Configuration updated failed. JSON parse failed.";
-
             currentLine = "";
+			
+            // executeTool(workId, "/reboot", JsonObject());				
             
           }
           else if ((currentLine.indexOf("GET /agent") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -3830,13 +3824,11 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(soulFilename, currentLine);
-            geminiRole = currentLine;
-			
-            // systemContentReset();
-			
-			mainPageHTML = "Soul updated successfully.";
+            mainPageHTML = "Soul updated successfully.";
             
-            currentLine = "";        
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());				
             
           }		  
           else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -3853,17 +3845,11 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(deviceFilename, currentLine);
-            devicesDefinition = currentLine;
+            mainPageHTML = "Device updated successfully.";            
 			
-            devicesDefinitionFinal = devicesDefinition;
-            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
-            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-			
-            // systemContentReset();
+            currentLine = "";
 
-			mainPageHTML = "Device updated successfully.";            
-			
-            currentLine = "";        
+            // executeTool(workId, "/reboot", JsonObject());				
             
           }
           else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -3880,13 +3866,11 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(skillFilename, currentLine);
-            skillsDefinition = currentLine;
+            mainPageHTML = "Skill updated successfully.";
 			
-            // systemContentReset();
-			
-			mainPageHTML = "Skill updated successfully.";
-			
-            currentLine = "";        
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());				
             
           }		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
