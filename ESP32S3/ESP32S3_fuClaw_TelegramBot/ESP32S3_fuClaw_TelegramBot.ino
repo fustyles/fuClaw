@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-06-23 21:30:00
+Build Date: 2026-06-26 00:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -2160,15 +2160,10 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
+			
+			setEnvironmentSettings(currentLine);
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-              
-              mainPageHTML = "Configuration updated successfully.";
-              executeTool(workId, "/reboot", JsonObject());
-              
-            }
-            else
-              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+            mainPageHTML = "Configuration updated successfully.";
 
             currentLine = "";
             
@@ -2187,6 +2182,7 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             geminiRole = currentLine;
+			
             systemContentReset();
 			
 			mainPageHTML = "Soul updated successfully.";
@@ -2234,6 +2230,7 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             skillsDefinition = currentLine;
+			
             systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";

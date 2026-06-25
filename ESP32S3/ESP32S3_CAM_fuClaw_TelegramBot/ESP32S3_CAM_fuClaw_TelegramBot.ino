@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-06-24 21:30:00
+Build Date: 2026-06-26 00:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -242,6 +242,9 @@ String scheduleTasks = "";
 int scheduleTimeout = 5;    // minutes
 String executedTodayTasks = "";
 int executedTodayDate = 0;
+
+// Last Telegram message ID
+long lastMessageId = 0;
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -2717,22 +2720,17 @@ void task_getRequest(void *param) {
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
             
-            String page = String(INDEX_HTML);
+            mainPageHTML = String(INDEX_HTML);
 
-            page.replace("deviceName", deviceName);
-            page.replace("wifiSsid", wifiSsid);
-            page.replace("wifiPassword", wifiPassword);
-            page.replace("telegrambotToken", telegrambotToken);
-            page.replace("telegrambotChatId", telegrambotChatId);
-            page.replace("scheduleTimeout", String(scheduleTimeout));            
-            page.replace("geminiApiKey", geminiApiKey);
-            page.replace("geminiModel", geminiModel);
-            page.replace("timeZone", timeZone);
-
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = page;
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML.replace("deviceName", deviceName);
+            mainPageHTML.replace("wifiSsid", wifiSsid);
+            mainPageHTML.replace("wifiPassword", wifiPassword);
+            mainPageHTML.replace("telegrambotToken", telegrambotToken);
+            mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
+            mainPageHTML.replace("geminiApiKey", geminiApiKey);
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);
 
             currentLine = "";            
           }
@@ -2743,32 +2741,17 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
+			
+			      setEnvironmentSettings(currentLine);
             
-            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
-
-              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-                mainPageHTML = "Configuration updated successfully.";
-                xSemaphoreGive(stateMutex);
-              }
-              executeTool(workId, "/reboot", JsonObject());
-              
-            }
-            else {
-              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-                mainPageHTML = "Configuration updated failed. JSON parse failed.";
-                xSemaphoreGive(stateMutex);
-              }
-            }
+            mainPageHTML = "Configuration updated successfully.";
 
             currentLine = "";
             
           }
           else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = geminiRole;
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = geminiRole;
 
             currentLine = "";
 
@@ -2779,10 +2762,8 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateSoul?", "");
             currentLine.replace(" HTTP/1.", "");
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              geminiRole = currentLine;
-              xSemaphoreGive(stateMutex);
-            }
+            geminiRole = currentLine;
+
             systemContentReset();
 			
 			mainPageHTML = "Soul updated successfully.";
@@ -2792,10 +2773,7 @@ void task_getRequest(void *param) {
           }		  
           else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = devicesDefinition;
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = devicesDefinition;
 
             currentLine = "";
 
@@ -2806,14 +2784,11 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateDevice?", "");
             currentLine.replace(" HTTP/1.", "");
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              devicesDefinition = currentLine;
+		    devicesDefinition = currentLine;
 
-              devicesDefinitionFinal = devicesDefinition;
-              devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
-              devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-              xSemaphoreGive(stateMutex);
-            }
+		    devicesDefinitionFinal = devicesDefinition;
+		    devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+		    devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 
             systemContentReset();
 
@@ -2824,10 +2799,7 @@ void task_getRequest(void *param) {
           }
           else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = skillsDefinition;
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = skillsDefinition;
 
             currentLine = "";
 
@@ -2838,11 +2810,9 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateSkill?", "");
             currentLine.replace(" HTTP/1.", "");
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              skillsDefinition = currentLine;
-              xSemaphoreGive(stateMutex);
-            }
-            systemContentReset();
+            skillsDefinition = currentLine;
+            
+			systemContentReset();
 			
 			mainPageHTML = "Skill updated successfully.";
             
@@ -2851,30 +2821,21 @@ void task_getRequest(void *param) {
           }		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = String(INDEX_CHAT_HTML);
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = String(INDEX_CHAT_HTML);
 
             currentLine = "";
 
           }
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = String(INDEX_SCHEDULE_HTML);
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = String(INDEX_SCHEDULE_HTML);
 
             currentLine = "";
 
           }
           else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
-            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-              mainPageHTML = scheduleTasks;
-              xSemaphoreGive(stateMutex);
-            }
+            mainPageHTML = scheduleTasks;
 
             currentLine = "";
 
