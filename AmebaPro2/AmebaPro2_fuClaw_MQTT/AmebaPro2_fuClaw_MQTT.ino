@@ -2378,6 +2378,8 @@ void task_getRequest(void *param) {
             
             geminiRole = currentLine;
             systemContentReset();
+			
+			mainPageHTML = "Soul updated successfully.";
             
             currentLine = "";        
             
@@ -2401,7 +2403,9 @@ void task_getRequest(void *param) {
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
-            systemContentReset();            
+            systemContentReset();
+
+			mainPageHTML = "Device updated successfully.";
 			
             currentLine = "";        
             
@@ -2421,6 +2425,8 @@ void task_getRequest(void *param) {
             
             skillsDefinition = currentLine;
             systemContentReset();
+			
+			mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";        
             

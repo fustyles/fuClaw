@@ -4139,6 +4139,8 @@ void task_getRequest(void *param) {
             storeDataToFile(soulFilename, currentLine);
             geminiRole = currentLine;
             systemContentReset();
+			
+			mainPageHTML = "Soul updated successfully.";
             
             currentLine = "";        
             
@@ -4163,7 +4165,9 @@ void task_getRequest(void *param) {
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
-            systemContentReset();            
+            systemContentReset();
+
+			mainPageHTML = "Device updated successfully.";
 			
             currentLine = "";        
             
@@ -4184,6 +4188,8 @@ void task_getRequest(void *param) {
             storeDataToFile(skillFilename, currentLine);
             skillsDefinition = currentLine;
             systemContentReset();
+			
+			mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";        
             

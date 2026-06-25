@@ -1564,7 +1564,7 @@ String executedTodayTasks = "";
 int executedTodayDate = 0;
 
 // Indicator LED output pin
-int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
+int ledPin = 25;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
 // ------------------------------------------------------------
 // FreeRTOS mutex handles
@@ -3983,6 +3983,8 @@ void task_getRequest(void *param) {
             storeDataToFile(soulFilename, currentLine);
             geminiRole = currentLine;
             systemContentReset();
+			
+			mainPageHTML = "Soul updated successfully.";
             
             currentLine = "";        
             
@@ -4007,7 +4009,9 @@ void task_getRequest(void *param) {
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			
-            systemContentReset();            
+            systemContentReset();
+
+			mainPageHTML = "Device updated successfully.";
 			
             currentLine = "";        
             
@@ -4027,7 +4031,10 @@ void task_getRequest(void *param) {
             
             storeDataToFile(skillFilename, currentLine);
             skillsDefinition = currentLine;
+			
             systemContentReset();
+			
+			mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";        
             
