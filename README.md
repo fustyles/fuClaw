@@ -54,7 +54,7 @@ ArduinoJson validation<br>
       ↓<br>
 Tool Dispatcher<br>
       ↓<br>
-Hardware / Search / Vision Execution<br>
+Hardware / Chat / Search / Vision Execution<br>
       ↓<br>
 Result injection into memory<br>
       ↓<br>
