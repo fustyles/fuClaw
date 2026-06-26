@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-fuClaw AI Telegram Assistant with Gemini Integration
+fuClaw AI MQTT Assistant with Gemini Integration
 ------------------------------------------------------------
 Author:
   ChungYi Fu (Kaohsiung, Taiwan)
