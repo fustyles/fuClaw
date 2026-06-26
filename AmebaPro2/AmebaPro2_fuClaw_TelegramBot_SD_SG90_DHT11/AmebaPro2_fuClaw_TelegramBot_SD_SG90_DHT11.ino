@@ -4867,15 +4867,10 @@ void setup() {
   Serial.println("scheduleTodayExecuted.md len: " + String(scheduleExecutedTodayTasks.length()));
   if (scheduleExecutedTodayTasks != "")
     executedTodayTasks = scheduleExecutedTodayTasks;
-
-  uint32_t startTime = millis();
   
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
   systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");
-  
-  uint32_t elapsed = millis() - startTime;
-  Serial.println("Build systemContent took " + String(elapsed) + " ms");
 
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
