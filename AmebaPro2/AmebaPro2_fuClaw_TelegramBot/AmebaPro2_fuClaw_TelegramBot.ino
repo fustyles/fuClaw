@@ -3317,10 +3317,7 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_time_scheduling failed");
-  }  
-
-  // Indicator LED  
-  pinMode(LED_BUILTIN, OUTPUT);  
+  }   
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");

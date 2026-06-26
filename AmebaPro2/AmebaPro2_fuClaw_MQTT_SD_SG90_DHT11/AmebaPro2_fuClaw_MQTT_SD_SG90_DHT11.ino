@@ -1563,7 +1563,7 @@ String executedTodayTasks = "";
 int executedTodayDate = 0;
 
 // Indicator LED output pin
-int ledPin = 25;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
+int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
 // ------------------------------------------------------------
 // FreeRTOS mutex handles
@@ -4880,9 +4880,6 @@ void setup() {
 
     Serial.println("Create task_time_scheduling failed");
   }  
-
-  // Indicator LED  
-  pinMode(LED_BUILTIN, OUTPUT);  
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
