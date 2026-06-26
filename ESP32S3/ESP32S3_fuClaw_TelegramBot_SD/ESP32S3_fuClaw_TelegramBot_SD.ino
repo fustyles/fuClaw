@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-06-26 00:00:00
+Build Date: 2026-06-26 10:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -1473,6 +1473,7 @@ String getRtcTimeString(bool filename);
 void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
+void setEnvironmentSettings(String jsonString);
 
 #include <stdio.h>
 #include <time.h>
@@ -3484,9 +3485,15 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
             
-            storeDataToFile(envFilename, currentLine);
-            mainPageHTML = "Configuration updated successfully.";
-            
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine);
+			  setEnvironmentSettings(currentLine);
+			
+              mainPageHTML = "Configuration updated successfully.";
+			}
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+		  
 			currentLine = "";
 			
             // executeTool(workId, "/reboot", JsonObject());			
@@ -3513,6 +3520,10 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(soulFilename, currentLine);
+            geminiRole = currentLine;
+			
+            systemContentReset();
+			
             mainPageHTML = "Soul updated successfully.";
             
             currentLine = "";  
@@ -3534,6 +3545,14 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(deviceFilename, currentLine);
+            devicesDefinition = currentLine;
+			
+            devicesDefinitionFinal = devicesDefinition;
+            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			
+			systemContentReset();
+			
             mainPageHTML = "Device updated successfully.";
 			
             currentLine = "";
@@ -3555,6 +3574,10 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(skillFilename, currentLine);
+			skillsDefinition = currentLine;
+			
+			systemContentReset();
+			
             mainPageHTML = "Skill updated successfully.";
             
             currentLine = "";
