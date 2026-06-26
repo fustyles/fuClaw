@@ -13,7 +13,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-25 23:30:00
+Build Date: 2026-06-26 23:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -248,11 +248,12 @@ WiFiServer serverStream(82);
 // Forward declarations
 String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
-String buildGeminiMessage(String role, String message, bool comma);
+String buildGeminiMessage(const String &role, const String &message, bool comma);
 String getRtcTimeString(bool filename);
 void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
+void setEnvironmentSettings(String jsonString);
 
 #include "VideoStream.h"
 
@@ -780,22 +781,43 @@ String replyUserImage(String workId, bool frames) {
   return "";
 }
 
+String escapeForJson(const String &src) {
+  unsigned int n = src.length();
+
+  // Pass 1:  "  ->  \"
+  String s1;
+  s1.reserve(n + (n >> 3) + 16);
+  for (unsigned int i = 0; i < n; i++) {
+    char c = src.charAt(i);
+    if (c == '"') s1 += '\\';
+    s1 += c;
+  }
+
+  String s2;
+  s2.reserve(s1.length());
+  unsigned int m = s1.length();
+  for (unsigned int i = 0; i < m; ) {
+    if (s1.charAt(i) == '\\' && i + 1 < m && s1.charAt(i + 1) == '\\') {
+      s2 += '\\';
+      i += 2;
+    } else {
+      s2 += s1.charAt(i);
+      i += 1;
+    }
+  }
+  return s2;
+}
+
 // Convert role/content pair into Gemini-compatible JSON message object
-String buildGeminiMessage(String role, String message, bool comma = true) {
-  
-  message.replace("\"", "\\\"");
-  message.replace("\\\\", "\\");
-  
-  String jsonMessage = "";
-  if (comma)
-    jsonMessage = ", {\"role\": \"";
-  else
-    jsonMessage = "{\"role\": \"";
+String buildGeminiMessage(const String &role, const String &message, bool comma = true) {
+  String esc = escapeForJson(message);
+  String jsonMessage;
+  jsonMessage.reserve(esc.length() + role.length() + 48);
+  jsonMessage  = comma ? ", {\"role\": \"" : "{\"role\": \"";
   jsonMessage += role;
   jsonMessage += "\", \"parts\":[{ \"text\": \"";
-  jsonMessage += message;
+  jsonMessage += esc;
   jsonMessage += "\" }]}";
-
   return jsonMessage;
 }
 
@@ -2530,12 +2552,24 @@ void task_getRequest(void *param) {
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateConfig?", "");
             currentLine.replace(" HTTP/1.", "");
-			
-			setEnvironmentSettings(currentLine);
             
-            mainPageHTML = "Configuration updated successfully.";
-
-            currentLine = "";
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+			        setEnvironmentSettings(currentLine);
+			  
+              devicesDefinitionFinal = devicesDefinition;
+              devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+              devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			  
+			        systemContentReset();
+			
+              mainPageHTML = "Configuration updated successfully.";
+			}
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+		  
+			currentLine = "";
+			
+            // executeTool(workId, "/reboot", JsonObject());			
             
           }
           else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2552,13 +2586,16 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             geminiRole = currentLine;
-			systemContentReset(); 
 			
-			mainPageHTML = "Soul updated successfully.";
+            systemContentReset();
+			
+            mainPageHTML = "Soul updated successfully.";
             
-            currentLine = "";        
+            currentLine = "";  
+
+            // executeTool(workId, "/reboot", JsonObject());			
             
-          }		  
+          }				  
           else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = devicesDefinition;
@@ -2573,15 +2610,18 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             devicesDefinition = currentLine;
-			systemContentReset(); 
 			
             devicesDefinitionFinal = devicesDefinition;
             devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
             devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
-
-			mainPageHTML = "Device updated successfully.";
 			
-            currentLine = "";        
+			      systemContentReset();
+			
+            mainPageHTML = "Device updated successfully.";
+			
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
             
           }
           else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2597,11 +2637,15 @@ void task_getRequest(void *param) {
             currentLine.replace("GET /updateSkill?", "");
             currentLine.replace(" HTTP/1.", "");
             
-            skillsDefinition = currentLine;
+			      skillsDefinition = currentLine;
 			
-			mainPageHTML = "Skill updated successfully.";
+			      systemContentReset();
+			
+            mainPageHTML = "Skill updated successfully.";
             
-            currentLine = "";        
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
             
           }		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
@@ -2614,8 +2658,8 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_SCHEDULE_HTML);
-			if (mainPageHTML == "")
-				mainPageHTML = "[]";
+			      if (mainPageHTML == "")
+				      mainPageHTML = "[]";
 			
             currentLine = "";
 
