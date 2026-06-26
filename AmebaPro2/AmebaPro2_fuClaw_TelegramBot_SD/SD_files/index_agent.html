@@ -285,7 +285,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" onclick="switchTab('soul')" id="tab-soul">
         <span class="ti ti-soul">&#128100;</span>
-        <span class="label">Gemini Role</span>
+        <span class="label">AI Role</span>
       </button>
       <button class="tab-btn" onclick="switchTab('device')" id="tab-device">
         <span class="ti ti-device">&#9881;</span>
@@ -300,8 +300,8 @@
     <!-- Panel: Soul -->
     <div id="panel-soul" class="panel active">
       <div class="panel-intro">
-        <strong>Gemini Role</strong> &mdash; Defines the core persona and behavioral guidelines for the AI agent (tone, language, rules).
-      </div>
+        <strong>AI Role</strong> &mdash; Defines the core persona and behavioral guidelines for the AI agent (tone, language, rules). A device restart is required for any changes to this setting to take effect.
+      </div>	  
       <div class="ta-wrap">
         <textarea id="ta-soul" placeholder="Loading from device…" spellcheck="false"
           oninput="updateCount('soul')"></textarea>
@@ -319,7 +319,7 @@
     <!-- Panel: Device -->
     <div id="panel-device" class="panel">
       <div class="panel-intro">
-        <strong>Devices Definition</strong> &mdash; Specifies connected hardware components and their pin configurations (LEDs, servos, sensors, buttons…).
+        <strong>Devices Definition</strong> &mdash; Specifies connected hardware components and their pin configurations (LEDs, servos, sensors, buttons…). A device restart is required for any changes to this setting to take effect.
       </div>
       <div class="ta-wrap">
         <textarea id="ta-device" placeholder="Loading from device…" spellcheck="false"
@@ -338,7 +338,7 @@
     <!-- Panel: Skill -->
     <div id="panel-skill" class="panel">
       <div class="panel-intro">
-        <strong>Skills Definition</strong> &mdash; Defines high-level composite workflows and automated macro tasks available to the agent (e.g. anti_theft_detection).
+        <strong>Skills Definition</strong> &mdash; Defines high-level composite workflows and automated macro tasks available to the agent (e.g. anti_theft_detection). A device restart is required for any changes to this setting to take effect.
       </div>
       <div class="ta-wrap">
         <textarea id="ta-skill" placeholder="Loading from device…" spellcheck="false"
