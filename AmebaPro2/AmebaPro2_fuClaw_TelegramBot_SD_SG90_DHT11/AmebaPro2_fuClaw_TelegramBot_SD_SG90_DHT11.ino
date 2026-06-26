@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-25 23:00:00
+Build Date: 2026-06-25 23:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -4191,7 +4191,9 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = getStringFromFile(schedulepageFilename);
-
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+			
             currentLine = "";
 
           }

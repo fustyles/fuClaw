@@ -13,7 +13,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-06-25 23:00:00
+Build Date: 2026-06-25 23:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -2614,7 +2614,9 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_SCHEDULE_HTML);
-
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+			
             currentLine = "";
 
           }
