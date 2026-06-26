@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-06-26 00:00:00
+Build Date: 2026-06-26 23:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -2162,6 +2162,12 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
 			
 			setEnvironmentSettings(currentLine);
+
+			devicesDefinitionFinal = devicesDefinition;
+			devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+			devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+
+			systemContentReset();
             
             mainPageHTML = "Configuration updated successfully.";
 
