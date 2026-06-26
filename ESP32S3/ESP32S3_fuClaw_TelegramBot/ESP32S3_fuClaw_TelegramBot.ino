@@ -2248,7 +2248,9 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = String(INDEX_SCHEDULE_HTML);
-
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+			
             currentLine = "";
 
           }

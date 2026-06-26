@@ -2834,7 +2834,9 @@ void task_getRequest(void *param) {
           else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
 
             mainPageHTML = scheduleTasks;
-
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+			
             currentLine = "";
 
           }                                            
