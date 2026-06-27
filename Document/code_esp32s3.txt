@@ -1,0 +1,3459 @@
+/*
+------------------------------------------------------------
+fuClaw AI 智慧代理 - Gemini 整合版
+------------------------------------------------------------
+作者：
+  ChungYi Fu（台灣高雄）
+  https://www.facebook.com/francefu
+
+程式碼儲存庫：
+  https://github.com/fustyles/fuClaw
+
+------------------------------------------------------------
+版本資訊
+------------------------------------------------------------
+提示詞編排嵌入式代理版本
+持久化檔案系統執行環境
+開發板：ESP32-S3-WROOM-CAM（ESP32-S3-WROOM-1-N16R8）
+
+建置日期：2026-06-26 23:00:00
+
+------------------------------------------------------------
+Arduino IDE 設定
+------------------------------------------------------------
+開發板                    : ESP32S3 Dev Module
+USB CDC On Boot           : 啟用（Enabled）
+CPU 頻率                  : 240MHz（WiFi/BT）
+USB Firmware MSC On Boot  : 停用（Disabled）
+USB DFU On Boot           : 停用（Disabled）
+上傳模式                  : UART0 / Hardware CDC
+Flash 模式                : QIO 80MHz
+Flash 容量                : 16MB（128Mbit）
+分割區配置                : 16M Flash（3MB APP / 9.9MB FATFS）
+PSRAM                     : OPI PSRAM
+Arduino 執行於            : Core 1
+事件執行於                : Core 1
+
+------------------------------------------------------------
+系統概覽
+------------------------------------------------------------
+fuClaw 是一套執行於 ESP32-S3（配備相機）的
+嵌入式多模態 AI 代理框架。
+
+整合功能包含：
+- MQTT 訊息傳遞
+- Gemini 網頁對話介面
+- Google Gemini generateContent API
+- Gemini 接地式（Grounded）網路搜尋
+- Gemini 多模態視覺推理
+- 提示詞驅動的 JSON 工具路由
+- GPIO 數位 / 類比 I/O 控制
+- 相機拍照與影像上傳
+- 持久化對話記憶
+- FreeRTOS 並行任務排程
+
+本執行環境作為混合式自主代理運作：
+對話 + 推理 + 工具 + 視覺 + 記憶 + 硬體
+
+------------------------------------------------------------
+執行架構
+------------------------------------------------------------
+MQTT / 網頁對話使用者
+      ↓
+通訊任務
+（MQTT / 網頁對話）
+      ↓
+訊息路由器
+      ↓
+Gemini 推理引擎
+（對話 / 搜尋 / 視覺 / 工作流程）
+      ↓
+JSON tool_call 輸出
+      ↓
+ArduinoJson 驗證層
+      ↓
+工具分派器
+      ↓
+硬體 / 搜尋 / 視覺執行
+      ↓
+結果注入對話記憶
+      ↓
+自然語言回覆
+
+------------------------------------------------------------
+執行模型
+------------------------------------------------------------
+本系統為提示詞編排的工具路由架構。
+
+Gemini 不使用原生函式呼叫 API（Function Calling API）。
+
+取而代之的機制：
+- Gemini 輸出結構化的 JSON tool_call 回應
+- 本地韌體驗證所有工具呼叫
+- 無效的 JSON 一律拒絕執行
+- 工具執行嚴格依序進行
+- 硬體動作絕不模擬，必須實際執行
+
+原子性執行規則：
+每次回應只能執行一個硬體動作：
+- 一個腳位（pin）
+- 一種操作（operation）
+- 一個數值（value）
+
+多步驟工作流程以逐步執行的方式完成。
+
+------------------------------------------------------------
+支援工具清單
+------------------------------------------------------------
+/digitalwrite             GPIO 數位輸出
+/analogwrite              GPIO 類比輸出（PWM）
+/digitalread              GPIO 數位輸入
+/analogread               GPIO 類比輸入（ADC）
+/syncrtc                  更新硬體 RTC 時鐘
+/getrtc                   取得硬體 RTC 目前時間
+/still                    擷取靜態影像並傳送給使用者
+/vision                   擷取影像 + 多模態分析
+/search                   接地式（Grounded）網路搜尋
+/delay                    暫停執行指定毫秒數
+/getMemory                執行時記憶體診斷
+/getLog                   顯示工具執行歷史記錄
+/reset                    重置對話狀態
+/chat                     自然語言回覆
+/reboot                   重新啟動裝置
+/schedule                 新增排程任務
+/getSchedule              取得所有排程任務
+/getUnfinishedSchedule    取得未完成的排程任務
+/updateScheduleStatus     更新排程任務的已執行狀態
+/modifySchedule           修改或刪除排程任務
+/clearSchedule            清除所有排程任務
+/tcpSendMessage           透過 TCP 傳送訊息至另一台裝置或代理
+/mqttSendMessage          透過 MQTT 傳送訊息至另一台裝置或任意訂閱者
+/mqttSendImage            透過 MQTT 傳送相機快照至另一台 fuClaw 裝置或任意訂閱者
+/telegramSendMessage      傳送訊息至 Telegram Bot
+/lineSendMessage          傳送訊息至 Line Bot
+
+------------------------------------------------------------
+持久化檔案說明
+------------------------------------------------------------
+env.json
+  裝置名稱 / WiFi / MQTT / Gemini API 憑證 / 時區設定
+
+device.md
+  硬體裝置定義
+
+skill.md
+  技能（工作流程）定義
+
+soul.md
+  自訂助理人格提示詞
+
+memory.md
+  對話歷史持久化記錄
+
+schedule.json
+  排程任務清單
+
+scheduleTodayExecuted.md
+  儲存今日已執行的排程任務記錄
+
+index.html
+  系統設定管理頁面（網頁對話介面）
+
+index_schedule.html
+  排程管理頁面（網頁對話介面）
+
+index_chat.html
+  Gemini 對話頁面（網頁對話介面）
+
+裝置重開機後，對話狀態將自動還原。
+
+------------------------------------------------------------
+硬體安全說明
+------------------------------------------------------------
+以下腳位映射沿用自 Ameba Pro2 原始版本。
+請務必依照您自己的開發板驗證腳位定義後再使用。
+
+ESP32-S3-WROOM-1-N16R8
+可用 GPIO：0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+ADC 腳位：1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+PWM 腳位：0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+
+未知的硬體腳位映射需先釐清再使用。
+GPIO 數值在執行前會進行嚴格驗證。
+
+------------------------------------------------------------
+軟體堆疊（ESP32-S3 移植版）
+------------------------------------------------------------
+- WiFi.h（ESP32 Arduino 核心）
+- WiFiClientSecure
+- PubSubClient
+- ArduinoJson
+- FreeRTOS（內建於 ESP32 Arduino 核心）
+- esp_camera.h（ESP32 相機驅動）
+- SD_MMC（內建於 ESP32 Arduino 核心）
+- 本地 Base64 輔助函式（無外部依賴）
+
+------------------------------------------------------------
+已知限制
+------------------------------------------------------------
+- 對話歷史隨時間持續增長
+- 大量字串操作導致堆積記憶體碎片化風險
+- 視覺影像編碼為 CPU 密集型操作
+- 大型 JSON 解析對堆積記憶體使用量影響顯著
+- Gemini 回應格式由 ArduinoJson 驗證層處理
+- 遞迴工具呼叫鏈透過 reCheck 旗標與 NONE 哨兵值控制
+------------------------------------------------------------
+*/
+
+// WiFi 連線憑證（可被 SD 卡 env.json 覆蓋）
+String wifiSsid     = "xxxxxxxxxx";  // WiFi SSID（僅支援 2.4GHz）
+String wifiPassword = "xxxxxxxxxx";  // WiFi 密碼
+
+// AP 熱點憑證（裝置同時開啟 STA + AP 雙模式）
+// 管理頁面：http://192.168.1.1:81（AP 模式）或 http://<STA_IP>:81
+String apSsid     = "fuclaw";         // AP 熱點 SSID
+String apPassword = "12345678";       // AP 密碼（至少 8 碼）
+
+// 內建指令說明文字（/help 時由 Gemini 翻譯成使用者語言後回覆）
+String systemCommand =
+  "Built-in commands:\n"
+  "/help command list\n"
+  "/syncrtc update the hardware RTC\n" 
+  "/getrtc get the hardware RTC current time\n"
+  "/getSchedule Get all scheduled tasks\n"
+  "/getUnfinishedSchedule Get unfinished scheduled tasks\n"
+  "/getMemory show system memory usage\n"
+  "/getLog show tool execution history\n"
+  "Hardware control supported:\n"
+  "- Digital output (0 or 1)\n"
+  "- Analog output (0–255)\n"
+  "- Digital input reading\n"
+  "- Analog input reading\n\n"
+  "System Status:\n<memory>"
+  "\n\nYou can chat with Gemini using natural language.\n"
+  "The system supports real-time search and vision-based analysis.\n\n"
+  "Documentation:\n"
+  "https://github.com/fustyles/fuClaw";
+
+// MQTT 代理伺服器設定
+String   mqttServer   = "mqttgo.io"; // Broker 主機名稱或 IP
+uint16_t mqttPort     = 1883;        // 標準 MQTT 埠（未加密）；TLS 請改 8883
+String   mqttUser     = "";          // 帳號（無驗證則留空）
+String   mqttPassword = "";          // 密碼（無驗證則留空）
+
+// MQTT 主題字串
+// 訂閱：Broker 把外部指令推送至此（裝置接收端）
+// 發布：裝置把回覆文字 / JPEG 推送至此（使用者接收端）
+String mqttSubscribeTextTopic = "xxxxxxxxxx/subscribe";    // 接收指令（訂閱）
+String mqttPublishTextTopic   = "xxxxxxxxxx/publish";      // 發布文字回覆
+String mqttPublishImageTopic  = "xxxxxxxxxx/publishimage"; // 發布 JPEG 影像
+
+// MQTT Client ID（由 MAC 後三組產生，確保同一 Broker 下不重複）
+String wifiClientId = "";
+
+// Gemini AI API 設定
+String geminiApiKey = "xxxxxxxxxx";             // Google Gemini API 金鑰
+String geminiModel  = "gemini-3-flash-preview"; // 使用的 Gemini 模型版本
+
+int geminiMaxOutputTokens = 8192;  // 最大輸出 Token 數；AI 回覆被截斷時可調高
+float geminiTemperature = 1.0;     // 生成溫度（0=最確定，2=最具創意）
+
+String timeZone = "Asia/Taipei";   // IANA 時區名稱，供 NTP 偏移換算使用
+
+String deviceName = "fuClaw";      // 裝置名稱，注入 devicesDefinitionFinal 讓 Gemini 識別
+
+// 任務來源標籤陣列（同時作為 workId 前綴與解析截斷標記）
+// 每個標籤必須以 <> 包覆；removeTimestamps() 以此截斷 Gemini 回應
+// 索引：0=Web頁面, 1=Bot啟動, 2=MQTT, 3=排程, 4=防竊偵測
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
+
+String mainPageHTML  = "";     // 暫存 Web 回應 HTML；task_getRequest 讀取後清空
+bool   mainPageStatus = false; // true=正在處理 /message 請求（防止 race condition）
+
+// Gemini 核心人格與行為準則（從 soul.md 載入）
+// 例如：定義助理語調、回覆風格、安全限制、身份角色
+String geminiRole = "";
+
+// 高階複合技能定義（從 skill.md 載入）
+// 例如：theft_detection 描述完整視覺偵測→通知流程
+String skillsDefinition = "";
+
+// 硬體元件清單及腳位設定（從 device.md 載入）
+String devicesDefinition      = ""; // 原始內容（device.md）
+String devicesDefinitionFinal = ""; // 附加裝置名稱與時區後的完整版本，注入 systemContent
+
+// 嚴格工具編排框架（raw string）：強制 Gemini
+//   1. 禁止輸出自然語言，僅輸出結構化 JSON 陣列
+//   2. 遵守工具 Schema 及參數邊界驗證
+//   3. 防止幻覺，確保硬體安全與狀態機可預測
+String devicesRule = R"(
+
+...略...
+
+)";
+
+// 所有可呼叫工具的完整 JSON Schema 定義（raw string）
+// Gemini 依此選擇工具並填入正確參數
+String toolsDefinition = R"(
+
+...略...
+
+)";
+
+// 三種系統提示詞版本（每次請求帶入，作為初始脈絡）
+// systemContent      ：僅角色提示（純對話 / 時間同步）
+// systemContentTools ：角色+裝置+規則+技能+工具（主工作模式）
+// systemContentNoTools：角色+裝置+規則，無工具（工作流程收尾）
+String systemContent        = "";
+String systemContentTools   = "";
+String systemContentNoTools = "";
+
+// 工具執行歷史（純文字）；/getLog 輸出至 Serial
+// 格式：<workId> <command> [ param1 | param2 | ... ]
+String executeToolHistory = "";
+  
+// 完整對話歷史（Gemini API JSON 格式）
+// 每次請求帶入，讓 Gemini 具備跨請求記憶能力
+// 重開機後從 memory.md 還原
+String historicalMessages = "";
+
+// 排程任務相關變數
+String scheduleTasks      = "";  // 排程 JSON 陣列（來自 schedule.json）
+int    scheduleTimeout    = 5;   // 排程容錯視窗（分鐘）：超過此時間的到期任務略過
+String executedTodayTasks = "";  // 今日已執行循環任務記錄（格式：|task|）
+int    executedTodayDate  = 0;   // 上次執行日期（tm_mday），日期變更時自動清空記錄
+
+// SD 卡 MMC 介面腳位（1-bit 模式，相容性最佳）
+#define SD_MMC_CLK  39   // CLK 時脈線
+#define SD_MMC_CMD  38   // CMD 命令線
+#define SD_MMC_D0   40   // D0  資料線
+
+// FreeRTOS 互斥鎖（Mutex）控制代碼
+// mqttClientMutex：保護 mqttClient TLS 連線（PubSubClient 非執行緒安全）
+// stateMutex     ：保護所有共用字串（historicalMessages / scheduleTasks 等）
+// sdMutex        ：序列化所有 SD_MMC.begin/end（SD_MMC 非執行緒安全）
+// imageMutex     ：序列化相機擷取與影像緩衝區讀取（防止 captureImage 競態）
+SemaphoreHandle_t mqttClientMutex = NULL;
+SemaphoreHandle_t stateMutex      = NULL;
+SemaphoreHandle_t sdMutex         = NULL;
+SemaphoreHandle_t imageMutex      = NULL;
+
+// Mutex 等待逾時 10 秒；足夠涵蓋最慢的 Gemini API 來回
+// 超時表示可能陷入死鎖或某任務長期佔用鎖
+#define MUTEX_TIMEOUT_TICKS pdMS_TO_TICKS(10000)
+
+// 相機模組腳位定義（OV2640，符合 ESP32-S3-WROOM-CAM 板配置）
+#define PWDN_GPIO_NUM     -1   // 電源下拉腳（此板無，-1=禁用）
+#define RESET_GPIO_NUM    -1   // 硬體重置腳（此板無，-1=禁用）
+#define XCLK_GPIO_NUM     15   // 主時脈輸出（20MHz）
+#define SIOD_GPIO_NUM      4   // SCCB 資料線（I2C SDA 等效）
+#define SIOC_GPIO_NUM      5   // SCCB 時脈線（I2C SCL 等效）
+
+#define Y9_GPIO_NUM       16   // 影像資料 D7（最高位元）
+#define Y8_GPIO_NUM       17   // 影像資料 D6
+#define Y7_GPIO_NUM       18   // 影像資料 D5
+#define Y6_GPIO_NUM       12   // 影像資料 D4
+#define Y5_GPIO_NUM       10   // 影像資料 D3
+#define Y4_GPIO_NUM        8   // 影像資料 D2
+#define Y3_GPIO_NUM        9   // 影像資料 D1
+#define Y2_GPIO_NUM       11   // 影像資料 D0（最低位元）
+#define VSYNC_GPIO_NUM     6   // 垂直同步信號
+#define HREF_GPIO_NUM      7   // 水平參考信號
+#define PCLK_GPIO_NUM     13   // 像素時脈
+
+#include <WiFi.h>              // ESP32 WiFi 核心庫
+#include <WiFiClientSecure.h>  // TLS/SSL 連線（Gemini/Telegram HTTPS 用）
+
+// PubSubClient 底層 TCP socket（非加密；MQTT 不需 TLS）
+WiFiClient wifiClient;
+
+WiFiServer server(81);       // 設定管理 Web 伺服器（Port 81）
+WiFiServer serverStream(82); // MJPEG 即時串流伺服器（Port 82）
+
+#include "Base64.h"           // 本地 Base64 編碼輔助（無外部依賴）
+#include <ArduinoJson.h>      // JSON 序列化/反序列化（工具 Schema 驗證）
+#include "FreeRTOS.h"         // FreeRTOS 基礎（任務、佇列、信號量）
+#include "task.h"             // FreeRTOS 任務 API
+#include "esp_camera.h"       // ESP32 相機驅動
+#include "esp_task_wdt.h"     // 任務看門狗（TWDT）
+
+#include "soc/soc.h"          // ESP32 SoC 暫存器定義
+#include "soc/rtc_cntl_reg.h" // RTC 控制暫存器（可關閉欠壓重置）
+
+#include <PubSubClient.h>     // MQTT 客戶端函式庫（Nick O'Leary）
+
+// MQTT 客戶端實例（綁定至非加密 WiFiClient；MQTT QoS 0 不需 TLS）
+PubSubClient mqttClient(wifiClient);
+
+#include "FS.h"     // VFS 檔案系統抽象層
+#include "SD_MMC.h" // SD 卡 MMC 驅動（1-bit 模式）
+
+// 全域 File 物件（所有 SD 讀寫共用，由 sdMutex 保護）
+File file;
+
+// SD 卡環境設定檔路徑（WiFi / MQTT / Gemini API 等，JSON 格式）
+String envFilename = "env.json";
+  
+/*
+{
+	"device_name": "xxxxx",
+	"wifi_ssid": "xxxxx",
+	"wifi_pass": "xxxxx",
+	"mqtt_server": "xxxxx",
+	"mqtt_port": "xxxxx",
+	"mqtt_user": "xxxxx",
+	"mqtt_password": "xxxxx",
+	"mqtt_subscribeTextTopic": "xxxxx",
+	"mqtt_publishTextTopic": "xxxxx",
+	"mqtt_publishImageTopic": "xxxxx",
+	"gemini_apikey": "xxxxx",
+	"gemini_model": "xxxxx",  
+	"schedule_timeout": 10,
+	"timezone": "Asia/Taipei" 
+}
+*/
+
+// 系統人格提示詞（定義 Gemini 的個性、語氣與行為準則）
+String soulFilename = "soul.md";
+
+// 持久化對話記憶（重開機後自動還原歷史對話脈絡）
+String memoryFilename = "memory.md";
+
+// 硬體元件定義（GPIO 腳位 / 元件名稱 / 接線說明）
+String deviceFilename = "device.md";
+
+// 複合技能定義（例如：theft_detection 防竊偵測工作流程）
+String skillFilename = "skill.md";
+
+// Web 頁面檔案路徑（從 SD 卡讀取，Port 81 提供服務）
+String configpageFilename   = "index.html";             // 系統設定管理頁面
+String agentpageFilename    = "index_agent.html";       // Agent / Soul 管理頁面
+String chatpageFilename     = "index_chat.html";        // Gemini 網頁對話介面
+String mqttchatpageFilename = "index_mqtt_chat.html";   // MQTT 網頁聊天介面
+String schedulepageFilename = "index_schedule.html";    // 排程管理頁面
+
+// 排程持久化檔案
+String scheduleFilename                   = "schedule.json";         // 排程任務 JSON 陣列
+String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md"; // 今日已執行記錄
+
+// 前向宣告（函式互相呼叫，需在定義前聲明原型）
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson); // 取得未完成排程（文字格式）
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson);    // 取得到期任務（JSON 陣列）
+String buildGeminiMessage(String role, String message, bool comma);     // 組裝 Gemini 訊息物件
+String getRtcTimeString(bool filename);                                  // 取得格式化時間字串
+void replyUserMessage(String workId, String text);                       // 依通道回覆使用者
+void handleAgentResponse(String workId, String message);                 // 解析並分派 Gemini 回應
+String geminiChatRequest(String workId, String message, int tools);      // 呼叫 Gemini Chat API
+void setEnvironmentSettings(String jsonString);                           // 套用 env.json 設定
+
+// 相機影像緩衝區（malloc 配置，captureImage() 更新）
+// imageAddress：緩衝區起始位址；imageLength：JPEG 位元組數
+// 讀寫前必須持有 imageMutex
+uint32_t imageAddress = 0;
+uint32_t imageLength  = 0;
+
+// 初始化 ESP32 相機驅動（setup() 呼叫一次）
+// 有 PSRAM：VGA 640×480 雙緩衝；無 PSRAM：QVGA 320×240 單緩衝
+// 回傳 false 表示失敗（影像/視覺/串流功能將停用）
+bool initCamera() {
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0; // LEDC 頻道 0（產生 XCLK 時脈）
+  config.ledc_timer   = LEDC_TIMER_0;   // LEDC 計時器 0
+  // 映射影像資料腳（D0~D7 對應 Y2~Y9）
+  config.pin_d0 = Y2_GPIO_NUM; config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM; config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM; config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM; config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk     = XCLK_GPIO_NUM;  // 主時脈輸出
+  config.pin_pclk     = PCLK_GPIO_NUM;  // 像素時脈
+  config.pin_vsync    = VSYNC_GPIO_NUM; // 垂直同步
+  config.pin_href     = HREF_GPIO_NUM;  // 水平參考
+  config.pin_sscb_sda = SIOD_GPIO_NUM;  // SCCB 資料（設定暫存器）
+  config.pin_sscb_scl = SIOC_GPIO_NUM;  // SCCB 時脈
+  config.pin_pwdn     = PWDN_GPIO_NUM;  // 電源下拉（-1=禁用）
+  config.pin_reset    = RESET_GPIO_NUM; // 硬體重置（-1=禁用）
+  config.xclk_freq_hz = 20000000;       // XCLK = 20 MHz（OV2640 推薦值）
+  config.pixel_format = PIXFORMAT_JPEG; // 輸出：硬體壓縮 JPEG
+
+  if (psramFound()) {
+    // 有 PSRAM：VGA 雙緩衝（一個擷取、一個傳送，提升串流效能）
+    config.frame_size   = FRAMESIZE_VGA;  // 640×480
+    config.jpeg_quality = 10;             // 0=最佳畫質，63=最低畫質
+    config.fb_count     = 2;              // 雙緩衝
+  } else {
+    // 無 PSRAM：QVGA 單緩衝（節省記憶體）
+    config.frame_size   = FRAMESIZE_QVGA; // 320×240
+    config.jpeg_quality = 12;
+    config.fb_count     = 1;              // 單緩衝
+  }
+
+  esp_err_t err = esp_camera_init(&config); // 初始化相機驅動
+  if (err != ESP_OK) {
+    return false; // 初始化失敗（Serial 可查看 [DEBUG] 錯誤碼）
+  }
+  return true;  // 初始化成功
+}
+
+// 擷取新畫格並複製至 malloc 持久緩衝區
+// ‣ 先釋放舊緩衝區，再配置新記憶體，複製後立即歸還相機 DMA 緩衝
+// ‣ 呼叫者必須事先持有 imageMutex（整個擷取＋編碼序列期間）
+void captureImage() {
+  // 向相機驅動要求一個畫格緩衝區（DMA 記憶體，不可長期持有）
+  camera_fb_t *fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("[DEBUG] Camera capture failed"); // 記憶體不足或硬體錯誤
+    return;
+  }
+  // 釋放前一次擷取的緩衝區（防止記憶體洩漏）
+  if (imageAddress != 0) {
+    free((void*)imageAddress);
+    imageAddress = 0;
+    imageLength  = 0;
+  }
+  // 配置持久緩衝區並複製畫格資料
+  // （相機 DMA 緩衝在 fb_return 後即可能被覆寫，必須先複製）
+  uint8_t *buf = (uint8_t*)malloc(fb->len);
+  if (buf) {
+    memcpy(buf, fb->buf, fb->len); // 複製 JPEG 位元組
+    imageAddress = (uint32_t)buf;  // 更新全域位址
+    imageLength  = (uint32_t)fb->len; // 更新全域長度
+  } else {
+    Serial.println("[DEBUG] malloc failed for camera frame copy"); // 堆積不足
+  }
+  // 歸還相機 DMA 緩衝（必須在複製後才執行）
+  esp_camera_fb_return(fb);
+}
+
+#include <stdio.h>
+#include <time.h>
+
+// 時間 / RTC 全域變數
+// ESP32-S3 移植：以 NTP + ESP32 內建 RTC 取代 Ameba 硬體 RTC
+struct tm *timeinfo;       // 舊式呼叫點使用（主要已改用 localtime()）
+int rtcYear   = 0;         // NTP 同步後的年份（0=尚未同步）
+int rtcMonth  = 0;         // 月份 (1-12)
+int rtcDay    = 0;         // 日 (1-31)
+int rtcHour   = 0;         // 時 (0-23)
+int rtcMinute = 0;         // 分 (0-59)
+int rtcSecond = 0;         // 秒 (0-59)
+String rtcFormatTime   = "";    // 格式化時間字串（供 workId 使用）
+bool   rtcUpdateStatus = false; // true=正在執行 NTP 同步
+
+// 依 Wi-Fi MAC 位址後三組產生唯一 MQTT Client ID（保留 Ameba 前綴以維持相容性）
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);  // 讀取 6 位元組 MAC
+  char clientId[32];
+  // 使用 MAC[3]~MAC[5] 作後綴（足夠區分同一 Broker 下的裝置）
+  snprintf(clientId, sizeof(clientId), "AmebaPro2-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
+
+// 將 URL 百分比編碼解碼回原始字串（用於解析 HTTP GET 參數）
+// 例如：%20→空格，%2B→+，+→空格
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length()); // 預先分配，避免多次 heap 重配置
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            // 讀取後兩個十六進位字元並轉為 ASCII 字元
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2; // 跳過已處理的兩個字元
+        } else if (input[i] == '+') {
+            result += ' '; // HTML form 中的 + 代表空格
+        } else {
+            result += input[i]; // 一般字元直接附加
+        }
+    }
+    return result;
+}
+
+// 將字串進行 URL 百分比編碼（用於組裝 HTTP GET 查詢字串）
+// RFC 3986 非保留字元直接輸出，其餘字元轉為 %XX
+String urlencode(String str) {
+  const char *msg = str.c_str();
+  const char *hex = "0123456789ABCDEF"; // 十六進位對照表（大寫）
+  String encodedMsg = "";
+  while (*msg != '\0') {
+    // 字母 / 數字 / - _ . ~ 保持原樣（RFC 3986 非保留字元）
+    if (('a' <= *msg && *msg <= 'z') || ('A' <= *msg && *msg <= 'Z') ||
+        ('0' <= *msg && *msg <= '9') ||
+        *msg == '-' || *msg == '_' || *msg == '.' || *msg == '~') {
+      encodedMsg += *msg;
+    } else {
+      // 其他字元：輸出 %高4位低4位
+      encodedMsg += '%';
+      encodedMsg += hex[(unsigned char)*msg >> 4]; // 高 4 位元
+      encodedMsg += hex[*msg & 0xf];               // 低 4 位元
+    }
+    msg++;
+  }
+  return encodedMsg;
+}
+
+// Send request to Gemini and return GMT date and time
+String getGeminiDatetime() {
+
+  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String getDatetime = "";
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool getStatus = false;
+
+    while ((startTime + waitTime) > millis()){
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()){
+        char c = client.read();
+
+        if (getStatus == true && c == '\n') {
+          waitTime = 0;
+          break;
+        }
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
+        }
+        else
+          getDatetime += String(c);
+
+        startTime = millis();
+      }
+    }
+    
+    client.stop();
+    
+  } else {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  if (getDatetime == "") {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  return getDatetime;
+  
+}
+
+// 取得本地時間的格式化字串
+// ESP32-S3 移植：改用 time()/localtime()（NTP 同步），取代 Ameba rtc.Read()
+// filename=true  → 輸出檔名格式：YYYYMMDDHHmmss（無分隔符）
+// filename=false → 輸出顯示格式：YYYY/M/D HH:mm:ss
+String getRtcTimeString(bool filename = false) {
+  time_t rawtime;
+  time(&rawtime);                            // 讀取 ESP32 內建 RTC（epoch 秒數）
+  struct tm *timeinfo = localtime(&rawtime); // 轉換為本地時間（依 configTime 時區）
+  char buffer[32];
+  if (filename == true) {
+    // 適合備份檔案名稱：例如 20260628100530
+    sprintf(buffer, "%04d%d%d%02d%02d%02d",
+      timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
+      timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+  } else {
+    // 顯示格式（用於 workId / 回覆）：例如 2026/6/28 10:05:30
+    sprintf(buffer, "%04d/%d/%d %02d:%02d:%02d",
+      timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday,
+      timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+  }
+  return String(buffer);
+}
+
+// 將 IANA 時區名稱轉為 GMT 偏移秒數（configTime() 需要數值，不接受 IANA 字串）
+// 如需其他時區請自行新增；未知時區回退至 UTC+8（Asia/Taipei）
+long timeZoneToGmtOffsetSec(String tz) {
+  if (tz == "Asia/Taipei" || tz == "Asia/Shanghai" || tz == "Asia/Singapore")
+    return 8 * 3600;  // UTC+8
+  if (tz == "Asia/Tokyo" || tz == "Asia/Seoul")
+    return 9 * 3600;  // UTC+9
+  if (tz == "UTC" || tz == "Etc/UTC")
+    return 0;         // UTC
+  if (tz == "America/New_York")
+    return -5 * 3600; // UTC-5（EST；BST 夏令請改 -4）
+  if (tz == "America/Los_Angeles")
+    return -8 * 3600; // UTC-8（PST；夏令請改 -7）
+  if (tz == "Europe/London")
+    return 0;         // UTC+0（GMT；BST 夏令請改 +1）
+  return 8 * 3600;    // 未知時區回退至 Asia/Taipei
+}
+
+// 透過 NTP 同步 ESP32-S3 內建時鐘（/syncrtc 工具的實作，setup() 亦呼叫）
+// ESP32-S3 無獨立 RTC 芯片，改用 configTime() + NTP 同步取代 Ameba 硬體 RTC
+void rtcInitialTime(String workName) {
+  rtcUpdateStatus = true; // 標記同步中，防止排程任務在同步期間誤判時間
+  long gmtOffsetSec        = timeZoneToGmtOffsetSec(timeZone); // 換算時區偏移
+  const long daylightOffsetSec = 0;              // 夏令時偏移（此專案統一設 0）
+  const char* ntpServer1   = "pool.ntp.org";    // 主要 NTP 伺服器
+  const char* ntpServer2   = "time.google.com"; // 備用 NTP 伺服器
+  // 設定 NTP 並觸發同步（非阻塞；getLocalTime 輪詢等待）
+  configTime(gmtOffsetSec, daylightOffsetSec, ntpServer1, ntpServer2);
+  struct tm timeinfoLocal;
+  int retries = 0;
+  // 輪詢等待 NTP 回應（最多 20 次 × 500ms = 10 秒）
+  while (!getLocalTime(&timeinfoLocal) && retries < 20) {
+    delay(500);
+    retries++;
+  }
+  if (retries >= 20) {
+    // NTP 同步失敗（WiFi 未連線或 NTP 伺服器無回應）
+    Serial.println("[DEBUG] NTP time sync failed (rtcInitialTime)");
+    replyUserMessage(workName, "RTC time update failed.");
+    return;
+  }
+  // 同步成功：更新全域 RTC 變數（供排程系統使用）
+  rtcYear   = timeinfoLocal.tm_year + 1900; // tm_year 從 1900 起算
+  rtcMonth  = timeinfoLocal.tm_mon  + 1;    // tm_mon 從 0 起算（0=一月）
+  rtcDay    = timeinfoLocal.tm_mday;
+  rtcHour   = timeinfoLocal.tm_hour;
+  rtcMinute = timeinfoLocal.tm_min;
+  rtcSecond = timeinfoLocal.tm_sec;
+}
+
+// 透過 Telegram Bot API sendMessage 發送 HTML 格式文字訊息
+// keyboard：JSON 格式的 reply_markup（可省略）
+String telegramSendMessage(String token, String chatid, String text, String keyboard = "") {
+  text.replace("\\n", "%0A"); // 換行符轉 URL 編碼（Telegram API 需要）
+  const char* myDomain = "api.telegram.org";
+  String getAll = "", getBody = "";
+  // 組裝 POST 表單資料
+  String request = "parse_mode=HTML&chat_id=" + chatid + "&text=" + text;
+  if (keyboard != "")
+    request += "&reply_markup=" + keyboard; // 附加鍵盤按鈕（可選）
+
+  WiFiClientSecure client;
+  client.setInsecure(); // 跳過 SSL 憑證驗證
+  if (client.connect(myDomain, 443)) {
+    // 傳送 HTTP POST 請求
+    client.println("POST /bot" + String(token) + "/sendMessage HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(request.length()));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println("Connection: close");
+    client.println();
+    client.print(request);
+    int waitTime = 5000;              // 最多等待 5 秒
+    unsigned long startTime = millis();
+    bool state = false;               // true=已過空白行，開始接收 body
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS); // 讓出 CPU
+      while (client.available()) {
+        char c = client.read();
+        if (state) getBody += String(c); // 記錄 body
+        if (c == '\n') {
+          if (getAll.length() == 0) state = true; // 空行=header/body 分隔
+          getAll = "";
+        } else if (c != '\r')
+          getAll += String(c);
+        startTime = millis(); // 有資料就重置逾時
+      }
+      if (getBody.length() > 0) break; // 收到 body 即結束
+    }
+    client.stop();
+  } else {
+    getBody = "Connected to api.telegram.org failed.";
+  }
+  return getBody; // 回傳 Telegram API 的 JSON 回應
+}
+
+// 透過 LINE Messaging API push message 發送文字訊息
+String lineSendMessage(String token, String targetId, String message) {
+  String getAll="", getBody="";
+  
+  String request = "{\"to\":\""+targetId+"\",\"messages\":[{\"type\":\"text\",\"text\":\""+message+"\"}]}";
+	
+  const char* myDomain = "api.line.me";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /v2/bot/message/push HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: api.line.me");
+    client.println("Authorization: Bearer " + token);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    client.println(request);
+    client.println();
+	
+    boolean state = false;
+    long startTime = millis();
+    while ((startTime + 3000) > millis()) {
+		while (client.available()) {
+			char c = client.read();
+			if (c == '\n') {
+				if (getAll.length()==0) 
+					state=true;
+				getAll = "";
+			}
+			else if (c != '\r')
+				getAll += String(c);
+			if (state==true) 
+				getBody += String(c);
+			startTime = millis();
+		}
+		if (getBody.length()!= 0) 
+			break;
+      }
+      client.stop();
+  }
+  else {
+    getBody="Connected to api.line.me failed.";
+  }
+  
+  return getBody;
+}
+
+// ============================================================
+//  MQTT: Send Text Message
+// ============================================================
+
+/**
+ * @brief Publish a plain-text message to an MQTT topic.
+ *
+ * Connects (or re-uses an existing connection) to the broker and
+ * publishes a single UTF-8 string payload.  The MQTT QoS level used
+ * by PubSubClient::publish() is QoS 0 (at-most-once / fire-and-forget).
+ *
+ * @param topic  Destination MQTT topic string.
+ * @param text   UTF-8 payload to publish.
+ */
+String mqttSendText(String topic, String text) {
+  
+    // Attempt to connect (no-op if already connected)
+    if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+
+      mqttClient.beginPublish(topic.c_str(), text.length(), false);
+
+      mqttClient.write(
+          (const uint8_t*)text.c_str(),
+          text.length()
+      );
+
+      bool isPublished = mqttClient.endPublish();          
+
+      if (isPublished)
+          return "Publishing message to MQTT Successfully";
+      else
+          return "Publishing message to MQTT Failed";
+    }
+    else
+    	return "Connect to MQTT Server Failed";
+	
+}
+
+// ============================================================
+//  MQTT: Capture & Send Still Image
+// ============================================================
+
+/**
+ * @brief Capture a JPEG frame from the camera and publish it to an MQTT topic.
+ *
+ * Two encoding modes are supported:
+ *   - Raw binary  (base64 = false, default): the JPEG bytes are streamed
+ *     directly in MQTT_MAX_PACKET_SIZE chunks via beginPublish / write /
+ *     endPublish.  Suitable for subscribers that can receive binary payloads.
+ *   - Base64       (base64 = true): the JPEG is Base64-encoded and prefixed
+ *     with a data-URI header ("data:image/jpeg;base64,…").  Useful for
+ *     web-based MQTT dashboards that render <img src="…"> tags directly.
+ *
+ * @param topic    Destination MQTT topic string.
+ * @param capture  true  = call Camera.getImage() to grab a fresh frame before
+ *                         publishing (normal use case for /still command).
+ *                 false = reuse the last frame already stored in img_addr /
+ *                         img_len (e.g. to publish the same frame to a second
+ *                         topic without incurring another capture latency).
+ * @param base64   true  = encode the frame as a Base64 data-URI string.
+ *                 false = publish raw binary JPEG bytes (default).
+ */
+String mqttSendImage(String topic, bool capture, bool base64 = false) {
+	
+	if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+		return "Image buffer busy, please try again.";
+	}	
+	
+	String response = "";
+
+    // Attempt to connect (or re-use the existing session)
+    if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+
+		if (capture)
+		  captureImage();
+		else if (!capture && imageLength == 0) {
+		  xSemaphoreGive(imageMutex);
+		  return "Previous image does not exist";
+		}
+
+        // Cast the DMA buffer address to a byte pointer for MQTT write operations
+        uint8_t* fbBuf = (uint8_t*)imageAddress;
+        size_t   fbLen = imageLength;
+
+        boolean isPublished;
+
+        if (!base64) {
+            // ---- Raw binary path ----------------------------------------
+            // Open a "large payload" MQTT publish transaction.
+            // PubSubClient::beginPublish() writes the fixed MQTT header and
+            // the payload-length field; subsequent write() calls stream the
+            // body; endPublish() flushes and finalises the packet.
+            mqttClient.beginPublish(topic.c_str(), fbLen, false);
+
+            // Stream the JPEG in MQTT_MAX_PACKET_SIZE-byte slices to stay
+            // within the library's internal packet buffer limit.
+            int ps = MQTT_MAX_PACKET_SIZE;
+            for (int i = 0; i < (int)fbLen; i += ps) {
+                // Clamp the last chunk so it does not exceed remaining bytes
+                int s = ((fbLen - i) < (size_t)ps) ? (fbLen - i) : ps;
+                mqttClient.write((uint8_t*)fbBuf + i, s);
+            }
+
+            isPublished = mqttClient.endPublish();
+
+        } else {
+          
+            // Cast the DMA frame buffer to a char pointer for byte-by-byte Base64 encoding
+            char *input = (char *)fbBuf;
+            
+            // Output buffer for one Base64-encoded group (4 chars + null terminator per 3 input bytes)
+            char output[base64_enc_len(3)];
+            
+            // Pre-calculate the final string length to avoid repeated heap reallocations during +=
+            //   23            : length of the data-URI prefix "data:image/jpeg;base64,"
+            //   (fbLen+2)/3*4 : Base64 expands every 3 bytes → 4 chars (ceiling division handles padding)
+            //    1            : null terminator
+            size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+            
+            // Initialise the String with the data-URI prefix (small initial allocation)
+            String imageFile = "data:image/jpeg;base64,";
+            
+            // Reserve the full estimated capacity in one shot so subsequent += calls
+            // write into already-allocated space without triggering further heap reallocations
+            imageFile.reserve(estimatedSize);
+            
+            // Encode the raw JPEG bytes to Base64 and append to imageFile.
+            for (int i = 0; i < fbLen; i++) {
+                base64_encode(output, (input++), 3);
+                if (i % 3 == 0) imageFile += String(output);
+            }
+            
+            // Capture the final encoded string length for the MQTT packet header
+            size_t imageFileSize = imageFile.length();
+            
+            // Open the MQTT publish transaction and declare the total payload length upfront.
+            // 'false' = non-retained message (broker will not store it for late subscribers)
+            mqttClient.beginPublish(topic.c_str(), imageFileSize, false);
+            
+            // Stream the Base64 string in 1024-character chunks.
+            for (int index = 0; index < (int)imageFileSize; index += 1024) {
+                mqttClient.print(imageFile.substring(index, index + 1024));
+            }
+            
+        }
+
+        // Finalise and flush the MQTT publish packet
+        isPublished = mqttClient.endPublish();
+
+        if (isPublished)
+            response = "Publishing Photo to MQTT Successfully";
+        else
+            response = "Publishing Photo to MQTT Failed";
+
+    } else {
+        response = "Connect to MQTT Server Failed";
+    }
+	
+  xSemaphoreGive(imageMutex);
+
+  return response;
+}
+
+// Capture a still image from camera and upload it to Telegram as JPEG.
+//
+// NOTE: imageMutex is held for the whole capture + read + send sequence
+// so the buffer this function is sending can never be freed/replaced by
+// a concurrent captureImage() call from another task mid-upload.
+String telegramSendCapturedImage(String token, String chat_id, bool frames) {
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    return "Image buffer busy, please try again.";
+  }
+
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      captureImage();
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      xSemaphoreGive(imageMutex);
+      return "Previous image does not exist";
+    }
+
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    String head =
+      "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
+      + chat_id +
+      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+
+    String tail = "\r\n--Taiwan--\r\n";
+
+    size_t imageLen = imageLength;
+    size_t extraLen = head.length() + tail.length();
+    size_t totalLen = imageLen + extraLen;
+
+    client.println("POST /bot"+token+"/sendPhoto HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(totalLen));
+    client.println("Content-Type: multipart/form-data; boundary=Taiwan");
+    client.println();
+
+    client.print(head);
+
+    // Send JPEG data in chunks
+    for (size_t n=0;n<fbLen;n=n+1024) {
+      if (n+1024<fbLen) {
+        client.write(fbBuf, 1024);
+        fbBuf += 1024;
+      }
+      else {
+        size_t remainder = fbLen - n;
+        if (remainder > 0)
+          client.write(fbBuf, remainder);
+      }
+    }
+
+    client.print(tail);
+
+    int waitTime = 10000;
+    unsigned long startTime = millis();
+    bool state = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (state)
+          getBody += String(c);
+
+        if (c == '\n') {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+
+    client.stop();
+    Serial.println();
+
+  } else {
+    getBody="Connected to api.telegram.org failed.";
+    Serial.println("Connected to api.telegram.org failed.");
+  }
+
+  xSemaphoreGive(imageMutex);
+
+  return getBody;
+}
+
+// Cleans a text string by removing timestamps, workId, and truncating at any task tag
+// Returns "NONE" if the text is empty or explicitly marked as none
+String removeTimestamps(String workId, String timestamps, String text) {
+
+    // Skip processing if text is empty or already marked as "NONE"
+    if (text.length() == 0 || text.startsWith("NONE")) return "NONE";
+	
+    // Early exit: if there are no angle brackets at all, nothing left to process
+    if (text.indexOf("&lt;") == -1 && text.indexOf("<") == -1) return text;	
+
+    // Decode HTML-escaped angle brackets back to their literal characters
+    text.replace("&lt;", "<");
+    text.replace("&gt;", ">");
+
+    // Strip the timestamp and workId from the text
+    text.replace(timestamps, "");
+    text.replace(workId, "");
+
+    // Truncate text at the first occurrence of any task tag
+    // Everything from the tag onward is discarded
+    for (const auto& tag : taskTags) {
+        int pos = text.indexOf(tag);
+        if (pos != -1)
+            text = text.substring(0, pos); // Keep only the part before the tag
+    }
+
+    return text;
+}
+
+void replyUserMessage(String workId, String text) {
+	if (text.length() == 0 || text.startsWith("NONE")) return;
+
+	if (workId.startsWith(String(taskTags[0])))
+		mainPageHTML += text +"\n";
+	else {
+		mqttSendText(mqttPublishTextTopic, text);
+  }
+}
+
+String replyUserImage(String workId, bool frames) {
+  if (workId.startsWith(String(taskTags[0]))) {
+
+      if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+        return "Image buffer busy, please try again.";
+      }
+
+      if (frames)
+          captureImage();
+
+      if (imageLength == 0) {
+        xSemaphoreGive(imageMutex);
+        return "Previous image does not exist";
+      }
+
+      uint8_t* fbBuf = (uint8_t*)imageAddress;
+      size_t   fbLen = imageLength;
+
+      char *input = (char *)fbBuf;
+      char output[base64_enc_len(3)];
+                  
+      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+      String imageFile = "<img src='data:image/jpeg;base64,";
+      imageFile.reserve(estimatedSize);
+      
+      // Advance by 3 bytes per base64_encode() call (it reads 3 input
+      // bytes at a time); base64_encode() handles the 1-2 byte tail
+      // padding itself when fbLen is not a multiple of 3.
+      for (size_t i = 0; i < fbLen; i += 3) {
+          base64_encode(output, input, 3);
+          input += 3;
+          imageFile += String(output);
+      }
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+        xSemaphoreGive(stateMutex);
+      }
+
+      xSemaphoreGive(imageMutex);
+
+	  return "Image file created.";
+  }
+    return mqttSendImage(mqttPublishImageTopic, frames);
+
+  return "";
+}
+
+// Convert role/content pair into Gemini-compatible JSON message object
+String buildGeminiMessage(String role, String message, bool comma = true) {
+  
+  message.replace("\"", "\\\"");
+  message.replace("\\\\", "\\");
+  
+  String jsonMessage = "";
+  if (comma)
+    jsonMessage = ", {\"role\": \"";
+  else
+    jsonMessage = "{\"role\": \"";
+  jsonMessage += role;
+  jsonMessage += "\", \"parts\":[{ \"text\": \"";
+  jsonMessage += message;
+  jsonMessage += "\" }]}";
+
+  return jsonMessage;
+}
+
+// 從 SD 卡讀取指定檔案的全部內容並回傳字串
+// 使用 sdMutex 確保執行緒安全（SD_MMC 驅動非執行緒安全）
+// 回傳空字串：Mutex 逾時、掛載失敗、檔案不存在或 malloc 失敗
+String getStringFromFile(String fileNname) {
+  String data = "";
+  // 取得 SD 互斥鎖（10 秒逾時）
+  if (sdMutex && xSemaphoreTake(sdMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    Serial.println("[DEBUG] getStringFromFile: failed to take sdMutex");
+    return "";
+  }
+  // 掛載 SD 卡（true=1-bit 模式，相容性最佳）
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed"); // SD 未插入或格式錯誤
+    if (sdMutex) xSemaphoreGive(sdMutex);
+    return "";
+  }
+  String path = "/" + fileNname; // 所有檔案存放於 SD 根目錄
+  file = SD_MMC.open(path, FILE_READ);
+  if (file) {
+    uint32_t len = file.size();
+    char *buf = (char*)malloc(len + 1); // +1 補 null terminator
+    if (buf) {
+      file.read((uint8_t*)buf, len);  // 一次讀取全部內容
+      buf[len] = '\0';               // 手動補 null（file.read 不補）
+      data = String(buf);
+      free(buf);                      // 立即釋放暫存緩衝區
+    }
+    file.close();
+  }
+  SD_MMC.end(); // 卸載 SD（釋放 MMC 匯流排）
+  if (sdMutex) xSemaphoreGive(sdMutex);
+  return data;
+}
+
+// 將資料儲存至 SD 卡（寫入前先備份舊版本）
+// timestamp=false：備份為 filename.bak（覆蓋舊備份）
+// timestamp=true ：備份為 filename_YYYYMMDDHHmmss.bak（保留歷史）
+void storeDataToFile(String filename, String data, bool timestamp = false) {
+  if (sdMutex && xSemaphoreTake(sdMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    Serial.println("[DEBUG] storeDataToFile: failed to take sdMutex");
+    return;
+  }
+  if (!SD_MMC.begin("/sdcard", true)) {
+    Serial.println("Card Mount Failed");
+    if (sdMutex) xSemaphoreGive(sdMutex);
+    return;
+  }
+  String currentFile = "/" + filename;
+  // 決定備份檔案名稱
+  String backupFile = currentFile + ".bak";
+  if (timestamp == true)
+    backupFile = currentFile + "_" + getRtcTimeString(true) + ".bak"; // 帶時間戳備份
+  // 若目標已存在，先備份再寫入（防止寫入失敗導致資料遺失）
+  if (SD_MMC.exists(currentFile)) {
+    if (SD_MMC.exists(backupFile))
+      SD_MMC.remove(backupFile); // 刪除舊備份
+    delay(100);                   // 短暫延遲確保刪除完成
+    SD_MMC.rename(currentFile, backupFile); // 原檔案改名為備份
+  }
+  file = SD_MMC.open(currentFile, FILE_WRITE); // 開啟（或建立）目標檔案
+  if (file) {
+    file.println(data.c_str()); // 寫入資料（println 附加換行）
+    file.close();
+  } else
+    Serial.println("[DEBUG] File open failed: " + currentFile);
+  SD_MMC.end();
+  if (sdMutex) xSemaphoreGive(sdMutex);
+}
+
+//   Send a message to another device or agent over TCP
+String tcpSendMessage(String workId, String domain, String request) {
+  
+  WiFiClient client;
+  
+  if (client.connect(domain.c_str(), 81)) {
+	  
+    client.setTimeout(20000);
+	
+    client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+    client.println("Host: " + domain);
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("Content-Length: 0");
+    client.println();
+    
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+    
+    return 
+      "{\"status\":\"success\","
+      "\"method\":\"/tcpSendMessage\","
+      "\"response\":\"" + body + "\","   
+      "\"workId\":\"" + workId + "\"}"; 
+  }
+
+  return 
+    "{\"status\":\"error\","
+    "\"method\":\"/tcpSendMessage\","       
+    "\"reason\":\"Connected to the device failed.\","
+    "\"workId\":\"" + workId + "\"}";
+      
+}
+
+// 重置對話記憶至初始狀態（/reset 工具的實作）
+// ‣ 帶時間戳備份 memory.md（保留歷史以便日後查閱）
+// ‣ 清空 historicalMessages 與 executeToolHistory
+// ‣ 重建三個版本的系統提示詞
+void geminiChatReset() {
+  storeDataToFile(memoryFilename, "", true); // 備份舊記憶（timestamp 模式保留歷史）
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages   = "";    // 清空對話歷史
+    executeToolHistory   = "";    // 清空工具執行日誌
+    // 重建系統提示詞（如同全新啟動，不含歷史記憶）
+    systemContent        = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools   = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
+}
+
+// 重建系統提示詞（不清除對話歷史）
+// 在更新 soul / device / skill / env 設定後呼叫，使新設定立即生效
+void systemContentReset() {
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    systemContent        = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools   = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
+}
+
+// 向 Gemini generateContent API 發送請求並回傳文字回應
+// tools 模式：
+//   1（預設）= 含工具定義（主工作模式）
+//   0        = 無工具（工作流程收尾對話）
+//   2 / 其他 = 純角色提示 + 單一訊息（內部處理用，不帶歷史）
+String geminiChatRequest(String workId, String message, int tools = 1) {
+  // workId 注入訊息末尾作辨識標記（後續由 removeTimestamps 清除）
+  String timestamps = "\n" + workId;
+  // 附加 RTC 時間讓 Gemini 知道當前時刻（排程判斷必需）
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+  // 將使用者訊息寫入歷史（持有 stateMutex 確保執行緒安全）
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+  // 依 tools 模式組裝 contents 陣列
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)      contents = systemContentNoTools + historicalMessages; // 無工具
+    else if (tools == 1) contents = systemContentTools   + historicalMessages; // 標準工具
+    else if (tools == 2) contents = systemContent + buildGeminiMessage("user", message); // 輕量
+    else                 contents = systemContent + buildGeminiMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  // 組裝 Gemini API 請求 JSON
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens + ", \"temperature\": " + geminiTemperature + "}}";
+  WiFiClientSecure client;
+  client.setInsecure();    // 跳過 SSL 憑證驗證
+  String responseText = "";
+  client.setTimeout(10000); // TCP 層逾時 10 秒
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    // 傳送 HTTP/1.0 請求（不需處理 chunked 編碼）
+    client.println("POST /v1beta/models/" + geminiModel + ":generateContent?key=" + geminiApiKey + " HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    // 分 1024 位元組分段傳送（避免超過 TCP 緩衝區）
+    for (int i = 0; i < request.length(); i += 1024)
+      client.print(request.substring(i, i + 1024));
+    String body = "";
+    unsigned long timeout = millis() + 20000; // 動態逾時（有資料時持續延展）
+    bool headersEnded = false;
+    String line = "";
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) headersEnded = true; // 空行=header 結束
+            line = "";
+          } else if (c != '\r') line += c;
+        } else {
+          body += c;
+          timeout = millis() + 20000; // 有資料就延展逾時
+        }
+      }
+      esp_task_wdt_reset(); // 重置 TWDT（Gemini 回應可能超過 10 秒）
+      vTaskDelay(1);        // 讓出 CPU tick
+    }
+    client.stop();
+    // 找到第一個 { 跳過可能的 HTTP chunked 大小行
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) body = body.substring(jsonStart);
+    // 解析 Gemini JSON 回應
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    } else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>(); // 正常回應
+    } else if (doc["error"]) {
+      // API 回傳錯誤（金鑰無效、配額耗盡等）
+      responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "Gemini API Error";
+    } else {
+      responseText = "Unexpected response from Gemini.";
+      Serial.println("Unknown response format.");
+    }
+  } else {
+    Serial.println("Failed to connect to Gemini API");
+    responseText = "Connection failed";
+  }
+  if (responseText == "") responseText = "Gemini did not respond. Please try again.";
+  // 清除 workId/timestamp 標記後存入歷史（model 角色）
+  responseText = removeTimestamps(workId, timestamps, responseText);
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+  return responseText;
+}
+
+// 向 Gemini API 發送含 Google Search grounding 工具的請求
+String geminiSearchRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    contents = systemContent + buildGeminiMessage("user", message);
+    if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Build request with Google Search tool
+  String request = "{\"contents\": [" + contents +
+                   "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+	  
+  client.setTimeout(10000);
+	
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    // Send HTTP Request
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini Search response
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API (Search) Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+	  responseText = "Gemini API (Search) Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Search.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Search)");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini Search did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+// Capture camera frame and send it to Gemini Vision for multimodal analysis
+//
+// NOTE: imageMutex is held for the whole capture + base64-encode +
+// HTTP send sequence so the buffer can't be freed/replaced underneath
+// us by a concurrent captureImage() call from another task.
+String geminiVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+  const char* myDomain = "generativelanguage.googleapis.com";
+	  
+  client.setTimeout(10000);
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    responseText = "Image buffer busy, please try again.";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+      xSemaphoreGive(stateMutex);
+    }
+    return responseText;
+  }
+	
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      captureImage();
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      xSemaphoreGive(imageMutex);
+
+      responseText = "Previous image does not exist";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
+
+      return responseText;
+    }
+    
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    char *input = (char *)fbBuf;
+    char output[base64_enc_len(3)];
+    String imageFile = "";
+
+    // Advance by 3 bytes per base64_encode() call (it reads 3 input
+    // bytes at a time); base64_encode() handles the 1-2 byte tail
+    // padding itself when fbLen is not a multiple of 3.
+    for (size_t i = 0; i < fbLen; i += 3) {
+      base64_encode(output, input, 3);
+      input += 3;
+      imageFile += String(output);
+    }
+
+    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
+                  "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
+                  imageFile + "\"}}]}]}";
+
+    // Image buffer has been fully encoded into Data (a String) at this
+    // point, so it's safe to release imageMutex before the network
+    // round-trip and let other tasks capture/encode a new frame.
+    xSemaphoreGive(imageMutex);
+
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(Data.length()));
+    client.println("Connection: close");
+    client.println();
+    
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini Vision response
+      vTaskDelay(1);
+    }
+    
+    client.stop();   
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed (geminiSearchRequest):\n" + body);
+      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API (Vision) Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+	  responseText = "Gemini API (Vision) Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Vision.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Vision)");
+    responseText = "Connection failed";
+    xSemaphoreGive(imageMutex);
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini Vision did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+// 取得目前系統記憶體使用狀況（/getMemory 工具實作）
+// Free heap：目前可用堆積；Min heap：歷史最低堆積；historicalMessages 長度過長應 /reset
+String getMemoryInfo() {
+  String msg = "";
+  msg += "Free heap: "           + String(xPortGetFreeHeapSize());            // 目前可用（bytes）
+  msg += "\nMin heap: "          + String(xPortGetMinimumEverFreeHeapSize()); // 歷史最低（bytes）
+  msg += "\nHistorical messages len: " + String(historicalMessages.length()); // 對話歷史長度（chars）
+  return msg;
+}
+
+// GPIO 輸出控制（/digitalwrite 與 /analogwrite 工具實作）
+// mode="digitalwrite"：數位輸出，value 只能是 0（LOW）或 1（HIGH）
+// mode="analogwrite" ：PWM 輸出，value 範圍 0~255
+String toolPinOutput(int pin, String mode, int value, String workId) {
+    pinMode(pin, OUTPUT); // 設定腳位為輸出模式
+    mode.toLowerCase();   // 統一轉小寫（容錯）
+
+    if (mode == "digitalwrite") {
+        if (value != 0 && value != 1) { // 數位輸出只允許 0 或 1
+            return
+                "{\"status\":\"error\","
+                "\"method\":\"/digitalwrite\","				
+				"\"reason\":\"invalid_digital_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        digitalWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogwrite") {
+
+        if (value < 0 || value > 255) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/analogwrite\","				
+				"\"reason\":\"invalid_analog_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        analogWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogwrite\","		
+        "\"reason\":\"invalid_output_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// GPIO 輸入讀取（/digitalread 與 /analogread 工具實作）
+// mode="digitalread"：讀取數位值（0=LOW, 1=HIGH）
+// mode="analogread" ：讀取 ADC 值（0~4095，12-bit）
+String toolPinInput(int pin, String mode, String workId) {
+    pinMode(pin, INPUT); // 設定腳位為輸入模式
+    mode.toLowerCase();
+
+    if (mode == "digitalread") {
+
+        int value = digitalRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogread") {
+
+        int value = analogRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogread\","		
+        "\"reason\":\"invalid_input_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// 詢問 Gemini 目前工作流程是否已完成（多步驟工具鏈的遞迴核心）
+// reCheck=false 時直接返回（批次工具中的非末尾項目，避免過度遞迴）
+// task：原始使用者任務字串，提供給 Gemini 作上下文判斷
+void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
+    if (!reCheck) return; // 非最後一個工具：跳過（防止每步都觸發遞迴）
+
+    String prompt =
+        "Analyze the execution result and determine whether the workflow is complete.\n";
+
+    if (task != "") {
+        prompt += "User task request:\n" + task + "\n\n";
+    }
+
+    prompt +=
+        "If additional hardware actions are strictly required, "
+        "return ONLY a valid tool_call JSON.\n"
+        "If the workflow is already complete, return EXACTLY: NONE.\n"
+        "If no tool action is required and a user-facing reply is needed, "
+        "respond naturally in the user's language.\n"
+        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
+        "Do not include explanation or extra text.";
+
+    handleAgentResponse(workId, geminiChatRequest(workId, prompt));
+}
+
+// Execute tool commands returned by Gemini
+void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
+    String timestamps = "\n" + workId;
+
+    // Reset the per-task watchdog at each tool boundary so the TWDT
+    // doesn't fire during back-to-back multi-step tool chains.
+    esp_task_wdt_reset();
+
+    if (command == "/digitalwrite" || command == "/analogwrite") {
+      // 解析 GPIO 腳位、模式與輸出值
+      int pin        = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>(); // "digitalwrite" 或 "analogwrite"
+      int value      = params["value"].as<int>();       // 數位：0/1；類比：0~255
+      String response = toolPinOutput(pin, pinmode, value, workId);
+      // 將指令與回應注入對話歷史（讓 Gemini 知道執行結果）
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + pinmode + " | " + String(value) + " ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+      evaluateWorkflowContinuation(workId, reCheck); // 詢問是否需繼續工作流程
+    
+    } 
+    else if (command == "/digitalread" || command == "/analogread") {
+      int pin        = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>(); // "digitalread" 或 "analogread"
+      String response = toolPinInput(pin, pinmode, workId);
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + pinmode + " ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+      evaluateWorkflowContinuation(workId, reCheck); // 讀取後繼續評估工作流程 
+      
+    } 
+    else if (command == "/still") {
+      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
+      String res = replyUserImage(workId, frames);
+
+      res.replace("\\", "\\\\");
+      res.replace("\"", "\\\"");   
+       
+      String response =
+        "{\"method\":\"/still\","
+        "\"result\":\"" + res + "\","
+        "\"workId\":\"" + workId + "\"}";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck, task);
+      
+    } 	
+    else if (command == "/syncrtc") {
+      rtcInitialTime(workId);
+      String rtcTimeResponse = "RTC START: " + getRtcTimeString();
+      replyUserMessage(workId, rtcTimeResponse);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+    } 
+    else if (command == "/getrtc") {
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(workId, rtcTime);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+              
+    }
+  	else if (command == "/schedule") {
+      String task = params["task"].as<String>();
+	  
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+
+	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
+		    task = task.substring(0, task.lastIndexOf("]") + 1);
+  			if (localSchedule == "")
+  				localSchedule = task;
+  			else {
+  				localSchedule += ", " + task;
+  
+        String prompt = 
+          "Merge all given JSON arrays into a single valid JSON array. "
+          "Output ONLY the merged array. "
+          "Ensure the result is valid JSON starting with [ and ending with ]. "
+          "For every object in the arrays, keep all fields unchanged. "
+          "The value of the task field MUST remain exactly as provided. "
+          "Never translate, rewrite, summarize, localize, or modify task descriptions. "
+          "Task descriptions MUST remain in the original user language.\n\n"
+          + localSchedule;
+  				  
+  				String jsonArray = geminiChatRequest(workId, prompt, -1);
+  				
+  				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+  				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+  				  localSchedule = jsonArray;
+  				}
+  			}
+  			
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = localSchedule;
+          xSemaphoreGive(stateMutex);
+        }
+  			storeDataToFile(scheduleFilename, localSchedule);
+                
+    		response = 
+    			"{\"status\":\"success\","			
+    			"\"method\":\"/schedule\","
+    			"\"workId\":\""+workId+"\"}";				
+    	}
+    	else {
+    		response =
+			"{\"status\":\"error\","
+			"\"method\":\"/schedule\","
+			"\"reason\":\"Invalid JSON array format.\","
+			"\"workId\":\""+workId+"\"}";	  
+  	  }   
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+    
+  	}	
+    else if (command == "/modifySchedule") {
+      String task = params["task"].as<String>();
+            
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a user-approved schedule modification request. "
+          "Apply the requested modification or deletion to the scheduled tasks. "
+          "Rules: "
+          "- Match tasks using both schedule time and task description. "
+          "- If the request is to modify a task, update only the requested fields. "
+          "- Modifying a task includes changing the task description, schedule time, or recurrence settings. "
+          "- Any modified task MUST have its executed field set to false. "
+          "- If the request is to delete a task, remove the matching task from the array. "
+          "- Do NOT modify unrelated tasks. "
+          "- Preserve all fields of unaffected tasks. "
+          "- Preserve the executed field of unaffected tasks. "
+          "- Do NOT add new fields. "
+          "- Do NOT remove existing fields except when deleting a task. "
+          "- Preserve the original JSON schema. "
+          "- If no matching task exists, return the original array unchanged. "
+          "- Output ONLY the updated JSON array. "
+          "- The result MUST start with [ and end with ]. "
+          "- Do NOT output explanations, markdown, code fences, or natural language.\n\n"
+          "Current scheduled tasks:\n" +
+          localSchedule +
+          "\n\nUser-approved modification request:\n" +
+          task;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+    
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
+        storeDataToFile(scheduleFilename, jsonArray);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/modifySchedule\","
+          "\"workId\":\""+workId+"\"}";     
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/modifySchedule\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }    
+    else if (command == "/updateScheduleStatus") {
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a tool execution history. "
+          "For each task: "
+          "- If the task's schedule has \"year\" equal to 0, it is a recurring task. Do NOT change its \"executed\" field. "
+          "- Otherwise, set \"executed\" to true ONLY if the task's corresponding action appears in the execution history as successfully completed, otherwise Do NOT change its \"executed\" field. "
+          "Output ONLY the updated JSON array. "
+          "The result MUST start with [ and end with ]. "
+          "Do NOT change any other fields.\n\n"
+          + localSchedule;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+		
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
+        storeDataToFile(scheduleFilename, jsonArray);
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/updateScheduleStatus\","
+		  "\"workId\":\""+workId+"\"}";		  
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/updateScheduleStatus\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }
+    else if (command == "/getSchedule") {
+      String localSchedule = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+
+      String prompt =
+        "Please organize the following scheduled tasks and respond in the user's current language. "
+        "Present the information in a clear and well-structured bullet-point format for better readability: "
+        + localSchedule;
+
+      String response = geminiChatRequest(workId, prompt);
+      replyUserMessage(workId, response); 
+          
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+     
+    }    
+    else if (command == "/getUnfinishedSchedule") {
+      String localSchedule = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+              scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+            
+      String response = getUnfinishedScheduleTasksJson(localSchedule);
+      replyUserMessage(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+ 
+    }
+    else if (command == "/clearSchedule") {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        scheduleTasks = "";
+        executedTodayTasks = "";
+        xSemaphoreGive(stateMutex);
+      }
+      
+      storeDataToFile(scheduleFilename, "");
+      storeDataToFile(scheduleExecutedTodayTasksFilename, "");
+      
+      String response = "Scheduled tasks have been cleared.";
+      replyUserMessage(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+    }
+    else if (command == "/reset") {
+      geminiChatReset();  
+            
+      String response = "New chat started.";
+      replyUserMessage(workId, response);
+
+    } 
+    else if (command == "/getMemory") {
+      String msg = getMemoryInfo();
+      replyUserMessage(workId, msg);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", msg + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);          
+
+    } 
+    else if (command == "/getLog") {
+      String localHistory = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localHistory = executeToolHistory;
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+      Serial.println("\n\nExecute tools history:\n\n"+localHistory+"\n\n");
+      replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
+      
+    } 
+    else if (command == "/chat") {
+      String reply = params["reply"].as<String>();
+      replyUserMessage(workId, reply);
+
+    } 
+    else if (command == "/search") {
+      String query = params["query"].as<String>();
+      String task = params["task"].as<String>();
+	  
+      String response = geminiSearchRequest(workId, query, false);
+      handleAgentResponse(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+      
+      evaluateWorkflowContinuation(workId, reCheck, task);
+
+    } 
+    else if (command == "/delay") {
+      // 延遲指定毫秒數（最大 10 秒，防止長時間阻塞）
+      long milliseconds = params["milliseconds"].as<long>();
+      milliseconds = constrain(milliseconds, 0, 10000); // 限制在 0~10000ms
+      unsigned long start = millis();
+      // 使用 vTaskDelay 讓出 CPU，同時定期重置 WDT
+      while (millis() - start < milliseconds) {
+          vTaskDelay(10 / portTICK_PERIOD_MS); // 每 10ms yield 一次
+          esp_task_wdt_reset();                // 防止 WDT 觸發
+      }
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+  
+      evaluateWorkflowContinuation(workId, reCheck);
+        
+    }
+    else if (command == "/vision") {
+      // 擷取相機畫格並送至 Gemini Vision 進行多模態影像分析
+      String query  = params.containsKey("query")  ? params["query"].as<String>()  : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
+      bool frames   = params.containsKey("frames") ? params["frames"].as<bool>()   : true; // true=重新擷取
+      String task   = params.containsKey("task")   ? params["task"].as<String>()   : "NONE";
+      String response = geminiVisionRequest(workId, query, frames);
+      handleAgentResponse(workId, response); // 回應可能是工具呼叫或文字回覆
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+      
+      evaluateWorkflowContinuation(workId, reCheck, task);
+    }	
+    else if (command == "/reboot") {
+      replyUserMessage(workId, "Rebooting the device, please wait...");
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+      Serial.println("User requested reboot the device.");
+      vTaskDelay(2000 / portTICK_PERIOD_MS); // 等待 2 秒讓訊息發送完畢
+      ESP.restart(); // ESP32-S3 移植：取代 Ameba 的 NVIC_SystemReset()
+    }
+  	else if (command == "/tcpSendMessage") {
+      String device = params["device"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = tcpSendMessage(workId, device, message);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
+	}
+    else if (command == "/mqttSendMessage") {
+      String publishTopic = params["publishTopic"].as<String>(); // 目標 MQTT 主題
+      String message      = params["message"].as<String>();      // 訊息內容
+      // 附加 metadata 讓接收方知道如何回覆（指定回覆主題）
+      String response = mqttSendText(
+        publishTopic,
+        message +
+        "\n\n<metadata>\n"
+        "Default response topic rule:\n"
+        "When a response is required, use " + mqttSubscribeTextTopic + " as the response topic.\n"
+        "</metadata>"
+      );
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }	  
+	}	
+  	else if (command == "/mqttSendImage") {
+      String publishTopic = params["publishTopic"].as<String>();
+	  
+      String response = mqttSendImage(publishTopic, true);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }	 
+	  
+	  evaluateWorkflowContinuation(workId, reCheck);
+	}	
+  	else if (command == "/telegramSendMessage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/telegramSendImage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+	  bool frames = params["frames"].as<bool>();
+	  
+      String response = telegramSendCapturedImage(token, chatId, frames);
+	  
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
+        
+		xSemaphoreGive(stateMutex);
+      }	  
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}		
+  	else if (command == "/lineSendMessage") {
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
+    else if (command == "/help" || command == "/start") {
+      // 取得記憶體資訊並填入系統指令說明模板
+      String mem = getMemoryInfo();
+      String command = systemCommand;
+      command.replace("<memory>", mem); // 將 <memory> 佔位符替換為實際記憶體資訊
+      // 請 Gemini 將說明翻譯成使用者語言後回覆
+      command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
+      replyUserMessage(workId, command);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
+        historicalMessages += buildGeminiMessage("model", command + timestamps);
+		
+        xSemaphoreGive(stateMutex);
+      }
+      
+    }      
+    else {
+      // 未知指令：直接送 Gemini 處理（可能是複合指令或自然語言）
+      String response = geminiChatRequest(workId, command);
+      handleAgentResponse(workId, response);
+    }
+}
+
+// 解析 Gemini 回應並分派工具呼叫，或直接回覆使用者
+// ‣ 物件 JSON ({})：單一工具呼叫 → executeTool()
+// ‣ 陣列 JSON ([])：批次工具呼叫（依序；僅最後一個啟用 reCheck）
+// ‣ "NONE"          ：工作流程完成，靜默忽略
+// ‣ 純文字          ：格式化後傳送給使用者
+// ‣ 無效 JSON       ：記錄至 Serial，不執行任何硬體動作
+void handleAgentResponse(String workId, String message) {
+  String rawMessage = message; // 保留原始訊息（格式化回覆時需要）
+  // 正規化 JSON 特殊字元（移除 Gemini 可能輸出的多餘跳脫）
+  message.replace("\\\"", "\"");  // \" → "
+  message.replace("\\\\", "\\"); // \\ → \
+  message.replace("\\n", "");    // 移除換行（JSON 解析時為雜訊）
+  message.replace("\n", "");
+  message.replace("\\r", "");  message.replace("\r", "");
+  message.replace("\\t", "");  message.replace("\t", "");
+  message.replace(String(char(0)), ""); // 移除 null 字元
+  message.replace("\\-", "-"); message.replace("\\*", "*");
+  message.replace("\\_", "_"); message.replace("\\#", "#");              
+
+  if (message.startsWith("{") && message.indexOf("}") != -1) {
+    // ── 單一工具呼叫（物件格式）────────────────────────────────
+    message = message.substring(0, message.lastIndexOf("}") + 1); // 截至最後一個 }
+    JsonObject obj;
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+      return; // 無效 JSON：拒絕執行
+    }
+    obj = doc.as<JsonObject>();
+    String method     = obj["method"].as<String>(); // 工具名稱（如 /digitalwrite）
+    JsonObject params = obj["params"];              // 工具參數物件
+    executeTool(workId, method, params);
+  }
+  else if (message.startsWith("[") && message.indexOf("]") != -1) {
+    // ── 批次工具呼叫（陣列格式）────────────────────────────────
+    message = message.substring(0, message.lastIndexOf("]") + 1);
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+      return;
+    }
+    JsonArray toolsArray = doc.as<JsonArray>();
+    int toolCount = toolsArray.size();
+    for (int i = 0; i < toolCount; i++) {
+      JsonObject toolObject = toolsArray[i];
+      if (toolObject.isNull()) continue; // 跳過空物件
+      String command    = toolObject["method"].as<String>();
+      JsonObject params = toolObject["params"];
+      if (command == "" || params.isNull()) {
+        // 不完整的工具物件：中止後續所有工具（原子性保護）
+        Serial.println("Incomplete tool detected → abort remaining tools");
+        break;
+      }
+      bool isLast = (i == toolCount - 1); // 僅最後一個工具啟用 reCheck
+      executeTool(workId, command, params, isLast);
+    }
+  }
+  else {
+    if (message.startsWith("[") || message.startsWith("{")) {
+      // 看起來像 JSON 但解析失敗（通常是 Gemini 輸出被截斷）
+      Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
+      replyUserMessage(workId, "Json parse failed (handleAgentResponse). Please type \"Continue\"");
+    } else if (message != "NONE") {
+      // ── 純文字自然語言回覆：格式化後傳送給使用者 ──────────────
+      message = rawMessage; // 還原原始訊息（含換行等格式）
+
+      if (workId.startsWith(String(taskTags[0]))) {
+        // <PAGE> 通道（Web 介面）：移除 Markdown 語法但保留換行
+        message.replace("\\\"", "\""); message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("### ", ""); message.replace("## ", ""); message.replace("# ", "");
+        message.replace("__", "");   message.replace("* ", "• ");
+        message.replace("```json", ""); message.replace("```cpp", "");
+        message.replace("```c++", "");  message.replace("```c", ""); message.replace("```", "");
+        message.replace("`", ""); message.replace("---", "");
+        message.replace("***", ""); message.replace("**", ""); message.replace("___", "");
+      } else {
+        // MQTT 通道：額外進行 HTML 跳脫（防止 XSS / 標籤衝突）
+        message.replace("\\\"", "\""); message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("&", "&amp;"); message.replace("<", "&lt;"); message.replace(">", "&gt;");
+        message.replace("### ", ""); message.replace("## ", ""); message.replace("# ", "");
+        message.replace("__", "");   message.replace("* ", "• ");
+        message.replace("```json", ""); message.replace("```cpp", "");
+        message.replace("```c++", "");  message.replace("```c", ""); message.replace("```", "");
+        message.replace("`", ""); message.replace("---", "");
+        message.replace("***", ""); message.replace("**", ""); message.replace("___", "");
+      }
+      replyUserMessage(workId, message); // 透過適當通道回覆使用者
+    }
+    // message == "NONE"：工作流程完成，靜默忽略
+  }
+}
+
+// FreeRTOS 任務：處理 HTTP 請求（Port 81）
+// 提供設定管理、Soul/Device/Skill 編輯、排程管理、訊息接收等 Web 端點
+void task_getRequest(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL); // 向 TWDT 登記（防止任務卡死）
+  while (1) {
+    esp_task_wdt_reset();
+    WiFiClient client = server.available(); // 非阻塞：若無客戶端則返回假物件
+    if (client) {
+      String currentLine = ""; // 逐字元累積當前 HTTP 請求行
+      
+      while (client.connected()) {
+        esp_task_wdt_reset();
+        
+        if (client.available()) {
+          char c = client.read();
+
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+              // 空行 = HTTP 請求結束，開始回應
+              String pageToSend = mainPageHTML;
+              mainPageHTML = ""; // 清空，供下次請求使用
+              // 回傳 HTTP 200 回應
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/html; charset=utf-8");
+              client.println("Content-Length: " + String(pageToSend.length()));
+              client.println("Access-Control-Allow-Origin: *"); // 允許跨來源請求
+              client.println("Cache-Control: no-cache");        // 禁止快取（動態內容）
+              client.println();
+              // 分 512 位元組分段傳送（避免 TCP buffer 溢位）
+              const char* ptr = pageToSend.c_str();
+              int total = pageToSend.length(), sent = 0;
+              while (sent < total) {
+                int chunk   = (total - sent) > 512 ? 512 : (total - sent);
+                int written = client.write((const uint8_t*)(ptr + sent), chunk);
+                if (written > 0) sent += written;
+                else delay(5); // 寫入失敗時短暫等待（TCP 緩衝區可能已滿）
+              }
+              client.flush();
+              break; // 本次請求處理完畢
+            } else {
+              currentLine = ""; // 非空行：清空準備讀取下一行
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c; // 逐字元累積請求行
+          }
+          // ── 路由分派：根據 GET 路徑決定回應內容 ─────────────────
+          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET / → 載入設定管理頁面並填入目前設定值
+            mainPageHTML = getStringFromFile(configpageFilename);
+            // 將頁面中的佔位符替換為實際設定值（讓瀏覽器顯示目前值）
+            mainPageHTML.replace("wifiSsid", wifiSsid);
+            mainPageHTML.replace("wifiPassword", wifiPassword);
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttPort", String(mqttPort));
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
+            mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));
+            mainPageHTML.replace("geminiApiKey", geminiApiKey);
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);
+            currentLine = "";
+          }
+          else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET /updateConfig? → 更新環境設定並儲存至 SD 卡
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateConfig?", "");
+            currentLine.replace(" HTTP/1.", "");
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine); // 存入 SD 卡
+              setEnvironmentSettings(currentLine);       // 套用至全域變數
+              // 重建裝置定義（附加新裝置名稱與時區）
+              devicesDefinitionFinal  = devicesDefinition;
+              devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+              devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+              systemContentReset(); // 重建系統提示詞
+              mainPageHTML = "Configuration updated successfully.";
+            } else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+            currentLine = "";
+            // executeTool(workId, "/reboot", JsonObject()); // 可選：更新後重啟			
+            
+          }
+          else if ((currentLine.indexOf("GET /agent") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET /agent → Agent 管理頁面
+            mainPageHTML = getStringFromFile(agentpageFilename);
+            currentLine = "";
+          }
+          else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET /getSoul → 回傳目前 soul.md 內容（供編輯器載入）
+            mainPageHTML = geminiRole;
+            currentLine = "";
+          }
+          else if ((currentLine.indexOf("GET /updateSoul?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET /updateSoul? → 更新人格提示詞並儲存至 SD 卡
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSoul?", "");
+            currentLine.replace(" HTTP/1.", "");
+            storeDataToFile(soulFilename, currentLine); // 存入 SD 卡
+            geminiRole = currentLine;                   // 更新全域變數
+            systemContentReset(); // 重建系統提示詞（立即生效）
+            mainPageHTML = "Soul updated successfully.";
+            currentLine = "";  
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }		  
+          else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = devicesDefinition;
+
+            currentLine = "";
+
+          }
+		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateDevice?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            storeDataToFile(deviceFilename, currentLine);
+            devicesDefinition = currentLine;
+			
+            devicesDefinitionFinal = devicesDefinition;
+            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			
+			systemContentReset();
+			
+            mainPageHTML = "Device updated successfully.";
+			
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }
+          else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = skillsDefinition;
+
+            currentLine = "";
+
+          } 		  
+          else if ((currentLine.indexOf("GET /updateSkill?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSkill?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            storeDataToFile(skillFilename, currentLine);
+			skillsDefinition = currentLine;
+			
+			systemContentReset();
+			
+            mainPageHTML = "Skill updated successfully.";
+            
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }		  
+          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = getStringFromFile(chatpageFilename);
+
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = getStringFromFile(mqttchatpageFilename);
+      
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);   
+
+            currentLine = "";
+
+          } 		  
+          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            mainPageHTML = getStringFromFile(schedulepageFilename);
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+			
+            currentLine = "";
+
+          }
+          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = scheduleTasks;
+              xSemaphoreGive(stateMutex);
+            }
+
+            currentLine = "";
+
+          }                                            
+          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateScheduleTasks?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+              storeDataToFile(scheduleFilename, currentLine);
+
+              mainPageHTML = "Schedule updated successfully.";
+
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                scheduleTasks = currentLine;
+                historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+                historicalMessages += buildGeminiMessage("model", mainPageHTML);
+                String localHistory = historicalMessages;
+                xSemaphoreGive(stateMutex);
+                storeDataToFile(memoryFilename, localHistory);
+              }
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
+            
+          }
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+            // GET /message? → 接收來自 Web 介面的訊息並處理
+            mainPageStatus = true; // 標記正在處理（防止 race condition）
+            mainPageHTML = "";     // 清空回應緩衝區
+            String workId = String(taskTags[0]) + " " + getRtcTimeString(); // <PAGE> workId
+            currentLine.replace("GET /message?", "");
+            currentLine.replace(" HTTP/1.", "");
+            if (currentLine != "") {
+              currentLine = urldecode(currentLine); // 解碼 URL 編碼
+              if (currentLine.startsWith("/"))
+                executeTool(workId, currentLine, JsonObject()); // 以 / 開頭：直接執行工具
+              else {
+                // 純文字：送 Gemini 處理後分派回應
+                currentLine = geminiChatRequest(workId, currentLine);
+                handleAgentResponse(workId, currentLine);
+              }
+              // 處理完成後持久化對話歷史
+              String localHistory = "";
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                localHistory = historicalMessages;
+                xSemaphoreGive(stateMutex);
+              }
+              storeDataToFile(memoryFilename, localHistory);
+            }
+            mainPageStatus = false; // 清除處理中標記
+            currentLine = "";
+          }      
+        }
+		else {
+          vTaskDelay(1); // yield so IDLE0 can reset the watchdog
+        }
+      }
+
+      client.stop();
+    }
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
+  }
+}
+
+// FreeRTOS 任務：提供 MJPEG 即時影像串流（Port 82）
+// 使用 multipart/x-mixed-replace 格式持續推送 JPEG 畫格
+// ESP32-S3 移植：Camera.getImage() → esp_camera_fb_get()/fb_return()
+// 串流迴圈直接使用相機 DMA 緩衝（不 malloc/copy），效率最高
+void task_getRequestStream(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL); // 向 TWDT 登記
+  while (1) {
+    esp_task_wdt_reset();
+    WiFiClient client = serverStream.available();
+    if (client) {
+      String currentLine = "";
+      while (client.connected()) {
+        esp_task_wdt_reset();
+        if (client.available()) {
+          char c = client.read();
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+              // 空行 = 請求結束，開始推送 MJPEG 串流
+              String head = "--Taiwan\r\nContent-Type: image/jpeg\r\n\r\n"; // MJPEG 幀頭
+              // 回應 multipart 串流標頭
+              client.println("HTTP/1.1 200 OK");
+              client.println("Access-Control-Allow-Origin: *");
+              client.println("Connection: keep-alive"); // 保持連線以持續推送
+              client.println("Content-Type: multipart/x-mixed-replace; boundary=Taiwan");
+              client.println();
+              // 連續推送畫格（直到客戶端斷線）
+              while (client.connected()) {
+                esp_task_wdt_reset();
+                // 直接取用相機 DMA 緩衝（不 malloc/copy，效率最高）
+                camera_fb_t *fb = esp_camera_fb_get();
+                if (!fb) {
+                  vTaskDelay(10 / portTICK_PERIOD_MS);
+                  continue; // 取幀失敗：短暫等待後重試
+                }
+                uint8_t *fbBuf = fb->buf;
+                size_t fbLen   = fb->len;
+                client.print(head); // 傳送 MJPEG 幀頭
+                // 分 1024 位元組分段傳送 JPEG 資料
+                for (size_t n = 0; n < fbLen; n += 1024) {
+                  if (n + 1024 < fbLen) {
+                    client.write(fbBuf, 1024);
+                    fbBuf += 1024;
+                  } else {
+                    size_t remainder = fbLen - n;
+                    if (remainder > 0) client.write(fbBuf, remainder);
+                  }
+                }
+                client.print("\r\n"); // 幀尾分隔
+                esp_camera_fb_return(fb); // 歸還 DMA 緩衝（必須在傳送後立即執行）
+                vTaskDelay(10 / portTICK_PERIOD_MS); // ~100fps 最大值，實際受網路限制
+              }
+              break; // 客戶端斷線後跳出
+            } else {
+              currentLine = "";
+            }
+          } else if (c != '\r') {
+            currentLine += c;
+          }
+          if (currentLine.indexOf(" HTTP/1.") != -1)
+            currentLine = ""; // 清空整行（HTTP 請求行已讀完）
+        } else {
+          vTaskDelay(1); // yield（讓出 CPU 給 IDLE 任務重置 WDT）
+        }
+      }
+      client.stop();
+    } else {
+      vTaskDelay(5 / portTICK_PERIOD_MS); // 無客戶端：短暫休眠
+    }
+  }
+}
+
+// ============================================================
+//  MQTT: Inbound Message Callback
+// ============================================================
+
+/**
+ * @brief PubSubClient callback invoked on every received MQTT message.
+ *
+ * PubSubClient does NOT null-terminate the payload buffer, so a local
+ * copy is allocated, null-terminated, and forwarded to executeCommand().
+ * Memory is freed immediately after the command is dispatched.
+ *
+ * @param topic    C-string of the topic on which the message arrived.
+ * @param payload  Raw (non-terminated) byte array of the message payload.
+ * @param length   Number of valid bytes in payload[].
+ */
+// MQTT 訊息接收回呼（PubSubClient 每次收到訊息時自動呼叫）
+// PubSubClient 不在 payload 結尾補 null，必須手動複製並補 '\0'
+void callback(char* topic, byte* payload, unsigned int length) {
+    String workId = String(taskTags[2]) + " " + getRtcTimeString(); // <MQTT> workId
+    // 在 heap 上配置 null 結尾的 payload 副本
+    char* message = (char*)malloc(length + 1);
+    if (message) {
+        memcpy(message, payload, length); // 複製原始 payload 位元組
+        message[length] = '\0';           // 手動補 null terminator
+        String text = String(message);    // 轉為 Arduino String
+        if (text == "help") {
+          executeTool(workId, "/help", JsonObject()); // 快捷鍵：help 觸發 /help
+        } else {
+          if (text.startsWith("/"))
+            executeTool(workId, text, JsonObject()); // 以 / 開頭：直接執行工具指令
+          else {
+            // 純文字：送 Gemini 處理後分派回應
+            text = geminiChatRequest(workId, text);
+            handleAgentResponse(workId, text);
+          }
+        }
+        free(message);                          // 立即釋放暫存緩衝區
+        storeDataToFile(memoryFilename, historicalMessages); // 持久化對話歷史
+    }
+}
+
+// ============================================================
+//  MQTT: Reconnect Helper
+// ============================================================
+
+/**
+ * @brief Block until a successful MQTT broker connection is established.
+ *
+ * Loops indefinitely, attempting to connect with the configured client ID,
+ * username, and password.  On success, re-subscribes to the command topic
+ * to restore message delivery after a dropped connection.  On failure,
+ * waits 5 seconds before retrying to avoid hammering the broker.
+ */
+// 持續嘗試直到成功連線至 MQTT Broker（阻塞式，連線失敗時每 5 秒重試）
+void reconnect() {
+    while (!mqttClient.connected()) {
+        if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+            // 連線成功：重新訂閱指令主題（斷線重連後訂閱會失效）
+            mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
+        } else {
+            // 連線失敗：等待 5 秒後重試（防止瘋狂重連 Broker）
+            Serial.print("MQTT connection failed, state=");
+            Serial.println(mqttClient.state()); // 輸出 PubSubClient 錯誤碼
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+        }
+    }
+}
+
+/**
+ * @brief Maintain the MQTT connection and process pending inbound messages.
+ *
+ * Should be called repeatedly from a dedicated FreeRTOS task.
+ * - Detects a dropped connection and triggers reconnect().
+ * - Calls mqttClient.loop() which:
+ *     1. Sends keep-alive PINGREQ packets to the broker.
+ *     2. Reads incoming PUBLISH packets and dispatches callback().
+ *     3. Handles QoS acknowledgement handshakes (not used here at QoS 0).
+ */
+// FreeRTOS 任務：維持 MQTT 連線並處理接收訊息（每 10ms 輪詢）
+// mqttClient.loop() 功能：
+//   1. 傳送 keep-alive PINGREQ 封包至 Broker
+//   2. 讀取傳入的 PUBLISH 封包並分派至 callback()
+//   3. 處理 QoS 確認握手（此專案 QoS 0，無需此步驟）
+void task_getMqttMessage(void* param) {
+  (void)param;
+  esp_task_wdt_add(NULL); // 向 TWDT 登記
+  while (1) {
+    esp_task_wdt_reset(); // 定期重置（evaluateWorkflowContinuation 可能鏈接多次 Gemini 呼叫）
+    if (!mqttClient.connected())
+      reconnect(); // 偵測斷線並重新連線
+    mqttClient.loop(); // 處理 keep-alive 與接收訊息
+    vTaskDelay(pdMS_TO_TICKS(10)); // 每 10ms 輪詢一次
+  }
+}
+
+// Periodic system check task
+void task_theft_detection(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL);
+  while (1) {
+
+    // Long sleep broken into slices so the watchdog is reset
+    // periodically instead of once every 5 minutes.
+    for (int i = 0; i < 300000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    Serial.println("\n\nExecuting Skill: theft_detection\n\n");
+
+    String workId = String(taskTags[4]) + " " + getRtcTimeString();
+    
+    evaluateWorkflowContinuation(
+		workId, 
+		true, 
+		"Must execute skill theft_detection. Return ONLY tool_call JSON."
+	);
+    esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+
+  }
+  
+}
+
+// Returns the given integer value as a zero-padded two-digit string.
+// Used for formatting timestamps (e.g., 9 → "09").
+String twoDigits(int value) {
+  if (value < 10)
+    return "0" + String(value);
+  return String(value);
+
+}
+
+// 檢查循環任務（year==0）今天是否已執行
+// 日期變更時自動清空每日執行記錄
+bool isExecutedToday(String task) {
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  int today = now->tm_mday;
+  // 若日期已變更（跨日），清空今日記錄
+  if (executedTodayDate != today) {
+    executedTodayTasks = ""; // 清空記錄（新的一天重新計算）
+    executedTodayDate  = today;
+  }
+  // 以 |task| 格式搜尋（防止子字串誤配）
+  return executedTodayTasks.indexOf("|" + task + "|") != -1;
+}
+
+// 將循環任務標記為今日已執行（以 |task| 格式追加至記錄字串）
+void markExecutedToday(const String &task) {
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate  = now->tm_mday;  // 同步今日日期
+  executedTodayTasks += "|" + task + "|"; // 追加記錄（格式：|task1||task2|）
+}
+
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+                
+      String scheduleStr;
+      serializeJson(task["schedule"], scheduleStr);
+      String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+      if (year == 0 && isExecutedToday(compareTask))
+          continue;
+
+      result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
+  }
+  
+  if (result == "") result = "NULL";
+
+  return result;
+}
+
+// Filters the full schedule JSON array and returns only tasks that are
+// due for execution based on the current RTC time.
+// Recurring tasks (year == 0) are excluded if already executed today.
+// One-time tasks (year > 0) are excluded if "executed" is true.
+// Returns a JSON array string of due tasks, or "[]" if none qualify.
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+  
+  // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+
+      int resolvedYear  = (year  == 0) ? (now->tm_year + 1900) : year;
+      int resolvedMonth = (month == 0) ? (now->tm_mon  + 1)    : month;
+      int resolvedDay   = (day   == 0) ? (now->tm_mday)        : day;
+
+      struct tm tmTask = {};
+      tmTask.tm_year = resolvedYear  - 1900;
+      tmTask.tm_mon  = resolvedMonth - 1;
+      tmTask.tm_mday = resolvedDay;
+      tmTask.tm_hour = hour;
+      tmTask.tm_min  = minute;
+      tmTask.tm_sec  = sec;
+
+      time_t taskTime = mktime(&tmTask);
+      
+      if (mktime(&tmTask) <= rawtime) {
+        time_t diff = rawtime - taskTime;
+        
+        if ((scheduleTimeout > 0 && rawtime > taskTime && diff > (time_t)(scheduleTimeout * 60)))
+            continue;
+                
+        String scheduleStr;
+        serializeJson(task["schedule"], scheduleStr);
+        String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+        if (year == 0 && isExecutedToday(compareTask))
+            continue;
+
+        JsonObject item = resultArray.createNestedObject();
+        item["task"] = task["task"].as<String>();
+        item["schedule"] = schedule;
+
+      }
+  }
+
+  serializeJson(resultDoc, result);
+  return result;
+}
+
+// FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
+// For each due task, constructs a prompt and sends it to Gemini for execution.
+// After all due tasks are processed, triggers /updateScheduleStatus to sync
+// execution state, and persists daily execution records and chat history to SD card.
+void task_time_scheduling(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL);   // Register this task with the TWDT
+  while (1) {
+    esp_task_wdt_reset();
+
+    // [WDT FIX] Split 60s wait into 10s segments so WDT (30s) is reset regularly
+    for (int i = 0; i < 6; i++) {
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
+    esp_task_wdt_reset();
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    String workId = String(taskTags[3]) + " " + rtcFormatTime;
+
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }
+
+    String localSchedule = "";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+        scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+      localSchedule = scheduleTasks;
+      xSemaphoreGive(stateMutex);
+    }
+
+    if (localSchedule.startsWith("[") && localSchedule.indexOf("]") !=-1) {
+ 
+      String unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(localSchedule);
+
+      if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
+        unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
+
+        String response = "";
+
+        DynamicJsonDocument doc(8192);
+      
+        DeserializationError err = deserializeJson(doc, unfinishedScheduleTasksJson);
+        if (err) {
+          Serial.println("[DEBUG] JSON parse failed: (task_time_scheduling)\n" + unfinishedScheduleTasksJson);
+          continue;   // don't return — keep the task alive
+        }  
+
+        JsonArray tasks = doc.as<JsonArray>();
+        
+        for (JsonObject obj : tasks) {
+          esp_task_wdt_reset();   // reset per task to survive long Gemini calls
+
+          String taskName = obj["task"].as<String>();
+
+          String schedule = obj["schedule"].as<String>();
+          String item = obj["task"].as<String>();           
+
+          String prompt =
+            "This is a deterministic scheduling execution step. "
+          
+            "\n\nUnfinished scheduled tasks:\n" +
+            item +
+          
+            "\n\nThe task list above already contains ONLY tasks that have not been executed. "
+            "Evaluate EVERY task in this list independently. "
+            "If a task's scheduled time is less than or equal to the current time, "
+            "it MUST be executed immediately. "
+            "Do NOT skip any eligible task. "
+            "More than one task may be eligible at the same time. "
+            "If multiple tasks are eligible, execute ALL of them in the same response. "
+            "Tasks whose scheduled time is still in the future must be ignored. "
+          
+            "Output rules: "
+            "1. If no task is eligible for execution, return EXACTLY: NONE. "
+            "2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
+            "3. Never return natural language. "
+            "4. Never explain. "
+            "5. Never summarize. "
+            "6. Never ask questions. "
+            "7. Never claim success without tool execution results. "
+            "8. Process every task in the provided task list. "
+            "9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
+            "10. Do not stop after the first eligible task.";
+
+          response = geminiChatRequest(workId, prompt);
+          esp_task_wdt_reset();   // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
+
+          handleAgentResponse(workId, response);
+          esp_task_wdt_reset();   // [WDT FIX] handleAgentResponse may chain another Gemini call
+
+          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+            markExecutedToday(schedule + " " + item);
+            xSemaphoreGive(stateMutex);
+          }
+        }
+        
+        if (tasks.size()>0) {
+          executeTool(workId, "/updateScheduleStatus", JsonObject(), false);
+
+          String localExecuted = "";
+          String localHistory = "";
+          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+            localExecuted = executedTodayTasks;
+            localHistory  = historicalMessages;
+            xSemaphoreGive(stateMutex);
+          }
+          storeDataToFile(scheduleExecutedTodayTasksFilename, localExecuted);
+          storeDataToFile(memoryFilename, localHistory);
+        }
+      }
+      
+    }
+  }
+}
+
+// 初始化 WiFi（同時開啟 STA 連路由器 + AP 熱點雙模式）
+// STA 連線最多嘗試 2 次，每次等待最長 15 秒；AP 無論 STA 結果都開啟
+void initWiFi() {
+  WiFi.mode(WIFI_AP_STA); // 同時啟用站點（STA）與熱點（AP）
+  // 嘗試連接路由器，最多 2 次（應對偶發性路由器無回應）
+  for (int i = 0; i < 2; i++) {
+    if (wifiSsid == "") break; // 未設定 SSID：跳過 STA 連線
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    delay(1000); // 給 WiFi 初始化時間
+    Serial.println();
+    Serial.print("Connecting to "); Serial.println(wifiSsid);
+    unsigned long StartTime = millis();
+    // 等待連線，最多 15 秒
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      if ((StartTime + 15000) < millis()) break; // 逾時：進入下一次重試
+    }
+  }
+  // 無論 STA 結果如何，都開啟 AP 熱點（確保可透過 192.168.1.1:81 存取）
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());
+}
+
+// 解析 env.json 並套用所有環境設定至全域變數
+void setEnvironmentSettings(String jsonString) {
+  DynamicJsonDocument doc(8192);
+  DeserializationError error = deserializeJson(doc, jsonString);
+  if (error) {
+    Serial.println("[DEBUG] JSON parse failed : (setEnvironmentSettings)\n" + jsonString);
+    return; // JSON 格式錯誤：保留舊設定值
+  }
+  JsonObject obj = doc.as<JsonObject>();
+  // 逐一映射 JSON 欄位至全域變數
+  deviceName             = obj["device_name"].as<String>();
+  wifiSsid               = obj["wifi_ssid"].as<String>();
+  wifiPassword           = obj["wifi_pass"].as<String>();
+  mqttServer             = obj["mqtt_server"].as<String>();
+  mqttPort               = obj["mqtt_port"].as<uint16_t>();
+  mqttUser               = obj["mqtt_user"].as<String>();
+  mqttPassword           = obj["mqtt_password"].as<String>();
+  mqttSubscribeTextTopic = obj["mqtt_subscribeTextTopic"].as<String>();
+  mqttPublishTextTopic   = obj["mqtt_publishTextTopic"].as<String>();
+  mqttPublishImageTopic  = obj["mqtt_publishImageTopic"].as<String>();
+  geminiApiKey           = obj["gemini_apikey"].as<String>();
+  geminiModel            = obj["gemini_model"].as<String>();
+  scheduleTimeout        = obj["schedule_timeout"].as<int>();   // 排程容錯視窗（分鐘）
+  timeZone               = obj["timezone"].as<String>();        // IANA 時區字串
+}
+
+// 將 IPAddress 物件轉為點分十進位字串（如 192.168.1.100）
+String Ip2String(IPAddress ip) {
+  return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Arduino 初始化函式（執行一次）
+// 順序：Serial → Mutex → TWDT → 相機 → SD → 設定檔 → WiFi
+// → MQTT → NTP → HTTP Server → FreeRTOS Tasks → 完成
+// ════════════════════════════════════════════════════════════════
+void setup() {
+  Serial.begin(115200); // 開啟 Serial（USB CDC，115200 baud）
+  // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // 停用欠壓重置（可選）
+
+  // ── 步驟 1：建立所有 Mutex ─────────────────────────────────
+  // 必須在任何使用 Mutex 的函式/任務之前建立
+  // setup() 本身呼叫 rtcInitialTime()/replyUserMessage()，這些需要 Mutex
+  mqttClientMutex = xSemaphoreCreateMutex();
+  stateMutex      = xSemaphoreCreateMutex();
+  sdMutex         = xSemaphoreCreateMutex();
+  imageMutex      = xSemaphoreCreateMutex();
+  if (!mqttClientMutex || !stateMutex || !sdMutex || !imageMutex) {
+    // Mutex 建立失敗（堆積記憶體耗盡，極少見）
+    Serial.println("[DEBUG] Failed to create mutexes. Restarting the MCU...");
+    delay(2000);
+    ESP.restart();
+  }
+
+  // ── 步驟 2：設定任務看門狗（TWDT）────────────────────────
+  // 每個長時間任務需明確呼叫 esp_task_wdt_add(NULL) 登記
+  // 並在安全點呼叫 esp_task_wdt_reset() 重置，防止卡死觸發 panic
+  esp_task_wdt_config_t twdtConfig = {
+    .timeout_ms     = 30000,                    // 30 秒（涵蓋最慢的 Gemini/Telegram 來回）
+    .idle_core_mask = (1 << 0) | (1 << 1),     // 同時監控兩個核心的 IDLE 任務
+    .trigger_panic  = true                      // WDT 觸發時直接 panic（保留 backtrace）
+  };
+  esp_task_wdt_reconfigure(&twdtConfig);
+  
+  // ── 步驟 3：初始化相機 ────────────────────────────────────
+  if (!initCamera())
+    Serial.println("[DEBUG] Camera initialization failed. Still images / vision / stream will not work.");
+  else
+    Serial.println("Camera initialization successful.");
+
+  // ── 步驟 4：設定 SD 卡腳位並載入所有設定檔 ────────────────
+  SD_MMC.setPins(SD_MMC_CLK, SD_MMC_CMD, SD_MMC_D0); // 設定 1-bit MMC 腳位
+  // 讀取環境設定（WiFi / MQTT / Gemini API 等）
+  String env = getStringFromFile(envFilename);
+  Serial.println("env.json len: " + String(env.length()));
+  if (env != "") setEnvironmentSettings(env); // 套用至全域變數
+  // 讀取人格提示詞
+  String soul = getStringFromFile(soulFilename);
+  Serial.println("Soul.md len: " + String(soul.length()));
+  if (soul != "") geminiRole = soul;
+  // 讀取硬體裝置定義並附加裝置名稱與時區
+  String device = getStringFromFile(deviceFilename);
+  Serial.println("device.md len: " + String(device.length()));
+  if (device != "") devicesDefinition = device;
+  devicesDefinitionFinal  = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;   // 讓 Gemini 知道自身名稱
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;   // 讓 Gemini 知道時區
+  // soul.md 與 device.md 為必要檔案，缺少任一則重啟
+  if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
+    Serial.println("System configuration failed. Restarting the MCU...");
+    delay(5000);
+    ESP.restart();
+  }
+  // 讀取技能定義（可選）
+  String skill = getStringFromFile(skillFilename);
+  Serial.println("skill.md len: " + String(skill.length()));
+  if (skill != "") skillsDefinition = skill;
+  // 讀取排程任務 JSON
+  String schedule = getStringFromFile(scheduleFilename);
+  Serial.println("schedule.md len: " + String(schedule.length()));
+  if (schedule != "") scheduleTasks = schedule;
+  // 讀取今日已執行排程記錄（重開機後還原，避免重複執行）
+  String scheduleExecutedTodayTasks = getStringFromFile(scheduleExecutedTodayTasksFilename);
+  Serial.println("scheduleTodayExecuted.md len: " + String(scheduleExecutedTodayTasks.length()));
+  if (scheduleExecutedTodayTasks != "") executedTodayTasks = scheduleExecutedTodayTasks;
+  // 建立三個版本系統提示詞
+  systemContent        = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
+  systemContentTools   = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");
+  // 讀取並還原對話歷史記憶
+  String memory = getStringFromFile(memoryFilename);
+  Serial.println("memory.md len: " + String(memory.length()));
+  if (memory != "") historicalMessages = memory; // 還原歷史讓 Gemini 記住上次對話
+
+  // ── 步驟 5：初始化 WiFi ──────────────────────────────────
+  initWiFi();
+  Serial.println("AP mode");
+  Serial.println("fuClaw Manager: http://192.168.1.1:81"); // AP 管理頁面
+  Serial.println("AP ssid : "     + apSsid);
+  Serial.println("AP password : " + apPassword);
+  Serial.println();
+  // ── 步驟 6：初始化 MQTT ──────────────────────────────────
+  wifiClientId = generateMqttClientId();              // 產生唯一 Client ID（基於 MAC）
+  mqttClient.setServer(mqttServer.c_str(), mqttPort); // 設定 Broker 端點
+  mqttClient.setCallback(callback);                   // 登記接收回呼
+  reconnect(); // 建立初始連線並訂閱指令主題
+  // ── 步驟 7：NTP 時間同步 ────────────────────────────────
+  rtcInitialTime("RTC Initial Time");
+  // 傳送開機時間通知至 <BOT> 通道
+  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+  // 初始化今日日期（必須在載入 executedTodayTasks 後立即同步）
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday; // 初始化，供 isExecutedToday() 使用
+  // ── 步驟 8：啟動 HTTP 伺服器 ────────────────────────────
+  server.begin();       // Port 81：設定管理 Web 伺服器
+  serverStream.begin(); // Port 82：MJPEG 串流伺服器
+
+  // ── 步驟 9：建立 FreeRTOS 任務 ──────────────────────────
+  // 所有任務以 tskIDLE_PRIORITY+1 執行（高於 IDLE，低於系統任務）
+
+  // MQTT 接收任務（32KB：含 Gemini 回應 JSON 解析緩衝）
+  if (xTaskCreate(task_getMqttMessage, "task_getMqttMessage",
+                  32768, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
+    Serial.println("Create task_getMqttMessage failed");
+
+  // HTTP Web 請求任務（16KB：HTML 組裝 + Gemini 呼叫）
+  if (xTaskCreate(task_getRequest, "task_getRequest",
+                  16384, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
+    Serial.println("Create task_getRequest failed");
+
+  // MJPEG 串流任務（16KB：直接讀取相機 DMA 緩衝）
+  if (xTaskCreate(task_getRequestStream, "task_getRequestStream",
+                  16384, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
+    Serial.println("Create task_getRequestStream failed");
+
+  // 排程執行任務（6KB：主要操作字串，記憶體需求較小）
+  if (xTaskCreate(task_time_scheduling, "task_time_scheduling",
+                  6144, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
+    Serial.println("Create task_time_scheduling failed");
+
+  // ── 步驟 10：LED 指示燈 + STA IP 輸出 ──────────────────
+  pinMode(LED_BUILTIN, OUTPUT); // 設定內建 LED 為輸出
+  if (WiFi.status() == WL_CONNECTED) {
+    // WiFi 連線成功：LED 閃爍 3 次（視覺確認）
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(LED_BUILTIN, 1); delay(300);
+      digitalWrite(LED_BUILTIN, 0); delay(300);
+    }
+    Serial.println("STA mode");
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81"); // STA 管理頁面
+    Serial.println();
+    // 將裝置 IP 注入歷史記憶（讓 Gemini 知道裝置位址）
+    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+  }
+}
+
+// Arduino 主迴圈（純 idle）
+// 所有工作均由 FreeRTOS 任務執行；此處只需 yield 讓出 CPU
+// loopTask 不向 TWDT 登記（無阻塞工作，永遠不會超時）
+void loop() {
+  vTaskDelay(1000 / portTICK_PERIOD_MS); // 每秒 yield（CPU 佔用率近乎 0）
+}
