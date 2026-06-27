@@ -1074,61 +1074,6 @@ If the destination is unknown, the agent MUST ask the user before calling this t
 The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a LINE message or notification.
 
---------------------------------------------------
-Servo motor control:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/servo",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
-    "angle": "<Desired absolute angle from 0 to 180>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/servo",
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/servo",
-  "reason":"<error reason>",
-  "workId": "<system-provided>"
-}
-
---------------------------------------------------
-Reading the DHT11 temperature and humidity sensor:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/dht11",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/dht11",
-  "temperature": <temperature value>,
-  "humidity": <humidity value>,
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/dht11", 
-  "reason":"<error reason>",  
-  "workId": "<system-provided>"
-}
-
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
