@@ -169,7 +169,7 @@ External Modules (Confirmed)
 - Emergency button     : GPIO 1  (active-high)
 - Light sensor         : GPIO 2  (analog input, 0-1023)
 - Warning light        : GPIO 11 (PWM output, 0-255)
-- Window actuator (SG90): GPIO 12 (servo, 0-180)
+- Window actuator (SG90): AMB82-mini → GPIO 5 / HUB 8735 Ultra → GPIO 12 (servo, 0-180)
 - DHT11 Sensor         : AMB82-mini → GPIO 8 / HUB 8735 Ultra → GPIO 20
 
 Unknown hardware mappings require clarification.
