@@ -174,6 +174,12 @@ ESP32-S3-WROOM-1-N16R8
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 - Fill LED  : GPIO 48
 
+External Modules (Confirmed)
+- Emergency button     : GPIO 41  (active-high)
+- Light sensor         : GPIO 3  (analog input, 0-1023)
+- Window actuator (SG90): GPIO 47 (servo, 0-180)
+- DHT11 Sensor         : GPIO 21
+
 Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
 ------------------------------------------------------------
@@ -187,6 +193,8 @@ Software Stack (ESP32-S3 port)
 - esp_camera.h (ESP32 Camera driver)
 - SD_MMC (built into ESP32 Arduino core)
 - Local Base64 helper (no external dependency)
+- DHT sensor library 1,4,7 (Adafruit)
+- ESP32Servo
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
@@ -1080,6 +1088,61 @@ If the destination is unknown, the agent MUST ask the user before calling this t
 The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a LINE message or notification.
 
+--------------------------------------------------
+Servo motor control:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/servo",
+  "params": {
+    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
+    "angle": "<Desired absolute angle from 0 to 180>"
+  }
+}
+
+Success response:
+{
+  "status": "success",
+  "method": "/servo",
+  "workId": "<system-provided>"
+}
+
+Error response:
+{
+  "status": "error",
+  "method": "/servo",
+  "reason":"<error reason>",
+  "workId": "<system-provided>"
+}
+
+--------------------------------------------------
+Reading the DHT11 temperature and humidity sensor:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/dht11",
+  "params": {
+    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
+  }
+}
+
+Success response:
+{
+  "status": "success",
+  "method": "/dht11",
+  "temperature": <temperature value>,
+  "humidity": <humidity value>,
+  "workId": "<system-provided>"
+}
+
+Error response:
+{
+  "status": "error",
+  "method": "/dht11", 
+  "reason":"<error reason>",  
+  "workId": "<system-provided>"
+}
+
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
@@ -1726,6 +1789,11 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
+
+#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
+
+#include <ESP32Servo.h>    // ESP32Servo 3.0.0
+Servo servos[49];
 
 // Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
 String generateMqttClientId() {
@@ -3103,6 +3171,57 @@ String toolPinInput(int pin, String mode, String workId) {
 		"\"workId\":\"" + workId + "\"}";
 }
 
+// Control a servo motor's position by specifying a target angle.
+// This function supports precise physical movement for actuators
+// like the SG90 servo connected to GPIO pins.
+String tool_servo(Servo &servo, int pin, int angle, String workId) {
+    if (!servo.attached()) {
+		servo.setPeriodHertz(50);
+        servo.attach(pin, 500, 2400);
+	}
+	
+	if (angle < 0 || angle > 180) {
+		return 
+			"{\"status\":\"error\","
+			"\"method\":\"/servo\","				
+			"\"reason\":\"invalid_servo_angle\","
+			"\"workId\":\"" + workId + "\"}";
+	}
+		
+    servo.write(angle);
+		
+    return
+        "{\"status\":\"success\","
+        "\"method\":\"/servo\","
+		"\"workId\":\"" + workId + "\"}";		
+}
+
+// Read temperature and humidity from a DHT11 sensor.
+// Returns a JSON result string for the agent workflow.
+String tool_dht11(int pin, String workId) {
+  DHT dht(pin, DHT11);
+  dht.begin();
+
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(temperature) || isnan(humidity)) {
+    return "{\"status\":\"error\","
+		   "\"method\":\"/dht11\","	
+           "\"reason\":\"dht11_read_failed\","
+		   "\"workId\":\"" + workId + "\"}";	
+
+  }
+
+  return
+    "{\"status\":\"success\","
+    "\"method\":\"/dht11\","
+    "\"temperature\":" + String(temperature) + ","
+    "\"humidity\":"    + String(humidity) + ","
+	"\"workId\":\"" + workId + "\"}";		
+}
+
 // Ask Gemini to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
@@ -3667,7 +3786,37 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       }
 
       evaluateWorkflowContinuation(workId, reCheck);
-	}	
+	}
+    else if (command == "/servo") {
+        int pin   = params["pin"].as<int>();
+        int angle = params["angle"].as<int>();
+
+        String response = tool_servo(servos[pin], pin, angle, workId);
+					   
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		  historicalMessages += buildGeminiMessage("user", command + timestamps);
+		  historicalMessages += buildGeminiMessage("model", response + timestamps);
+		  executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+		  xSemaphoreGive(stateMutex);
+        }
+		
+        evaluateWorkflowContinuation(workId, reCheck);
+        
+    }    
+    else if (command == "/dht11") {
+      int pin   = params["pin"].as<int>();
+      String response = tool_dht11(pin, workId);
+  
+	  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {  
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		executeToolHistory += workId + " " + command + " [ " + response  + " ]\n";
+		xSemaphoreGive(stateMutex);
+	  }
+		
+      evaluateWorkflowContinuation(workId, reCheck);
+  
+    }					
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
