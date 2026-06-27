@@ -186,7 +186,7 @@ Software Stack (ESP32-S3 port)
 - esp_camera.h (ESP32 Camera driver)
 - SD_MMC (built into ESP32 Arduino core)
 - Local Base64 helper (no external dependency)
-- SimpleDHT
+- DHT sensor library 1,4,7 (Adafruit)
 - ESP32Servo
 ------------------------------------------------------------
 Known Limitations
