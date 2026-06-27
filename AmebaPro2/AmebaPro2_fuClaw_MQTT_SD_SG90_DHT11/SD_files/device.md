@@ -46,7 +46,10 @@ External Modules
   - range: 0–255
   - default startup value: 255
 
-- Window actuator (SG90 servo): pin 12
+- Window actuator (SG90 servo)
+  - Pin mapping: depends on development board
+		AMB82-mini: PIN 5
+		HUB 8735 Ultra: PIN 12
   - servo angle control
   - range: 0–180
   - 0 = fully closed
