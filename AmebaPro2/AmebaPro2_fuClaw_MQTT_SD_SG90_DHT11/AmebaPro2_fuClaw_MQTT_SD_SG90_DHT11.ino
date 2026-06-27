@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-26 23:30:00
+Build Date: 2026-06-27 21:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1689,7 +1689,7 @@ String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
 
 #include <AmebaServo.h>
-AmebaServo servo12;
+AmebaServo servos[26];
 
 #include "DHT.h"
 #define DHTPIN 20
@@ -3703,14 +3703,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         int pin   = params["pin"].as<int>();
         int angle = params["angle"].as<int>();
 
-        String response = "";
-        if (pin == 12)
-            response = tool_servo(servo12, pin, angle, workId);
-        else
-            response = "{\"status\":\"error\","
-                       "\"reason\":\"undefined_servo_pin: " + String(pin) + "\","
-					   "\"workId\":\"" + workId + "\"}";
-					   
+        String response = tool_servo(servos[pin], pin, angle, workId);
+
         if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
 		  historicalMessages += buildGeminiMessage("user", command + timestamps);
 		  historicalMessages += buildGeminiMessage("model", response + timestamps);
