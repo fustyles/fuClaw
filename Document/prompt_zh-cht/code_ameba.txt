@@ -2675,7 +2675,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       Serial.println("User requested reboot the device.");
       vTaskDelay(2000 / portTICK_PERIOD_MS);  // 等待 Telegram 訊息傳出
 
-      NVIC_SystemReset();  // 透過 ARM Cortex-M 系統重置指令重啟（ESP32 移植時改為 ESP.restart()）
+      NVIC_SystemReset();  // 透過 ARM Cortex-M 系統重置指令重啟
 
     }
     // ---------- TCP 裝置間訊息傳遞 ----------
@@ -3911,8 +3911,6 @@ String twoDigits(int value) {
 //
 // 額外功能：當日期變更（跨過午夜）時，自動重置今日已執行記錄，
 // 讓重複性任務在隔天可以再次執行。
-//
-// 注意：ESP32 移植時需改用 time()（NTP 同步的系統時鐘）取代 rtc.Read()。
 // ============================================================
 bool isExecutedToday(String task) {
 
