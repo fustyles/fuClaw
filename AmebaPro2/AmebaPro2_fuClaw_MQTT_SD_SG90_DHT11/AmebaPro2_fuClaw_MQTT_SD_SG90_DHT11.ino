@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-27 21:00:00
+Build Date: 2026-06-27 21:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1125,7 +1125,9 @@ Reading the DHT11 temperature and humidity sensor:
 {
   "type": "tool_call",
   "method": "/dht11",
-  "params": {}
+  "params": {
+	  "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
+  }
 }
 
 Success response:
@@ -1692,9 +1694,6 @@ bool rtcUpdateStatus = false;
 AmebaServo servos[26];
 
 #include "DHT.h"
-#define DHTPIN 20
-#define DHTTYPE DHT11    // DHT 11
-DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
@@ -3114,7 +3113,9 @@ String tool_servo(AmebaServo &servo, int pin, int angle, String workId) {
 
 // Read temperature and humidity from a DHT11 sensor.
 // Returns a JSON result string for the agent workflow.
-String tool_dht11(String workId) {
+String tool_dht11(int pin, String workId) {
+  DHT dht(pin, DHT11);
+  dht.begin();
   float h = dht.readHumidity();
   // Read temperature as Celsius (the default)
   float t = dht.readTemperature();
@@ -3716,8 +3717,9 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         
     }    
     else if (command == "/dht11") {
-  
-      String response = tool_dht11(workId);
+      int pin = params["pin"].as<int>();
+		
+      String response = tool_dht11(pin, workId);
   
 	  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {  
 		historicalMessages += buildGeminiMessage("user", command + timestamps);
@@ -3728,7 +3730,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 		
       evaluateWorkflowContinuation(workId, reCheck);
   
-    }		
+    }	
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -4898,9 +4900,6 @@ void setup() {
     historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
   }  
 
-  servo12.attach(12);
-
-  dht.begin();  
 }
 
 // Main loop
