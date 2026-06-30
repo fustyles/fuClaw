@@ -7,7 +7,7 @@ Author:
 
 Repository:<br>
   https://github.com/fustyles/fuClaw
-  
+
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -19,6 +19,7 @@ It integrates:
 * Telegram Bot API (HTTPS long polling)
 * MQTT Broker communication
 * Gemini Chat Web Interface
+* Gemini Chat Web Interface via MQTT (WebSocket)
 * Google Gemini GenerateContent API
 * Gemini Grounded Web Search
 * Gemini Multimodal Vision Reasoning
@@ -33,6 +34,12 @@ The runtime operates as a hybrid autonomous agent, combining:
 
 **Conversation + Reasoning + Tools + Vision + Memory + Hardware**
 
+fuClaw now ships as a **dual-platform, dual-transport** firmware family. Every combination of platform and transport shares the identical Gemini reasoning engine, tool dispatcher, and persistent memory design:
+
+| | Telegram Bot | MQTT |
+|---|---|---|
+| **Realtek AmebaPro2 (RTL8735B)** | `AmebaPro2_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `AmebaPro2_fuClaw_MQTT_SD_SG90_DHT11.ino` |
+| **ESP32-S3-WROOM-CAM** | `ESP32S3_CAM_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11.ino` |
 
 ------------------------------------------------------------
 Runtime Architecture
@@ -94,6 +101,8 @@ Supported Tools
 /analogwrite              <br>GPIO analog output<br>
 /digitalread              <br>GPIO digital input<br>
 /analogread              <br>GPIO analog input<br>
+/servo              <br>Servo angle control (window actuator)<br>
+/dht11              <br>Read temperature & humidity<br>
 /syncrtc              <br>Update the hardware RTC<br>
 /getrtc              <br>Get the hardware RTC current time<br>
 /still              <br>Capture image<br>
@@ -123,7 +132,7 @@ Persistent Files
 ------------------------------------------------------------
 
 env.json
-  <br>Device name / WiFi / Telegram / MQTT / Gemini credentials / Time zone
+  <br>Device name / WiFi / Telegram / MQTT / Gemini credentials / Gemini model / Time zone / Schedule timeout tolerance
 
 device.md
   <br>Devices definition
@@ -141,24 +150,36 @@ schedule.json
   <br>schedule tasks
 
 scheduleTodayExecuted.md
-  <br>Stores scheduled tasks executed today 
+  <br>Stores scheduled tasks executed today
 
 index.html
   <br>Configuration manager (Web Chat Interface)
 
 index_agent.html
   <br>Agent manager (Web Chat Interface)
-  
+
 index_schedule.html
   <br>Schedule manager (Web Chat Interface)
 
 index_chat.html
-  <br>Gemini talk web page (Web Chat Interface) 
+  <br>Gemini talk web page (Web Chat Interface)
 
 index_mqtt_chat.html
-  <br>Gemini talk web page via MQTT (Web Chat Interface)  
+  <br>Gemini talk web page via MQTT (Web Chat Interface)
 
 Conversation state is restored automatically on boot.
+
+### `env.json` Fields
+
+| Field | Purpose |
+|---|---|
+| `device_name` | Friendly identifier used in prompts and logs |
+| `wifi_ssid` / `wifi_pass` | Station Wi-Fi credentials |
+| `telegramBot_token` / `telegramBot_chatID` | Telegram Bot version credentials |
+| `gemini_apikey` | Google Gemini API key |
+| `gemini_model` | Selectable Gemini model string (e.g. `gemini-3-flash-preview`), letting the same firmware binary switch model generations without recompiling |
+| `schedule_timeout` | Minutes of grace tolerance applied by `task_time_scheduling` before a missed scheduled task is silently skipped instead of fired late |
+| `timezone` | IANA-style time zone used for RTC conversion and schedule evaluation |
 
 ------------------------------------------------------------
 Hardware Safety
@@ -188,11 +209,47 @@ HUB 8735 Ultra
   - active-low
   - pressed = 0
   - released = 1
- 
+
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
-- GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+- GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+
+External Modules
+
+- Emergency button: pin 1
+  - digital input only
+  - active-high
+  - pressed = 1
+  - released = 0
+
+- Light sensor module: pin 2
+  - analog input
+  - range: 0–1023
+
+- Warning light: pin 11
+  - PWM output
+  - range: 0–255
+  - default startup value: 255
+
+- Window actuator (SG90 servo)
+  - Pin mapping: depends on development board
+		AMB82-mini: PIN 5
+		HUB 8735 Ultra: PIN 12
+  - servo angle control
+  - range: 0–180
+  - 0 = fully closed
+  - 180 = fully open
+
+- DHT11 Temperature & Humidity Sensor
+  - Pin mapping: depends on development board
+		AMB82-mini: PIN 8
+		HUB 8735 Ultra: PIN 20
+  - Measures: temperature (°C) and relative humidity (%)
+  - Read mode: single trigger, returns two integer values
+  - Temperature range: 0–50 °C
+  - Humidity range: 20–90 % RH
+  - Physical Rules: Values are integers. Sensor requires ~1 s between reads.
 
 Unknown hardware mappings require clarification.
 
@@ -202,14 +259,31 @@ GPIO values are strictly validated before execution.
 Software Stack
 ------------------------------------------------------------
 
+AmebaPro2 build:
+
 - WiFi.h
 - WiFiSSLClient
 - PubSubClient
 - ArduinoJson
 - FreeRTOS
 - VideoStream
+- AmebaFatFS
+- AmebaServo
+- DHT
 - Base64
-- FatFS
+
+ESP32-S3-CAM build:
+
+- WiFi.h / WiFiClientSecure
+- PubSubClient
+- ArduinoJson
+- FreeRTOS
+- esp_camera
+- esp_task_wdt
+- SD_MMC
+- ESP32Servo
+- DHT (Adafruit)
+- Base64
 
 ------------------------------------------------------------
 Known Limitations
@@ -228,7 +302,7 @@ AI Evaluation
 
 # fuClaw AI Framework
 
-> An embedded multimodal AI agent running on Realtek Ameba Pro2 devices,  
+> An embedded multimodal AI agent running on Realtek AmebaPro2 and ESP32-S3-CAM devices,
 > combining Telegram / MQTT / Web chat, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
 
 ---
@@ -258,8 +332,10 @@ AI Evaluation
 12. [Web Configuration & Chat Interface](#12-web-configuration--chat-interface)
 13. [Output Sanitization & Markdown Stripping](#13-output-sanitization--markdown-stripping)
 14. [Agent to Agent & MQTT Multimodal Communications](#14-Agent-to-Agent--MQTT-Multimodal-Communications)
-15. [Concerns & Known Limitations](#15-Concerns--Known-Limitations)
-    
+15. [Cross-Platform Portability: AmebaPro2 vs ESP32-S3-CAM](#15-cross-platform-portability-amebapro2-vs-esp32-s3-cam)
+16. [Configurable Model & Schedule Tolerance](#16-configurable-model--schedule-tolerance)
+17. [Concerns & Known Limitations](#17-concerns--known-limitations)
+
 ---
 
 ## 1. Prompt-Orchestrated Tool Routing
@@ -356,7 +432,7 @@ The division between `/still` and `/vision` appears simple on the surface, but r
 This design creates a clean **perception layer / action layer** architecture. The perception layer (Vision) is only responsible for observing and reporting; the action layer (Hardware tools) is only responsible for execution. Between them sits a reasoning and confirmation buffer. In AI-vision-triggered automation scenarios, this is critically important — it prevents the dangerous direct coupling of "see something → immediately do something."
 
 ### Cached Frame Reuse
-Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. If `frames` is `false` and no prior image exists in the buffer (`imageLength == 0`), both functions detect this condition and return an early error rather than proceeding with an empty buffer. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly.
+Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. If `frames` is `false` and no prior image exists in the buffer (`imageLength == 0`), both functions detect this condition and return an early error rather than proceeding with an empty buffer. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly. On the ESP32-S3-CAM build, the same cache contract is honored by the `esp_camera` frame buffer (`esp_camera_fb_get()` / `esp_camera_fb_return()`) instead of `VideoStream`, with no change to the prompt-level tool semantics.
 
 ### Vision Request Architecture
 `geminiVisionRequest()` sends the captured JPEG frame as Base64 inline data in a stateless Gemini call — separate from the conversation history request. The result is then injected back into `historicalMessages` so the agent can reason about the observation in subsequent turns. This keeps the vision call lean while ensuring the analysis result participates fully in the ongoing agent workflow.
@@ -424,17 +500,17 @@ file.println(data.c_str());             // Write new state
 | `soul.md` | AI personality definition |
 | `device.md` | Hardware pin mappings |
 | `skill.md` | Skill workflow scripts |
-| `env.json` | Authentication credentials |
+| `env.json` | Authentication credentials, Gemini model selection, schedule timeout |
 | `memory.md` | Persistent conversation history |
-| `schedule.json` | Schedule tasks | 
-| `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day | 
+| `schedule.json` | Schedule tasks |
+| `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day |
 | `index.html` | Web configuration interface |
 | `index_agent.html` | Web agent interface |
 | `index_schedule.html` | Web schedule interface |
 | `index_chat.html` | Web chat interface |
-| `index_mqtt_chat.html` | Web chat via MQTT interface | 
+| `index_mqtt_chat.html` | Web chat via MQTT interface |
 
-All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
+All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations — including which Gemini model generation each device targets.
 
 ### Timestamp-Based `workId` Event Tracking Mechanism
 In a complex environment involving concurrent multi-tasking and multimodal interactions, the system assigns a unique, timestamp-embedded identifier—`workId`—to every generated workflow or tool call. This design delivers several core architectural advantages:
@@ -459,21 +535,21 @@ Inside the `getTelegramMessage()` polling loop, the firmware extracts the `Date:
 `getGeminiDatetime()` makes a lightweight Gemini API call and captures the `Date:` header from the HTTP response. This approach works independently of Telegram, making it available for both the Telegram and MQTT versions. If the connection fails, the function gracefully falls back to a grounded search prompt.
 
 ### Gemini Handles Timezone Conversion — Without Search
-`rtcInitialTime()` receives the GMT time string and calls `geminiChatRequest(workId, prompt, -1)` — the role-only system prompt — asking Gemini to convert the GMT time to the configured `timeZone` and add exactly 4 seconds of propagation compensation. The prompt enforces a strict pure-JSON response (no Markdown, no explanation, first character must be `{`, last must be `}`). Once parsed, individual fields are extracted and written to the hardware RTC via `rtc.SetEpoch()` and `rtc.Write()`.
+`rtcInitialTime()` receives the GMT time string and calls `geminiChatRequest(workId, prompt, -1)` — the role-only system prompt — asking Gemini to convert the GMT time to the configured `timeZone` and add exactly 4 seconds of propagation compensation. The prompt enforces a strict pure-JSON response (no Markdown, no explanation, first character must be `{`, last must be `}`). Once parsed, individual fields are extracted and written to the hardware RTC.
 
 ### Scheduling Only Runs When RTC Is Ready
-The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task first attempts a **self-repair** by calling `executeTool("/syncrtc")` to re-synchronize the hardware clock automatically. Only if that synchronization attempt also fails — leaving rtcYear still 0 — does the task execute continue to skip the current cycle. This **self-repair before skip** strategy avoids missed scheduled tasks caused by a transient RTC initialization failure, while still guaranteeing that no scheduled task ever fires against an uninitialized clock state.
+The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task first attempts a **self-repair** by calling `executeTool("/syncrtc")` to re-synchronize the hardware clock automatically. Only if that synchronization attempt also fails — leaving rtcYear still 0 — does the task continue to skip the current cycle. This **self-repair before skip** strategy avoids missed scheduled tasks caused by a transient RTC initialization failure, while still guaranteeing that no scheduled task ever fires against an uninitialized clock state.
 
 ### Dual-Mode Scheduler Management: Intelligence Meets Precision
 fuClaw introduces a highly flexible and intuitive dual-mode interaction mechanism for edge-side schedule management, allowing users to switch seamlessly based on different scenarios:
 
 * **AI Natural Language Parsing Mode:**
-  Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based Gemini engine automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard MicroSD card's `schedule.json`.
+  Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based Gemini engine automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard storage's `schedule.json`.
 * **Manual Graphical Web UI Mode:**
   To ensure rock-solid reliability and pixel-perfect control when offline or in quiet environments, the system features a built-in dedicated schedule management web interface (`index_schedule.html`). Users can utilize the standard graphical interface to **manually add, edit, modify, or delete** any scheduled task with deterministic precision.
 
 **✨ Core Architectural Advantage:**
-Both distinct control paths **read and write to the exact same core `schedule.json` file on the onboard SD card in real-time**. This design achieves a perfect harmony between "highly flexible natural language input" and "highly deterministic graphical management," ensuring a seamless, robust user experience across all deployment conditions.
+Both distinct control paths **read and write to the exact same core `schedule.json` file in real-time**. This design achieves a perfect harmony between "highly flexible natural language input" and "highly deterministic graphical management," ensuring a seamless, robust user experience across all deployment conditions.
 
 ---
 
@@ -490,7 +566,7 @@ The multi-task design solves concrete concurrency and scheduling problems across
 | `task_getTelegramMessage` | 16384 bytes | Continuous Telegram long-polling for user input |
 | `task_getMqttMessage` | 32768 bytes | MQTT keep-alive, reconnect, and inbound message dispatch |
 | `task_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
-| `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min) |
+| `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min), now honoring `schedule_timeout` |
 
 If these ran in the same thread, a scheduled task would block user input, and user interactions would disrupt the periodic schedule. Splitting them into independent FreeRTOS tasks allows all to run concurrently — the system simultaneously stays responsive to user messages and executes background monitoring and scheduling on their respective cadences.
 
@@ -500,8 +576,11 @@ Before either background task executes, it calls `botClient.stop()` and waits 2 
 ### Non-Blocking MQTT (MQTT version)
 The MQTT client is configured with `wifiClient.setNonBlockingMode()` before initialization, preventing the TCP stack from stalling the RTOS scheduler during I/O. The `task_getMqttMessage` task receives a larger stack (32768 bytes) to accommodate the MQTT library's internal processing and JPEG image payload publishing.
 
+### Watchdog-Aware Task Design (ESP32-S3-CAM)
+On the ESP32-S3-CAM build, the dual-core scheduler interacts with the ESP-IDF task watchdog (`esp_task_wdt.h`). Long-running blocking operations — large SSL transfers, camera capture, and JPEG encoding — are interleaved with explicit yields so the watchdog is fed even during heavier multimodal workloads.
+
 ### Opt-In Background Tasks
-The `task_time_scheduling task` is **enabled** by default in `setup()`. Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. Conversely, the `task_theft_detection` feature remains **disabled** by default via a comment block in `setup()`. Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly upon the initial flash, thereby serving as a paradigm for skill design.
+The `task_time_scheduling` task is **enabled** by default in `setup()`. Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. Conversely, the `task_theft_detection` feature remains **disabled** by default via a comment block in `setup()`. Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly upon the initial flash, thereby serving as a paradigm for skill design.
 
 ---
 
@@ -533,13 +612,13 @@ This clean termination signal avoids the common failure mode of AI agents that g
 The prompt-driven tool architecture scales naturally to more complex peripherals beyond basic GPIO.
 
 ### Servo Motor Control (`/servo`)
-Servo control uses a reference-passed `AmebaServo` instance rather than a global singleton, making it straightforward to extend to multiple servo pins in the future. Angle clamping at the firmware layer (`constrain(angle, 0, 180)`) provides the same hardware safety guarantee as the existing GPIO tools. Undefined servo pins return a structured error JSON rather than silently failing, maintaining the system's consistent error contract. The `servo.attached()` check before `servo.attach(pin)` prevents redundant re-initialization.
+Servo control uses a reference-passed servo instance (`AmebaServo` on AmebaPro2, `ESP32Servo` on the ESP32-S3-CAM build) rather than a global singleton, making it straightforward to extend to multiple servo pins in the future. Angle clamping at the firmware layer (`constrain(angle, 0, 180)`) provides the same hardware safety guarantee on both platforms. Undefined servo pins return a structured error JSON rather than silently failing, maintaining the system's consistent error contract. The `servo.attached()` check before `servo.attach(pin)` prevents redundant re-initialization.
 
 ### DHT11 Temperature & Humidity Sensor (`/dht11`)
 The DHT11 integration handles the sensor's known failure mode — returning `NaN` on read errors — with an explicit `isnan()` check that produces a structured `dht11_read_failed` error response. This is fed back into the Gemini conversation history, allowing the AI to reason about sensor failures and respond naturally (e.g., "The sensor didn't respond — please check the wiring") rather than propagating silent errors downstream.
 
 ### Consistent Tool Contract
-Both new tools follow the same JSON response contract as all existing tools: a `status` field of either `"success"` or `"error"`, a `method` field identifying the tool, and either result data or a `reason` field for failures. This consistency means `evaluateWorkflowContinuation()` can reason uniformly about any tool outcome, regardless of the underlying hardware type.
+Both new tools follow the same JSON response contract as all existing tools: a `status` field of either `"success"` or `"error"`, a `method` field identifying the tool, and either result data or a `reason` field for failures. This consistency means `evaluateWorkflowContinuation()` can reason uniformly about any tool outcome, regardless of the underlying hardware type or platform.
 
 ---
 
@@ -549,7 +628,7 @@ fuClaw ships in two communication variants, each optimized for a different deplo
 
 ### Telegram Bot Version
 
-The Telegram version uses HTTPS long-polling against the `getUpdates` API on a persistent `WiFiSSLClient` connection. Key design characteristics:
+The Telegram version uses HTTPS long-polling against the `getUpdates` API on a persistent SSL connection. Key design characteristics:
 
 - **Built-in identity**: The `chatId` acts as a natural access control layer — only the configured user can issue commands. No additional authentication layer is needed.
 - **Keyboard shortcuts**: `telegrambotKeyboard` injects a persistent reply keyboard into the `/help` response, providing one-tap access to common commands from mobile.
@@ -570,14 +649,14 @@ The MQTT version uses a `PubSubClient` broker connection with three dedicated to
 
 Key design characteristics:
 
-- **Random client ID**: `"AmebaPro2" + String(random(0xffff), HEX)` generates a unique client identifier on each boot, preventing connection conflicts when multiple devices share the same broker.
+- **Random client ID**: a platform-prefixed identifier plus a random hex suffix generates a unique client identifier on each boot, preventing connection conflicts when multiple devices share the same broker.
 - **Non-blocking TCP**: `wifiClient.setNonBlockingMode()` ensures the RTOS scheduler is never stalled during broker I/O.
 - **Auto-reconnect**: The `reconnect()` function loops with a 5-second retry interval, re-subscribing to the command topic after each successful reconnect without any manual intervention.
 - **Separate image topic**: Publishing JPEG data to a dedicated `publishimage` topic keeps binary image payloads cleanly separated from text reply traffic, making broker-side filtering straightforward.
 - **Broker-agnostic**: Standard MQTT protocol means the firmware works with any broker (Mosquitto, HiveMQ, cloud brokers) without code changes — only `env.json` needs updating.
 
 ### Architectural Commonality
-Despite the different transport layers, both versions share identical implementations of: `geminiChatRequest()`, `geminiSearchRequest()`, `geminiVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, all tool handlers, and the SD card persistence layer. The communication transport is the only architectural difference, making it straightforward to maintain both variants in sync.
+Despite the different transport layers, both versions share identical implementations of: `geminiChatRequest()`, `geminiSearchRequest()`, `geminiVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, all tool handlers, and the persistence layer. The communication transport is the only architectural difference, making it straightforward to maintain both variants in sync — and this same commonality now extends across both supported hardware platforms.
 
 ---
 
@@ -590,7 +669,7 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | Endpoint | Function |
 |----------|----------|
 | `GET /` | Serves `index.html` with current credentials pre-filled |
-| `GET /updateConfig?{json}` | Saves `env.json` to SD card and triggers automatic reboot |
+| `GET /updateConfig?{json}` | Saves `env.json` to storage and triggers automatic reboot |
 | `GET /agent` | Serves `index_agent.html` (Agent manager UI) |
 | `GET /getSoul` | Returns the Soul content |
 | `GET /updateSoul?{data}` | Overwrites Soul definition with new content |
@@ -605,12 +684,12 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | `GET /mqtt` | Serves `index_mqtt_chat.html` (Gemini web chat UI) |
 | `GET /message?{text}` | Processes a chat message and returns the AI reply |
 
-The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to SD, preventing partial or corrupted configuration saves.
+The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to storage, preventing partial or corrupted configuration saves. The configuration page also renders the currently selected `gemini_model` and `schedule_timeout`, so both can be reviewed and changed from the browser without touching the source code.
 
 A second server on **port 82** streams a live MJPEG feed directly from the camera.
 
 ### Dual AP+STA Concurrent Mode
-`WiFi.enableConcurrent()` launches both an Access Point (`192.168.1.1:81`) and a Station connection simultaneously. This means the device is always reachable for configuration even when the home Wi-Fi is unavailable — a critical feature for initial setup and field recovery.
+The device launches both an Access Point (`192.168.1.1:81`) and a Station connection simultaneously. This means the device is always reachable for configuration even when the home Wi-Fi is unavailable — a critical feature for initial setup and field recovery.
 
 ### Web Chat Interface (`index_chat.html`)
 The chat page communicates with the device via `GET /message?<text>` — a pure HTTP query with no WebSocket or backend server required. Design highlights:
@@ -644,9 +723,9 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 ## 14. Agent-to-Agent & MQTT Multimodal Communications
 
-To evolve from a standalone edge device into a collaborative **Multi-Agent Ecosystem**, fuClaw expands its Prompt-Orchestrated Tool Routing mechanism with three native autonomous communication tools: `/tcpSendMessage`, `/mqttSendMessage`, and `/mqttSendImage`. 
+To evolve from a standalone edge device into a collaborative **Multi-Agent Ecosystem**, fuClaw expands its Prompt-Orchestrated Tool Routing mechanism with native autonomous communication tools: `/tcpSendMessage`, `/mqttSendMessage`, `/mqttSendImage`, `/telegramSendMessage`, `/telegramSendImage`, and `/lineSendMessage`.
 
-These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks and MQTT brokers.
+These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks, MQTT brokers, Telegram, and Line.
 
 ### Extended Tool Contracts
 
@@ -655,6 +734,9 @@ These tools empower the Gemini reasoning engine to not only manipulate local GPI
 | `/tcpSendMessage` | Sends a direct P2P text message to another targeted fuClaw node. | Target must be network-reachable; used for low-overhead edge-to-edge synchronization. |
 | `/mqttSendMessage` | Publishes a text payload to a specified MQTT topic via the configured broker. | Dependent on connection state defined in `env.json`; returns Error JSON upon broker dropouts. |
 | `/mqttSendImage` | Captures and flushes the current camera video snapshot to a specific MQTT topic. | Monitored by FreeRTOS stack guards; large image packets use automated dynamic chunk buffers. |
+| `/telegramSendMessage` | Pushes a text alert directly to the configured Telegram chat, independent of the inbound polling loop. | Reuses the bot token / chatID from `env.json`; does not require an inbound user message to trigger. |
+| `/telegramSendImage` | Pushes the current camera frame to Telegram as a native photo message. | Same frame-cache rules as `/still` apply; large transfers are bounded by available heap. |
+| `/lineSendMessage` | Publishes a text notification to a configured Line Bot / Line Notify endpoint. | Requires a valid Line channel token; returns Error JSON on delivery failure. |
 
 ### Architectural Design & Optimization
 
@@ -662,16 +744,54 @@ These tools empower the Gemini reasoning engine to not only manipulate local GPI
    When the Gemini engine evaluates local sensor anomalies (e.g., DHT11 temperature thresholds breached) and determines that a remote physical zone requires collective intervention, it invokes `/tcpSendMessage`. This bypasses centralized server logic, allowing edge agents to negotiate actions directly in application layers, preserving the operational context within `memory.md`.
 
 2. **Asynchronous IoT Pub/Sub Topology (`/mqttSendMessage`)**
-   Unlike standard Telegram synchronous request-response loops, `/mqttSendMessage` enables sub-second telemetry broadcasting. Messages are dispatched directly to the topic configured in `env.json` (e.g., `mqtt_publishTextTopic`), providing out-of-the-box integration with industrial IoT platforms, Home Assistant, Node-RED, or custom ESP32/Ameba sub-nodes.
+   Unlike standard Telegram synchronous request-response loops, `/mqttSendMessage` enables sub-second telemetry broadcasting. Messages are dispatched directly to the topic configured in `env.json`, providing out-of-the-box integration with industrial IoT platforms, Home Assistant, Node-RED, or custom ESP32/Ameba sub-nodes.
 
-3. **Frame-Reuse & Memory Shielding (`/mqttSendImage`)**
-   Transmitting large multi-kilobyte JPEG streams over MQTT in a highly constrained FreeRTOS environment poses severe stack-overflow risks. To mitigate this:
+3. **Frame-Reuse & Memory Shielding (`/mqttSendImage`, `/telegramSendImage`)**
+   Transmitting large multi-kilobyte JPEG streams over MQTT or HTTPS in a highly constrained FreeRTOS environment poses severe stack-overflow risks. To mitigate this:
    * **Frame Cache Preservation:** Inheriting behavioral rules from `/still` and `/vision`, setting `"frames": false` forces the tool to reuse the existing JPEG buffer locked by prior vision tasks, omitting redundant camera sensor read cycles and saving substantial CPU clocks.
-   * **Heap Allocation Safety:** The execution block allocates memory dynamically (`malloc`/`free`) outside the tight `task_getMqttMessage` stack (allocated at 32KB), guaranteeing that network sockets and SSL handshakes never starve the core runtime.
+   * **Heap Allocation Safety:** The execution block allocates memory dynamically (`malloc`/`free`) outside the tight `task_getMqttMessage` stack (allocated at 32 KB), guaranteeing that network sockets and SSL handshakes never starve the core runtime.
+
+4. **Cross-Channel Notification Redundancy (`/telegramSendMessage`, `/lineSendMessage`)**
+   Because both tools are triggerable from any reasoning context — scheduled tasks, theft detection, or interactive chat — an agent can fan out the same alert across Telegram and Line simultaneously, giving deployments a built-in notification redundancy path without requiring an external automation server.
 
 ---
 
-## 15. Concerns & Known Limitations
+## 15. Cross-Platform Portability: AmebaPro2 vs ESP32-S3-CAM
+
+fuClaw's prompt-orchestrated core was designed from the start to be transport- and hardware-agnostic, and the codebase now proves this with a second fully working hardware port: the **ESP32-S3-WROOM-CAM** board, alongside the original **Realtek AmebaPro2 (RTL8735B)** boards.
+
+### What Stays Identical
+Across both platforms, the entire reasoning and orchestration layer is unchanged: `geminiChatRequest()`, `geminiSearchRequest()`, `geminiVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, the JSON tool contract, `device.md` / `skill.md` / `soul.md` parsing, and the scheduling engine. A `device.md` or `skill.md` written for one platform works unmodified on the other, as long as the pin numbers reflect the target board's confirmed GPIO set.
+
+### What Changes at the Platform Boundary
+| Concern | AmebaPro2 | ESP32-S3-CAM |
+|---|---|---|
+| Camera capture | `VideoStream` | `esp_camera` (`esp_camera_fb_get`/`fb_return`) |
+| Storage | `AmebaFatFS` (SD card) | `SD_MMC` |
+| Servo driver | `AmebaServo` | `ESP32Servo` |
+| TLS client | `WiFiSSLClient` | `WiFiClientSecure` |
+| Watchdog | RTOS task delays only | `esp_task_wdt` explicit feeding around long blocking calls |
+
+These differences are isolated to the hardware abstraction calls inside each tool handler; the JSON request/response contract each tool returns is byte-for-byte identical across platforms, so `evaluateWorkflowContinuation()` and the front-end web pages require no platform-specific branching.
+
+### Practical Implication
+A developer porting fuClaw to a third board only needs to replace the five hardware abstraction points above. The reasoning engine, prompt schema, persistence design, and all four web UIs are reusable without modification — making fuClaw a genuine cross-vendor agent framework rather than a board-specific demo.
+
+---
+
+## 16. Configurable Model & Schedule Tolerance
+
+Two small `env.json` additions meaningfully improve deployability without any firmware recompilation.
+
+### Runtime-Selectable Gemini Model
+`gemini_model` is now read from `env.json` into a runtime `geminiModel` string and substituted directly into every `generateContent` endpoint call. This means upgrading from one Gemini generation to the next (e.g. moving to a newer flash-tier model) — or rolling back after a regression — is a configuration change pushed through `/updateConfig`, not a firmware re-flash. The same binary can also be fleet-deployed with different devices intentionally pinned to different model tiers based on cost or latency requirements.
+
+### Missed-Schedule Tolerance Window
+`schedule_timeout` defines, in minutes, how long after a scheduled task's target time the `task_time_scheduling` loop will still treat it as eligible to fire. Because the scheduler only evaluates once per minute and depends on a correctly synchronized RTC, a task whose trigger time has already passed by more than `schedule_timeout` minutes is treated as missed for that cycle rather than executed late — preventing, for example, a "close the window at 18:00" automation from firing hours late after a temporary RTC desync or device reboot. Setting `schedule_timeout` to `0` disables the tolerance check, causing the scheduler to always attempt to run any task whose time has passed.
+
+---
+
+## 17. Concerns & Known Limitations
 
 ### Token Usage & System Prompt Cost
 
@@ -685,23 +805,26 @@ Every call to `geminiChatRequest()` and `geminiSearchRequest()` sends the full `
 
 - **No prompt-tier routing.**: The three compiled system prompts (`systemContent`, `systemContentNoTools`, `systemContentTools`) exist in the codebase, but the main message handler always selects `systemContentTools` regardless of whether the user's input has anything to do with hardware. A lightweight pre-classification call — using only the role prompt plus the last few history entries — could route simple conversational turns to `systemContent` and avoid sending the full tool schema on the majority of interactions. This optimization is architecturally straightforward but has not yet been implemented.
 
+- **Model selection is manual, not adaptive.**: While `gemini_model` is now configurable, the firmware does not yet auto-select a lighter or heavier model based on request complexity (e.g. routing simple chat to a smaller model and vision/search workflows to a more capable one). All requests on a given device currently use the same configured model regardless of task weight.
+
 ---
 
 ## Summary
 
 fuClaw demonstrates one thing clearly: a complete AI Agent does not require a cloud server.
 
-Running on a bare-metal embedded board with no OS and kilobytes of addressable memory, fuClaw implements a full Agent Loop — perception, reasoning, tool execution, and persistent memory — entirely on-device. Latency is bounded by the network, not the hardware.
+Running on bare-metal embedded boards with no OS and kilobytes of addressable memory, fuClaw implements a full Agent Loop — perception, reasoning, tool execution, and persistent memory — entirely on-device, across two independent hardware platforms. Latency is bounded by the network, not the hardware.
 
-The core architectural insight is replacing native function calling with prompt engineering: a strict JSON schema constrains LLM output, which the firmware layer validates and executes. No vendor-specific API extensions. The reasoning engine is fully portable across LLM providers.
+The core architectural insight is replacing native function calling with prompt engineering: a strict JSON schema constrains LLM output, which the firmware layer validates and executes. No vendor-specific API extensions. The reasoning engine is fully portable across LLM providers, and — as proven by the AmebaPro2 / ESP32-S3-CAM dual port — fully portable across embedded vendors as well.
 
-**fuClaw is a working reference implementation, not a production-optimized product.** It is designed to demonstrate what is architecturally possible on constrained embedded hardware — and to give you a complete, running starting point rather than a blank page. The dual-mode example code (Telegram and MQTT) covers the full agent loop end-to-end, and adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
+**fuClaw is a working reference implementation, not a production-optimized product.** It is designed to demonstrate what is architecturally possible on constrained embedded hardware — and to give you a complete, running starting point rather than a blank page. The quad-variant example code (two platforms × two transports) covers the full agent loop end-to-end, and adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
 
-That said, deploying fuClaw in a cost-sensitive or high-frequency environment requires careful consideration of the token economics described in [Section 15](#15-concerns--known-limitations). Every interaction currently sends the full system prompt and the complete conversation history to the Gemini API. For occasional personal use or a low-traffic prototype, the cost is negligible. For a device that processes dozens of interactions per day over many months, or for any deployment where the Gemini API free tier is exhausted, the cumulative token spend warrants attention before going live.
+That said, deploying fuClaw in a cost-sensitive or high-frequency environment requires careful consideration of the token economics described in [Section 17](#17-concerns--known-limitations). Every interaction currently sends the full system prompt and the complete conversation history to the Gemini API. For occasional personal use or a low-traffic prototype, the cost is negligible. For a device that processes dozens of interactions per day over many months, or for any deployment where the Gemini API free tier is exhausted, the cumulative token spend warrants attention before going live.
 
-If you are evaluating fuClaw as a foundation for a larger project, treat Section 14 as a checklist of what to address before scaling up. The architecture is sound; the cost profile simply needs to be matched to your usage pattern.
+If you are evaluating fuClaw as a foundation for a larger project, treat Section 14 and Section 17 as a checklist of what to address before scaling up. The architecture is sound; the cost profile simply needs to be matched to your usage pattern.
 
 ---
+
 
 <a name="繁體中文"></a>
 
