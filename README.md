@@ -135,7 +135,7 @@ env.json
   <br>Device name / WiFi / Telegram / MQTT / Gemini credentials / Gemini model / Time zone / Schedule timeout tolerance
 
 device.md
-  <br>Devices definition
+  <br>Devices definition (GPIO pin mappings, plus reserved/empty-by-default blocks for agent-to-agent MQTT/TCP targets and household-admin Telegram/Line/MQTT notification channels)
 
 skill.md
   <br>Skills definition
@@ -1180,6 +1180,7 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 若您正評估以 fuClaw 作為更大型專案的基礎,建議將第 14 節與第 17 節視為擴展規模前的檢查清單。架構本身是穩健的,只需將成本結構與您的使用模式相互配對。
 
 ---
+
 
 
 
