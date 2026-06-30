@@ -541,7 +541,7 @@ kbd {
       <div class="sidebar-body" id="pubBody">
         <div class="pub-field">
           <label>PUBLISH TOPIC</label>
-          <input type="text" id="cfg_pubTopic" value=" mqttSubscribeTextTopic" placeholder="fuclaw/command">
+          <input type="text" id="cfg_pubTopic" value="mqttSubscribeTextTopic" placeholder="fuclaw/command">
         </div>
       </div>
     </div>
