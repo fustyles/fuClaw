@@ -498,7 +498,7 @@ file.println(data.c_str());             // Write new state
 | File | Purpose |
 |------|---------|
 | `soul.md` | AI personality definition |
-| `device.md` | Hardware pin mappings |
+| `device.md` | Hardware pin mappings, plus reserved (empty by default) blocks for agent-to-agent communication targets (MQTT topics, TCP peer addresses) and household-admin notification channels (Telegram Bot, Line Bot, MQTT) |
 | `skill.md` | Skill workflow scripts |
 | `env.json` | Authentication credentials, Gemini model selection, schedule timeout |
 | `memory.md` | Persistent conversation history |
@@ -725,7 +725,7 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 To evolve from a standalone edge device into a collaborative **Multi-Agent Ecosystem**, fuClaw expands its Prompt-Orchestrated Tool Routing mechanism with native autonomous communication tools: `/tcpSendMessage`, `/mqttSendMessage`, `/mqttSendImage`, `/telegramSendMessage`, `/telegramSendImage`, and `/lineSendMessage`.
 
-These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks, MQTT brokers, Telegram, and Line.
+These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks, MQTT brokers, Telegram, and Line. The target addresses for these channels (peer MQTT topics, TCP peer endpoints, household-admin Telegram/Line/MQTT destinations) live in dedicated, reserved sections of `device.md` alongside the GPIO pin mappings — populated only once a deployment actually needs multi-agent or multi-channel notification, and left empty by default on a single-device setup.
 
 ### Extended Tool Contracts
 
@@ -947,7 +947,7 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 | 檔案 | 用途 |
 |------|------|
 | `soul.md` | AI 人格定義 |
-| `device.md` | 硬體腳位對應 |
+| `device.md` | 硬體腳位對應,另含預設為空的保留區塊:Agent 對 Agent 通訊目標(MQTT 主題、TCP 對端位址)、家庭管理員通知通道(Telegram Bot、Line Bot、MQTT) |
 | `skill.md` | 技能工作流程腳本 |
 | `env.json` | 驗證憑證、Gemini 模型選擇、排程容錯時間 |
 | `memory.md` | 持久化對話歷史 |
@@ -1097,7 +1097,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 
 為了從單一邊緣裝置進化為協作式的**多 Agent 生態系統**,fuClaw 以原生自主通訊工具擴充其 Prompt 驅動工具路由機制:`/tcpSendMessage`、`/mqttSendMessage`、`/mqttSendImage`、`/telegramSendMessage`、`/telegramSendImage`,以及 `/lineSendMessage`。
 
-這些工具讓 Gemini 推理引擎不僅能操作本地 GPIO,更能自主決定何時將狀態遙測、文字告警或原始二進位資料,透過 P2P 網路、MQTT Broker、Telegram 與 Line 進行傳播。
+這些工具讓 Gemini 推理引擎不僅能操作本地 GPIO,更能自主決定何時將狀態遙測、文字告警或原始二進位資料,透過 P2P 網路、MQTT Broker、Telegram 與 Line 進行傳播。這些通道所需的目標位址(對端 MQTT 主題、TCP 對端端點、家庭管理員的 Telegram/Line/MQTT 通知目標)都存放在 `device.md` 中與 GPIO 腳位對應並列的專屬保留區塊裡——只有在實際部署需要多 Agent 協作或多通道通知時才會填入內容,單裝置情境下預設留空。
 
 **擴充的工具合約**:
 
