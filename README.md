@@ -825,459 +825,363 @@ If you are evaluating fuClaw as a foundation for a larger project, treat Section
 
 ---
 
-
 <a name="繁體中文"></a>
 
-# fuClaw AI 框架 — 優點深度解析（繁體中文）
+## 繁體中文
 
-> 運行於嵌入式設備上的多模態 AI Agent，  
-> 在單一 FreeRTOS 執行時期中整合 Telegram / MQTT、Gemini、硬體控制與持久記憶。
+> fuClaw 是一套運行於 Realtek AmebaPro2 與 ESP32-S3-CAM 裝置上的嵌入式多模態 AI Agent 框架,在單一 FreeRTOS runtime 中整合 Telegram / MQTT / Web Chat、Gemini 推理引擎、硬體控制與持久化記憶。
 
----
+### 目錄
 
-## 目錄
-
-1. [提示詞驅動工具路由](#1-提示詞驅動工具路由)
-2. [原子執行與最長有效前綴](#2-原子執行與最長有效前綴)
+1. [Prompt 驅動的工具路由](#1-prompt-驅動的工具路由)
+2. [原子化執行與「最長有效前綴」策略](#2-原子化執行與最長有效前綴策略)
 3. [硬體安全層](#3-硬體安全層)
-4. [多模態整合與關注點分離](#4-多模態整合與關注點分離)
-5. [Gemini STT 語音輸入](#5-gemini-stt-語音輸入)
-6. [持久記憶與狀態恢復](#6-持久記憶與狀態恢復)
-7. [透過 Gemini 與 HTTP Header 解析進行 RTC 時間同步](#7-透過-gemini-與-http-header-解析進行-rtc-時間同步)
+4. [多模態整合與職責分離](#4-多模態整合與職責分離)
+5. [透過 Gemini STT 的語音輸入](#5-透過-gemini-stt-的語音輸入)
+6. [持久化記憶與斷電復原](#6-持久化記憶與斷電復原)
+7. [透過 Gemini 與 HTTP Header 解析的 RTC 時間同步](#7-透過-gemini-與-http-header-解析的-rtc-時間同步)
 8. [FreeRTOS 多工架構](#8-freertos-多工架構)
-9. [工作流狀態追蹤與自我評估](#9-工作流狀態追蹤與自我評估)
-10. [可擴展感測器與致動器支援](#10-可擴展感測器與致動器支援)
-11. [雙通訊模式：Telegram Bot 與 MQTT](#11-雙通訊模式telegram-bot-與-mqtt)
+9. [工作流程狀態追蹤與自我評估](#9-工作流程狀態追蹤與自我評估)
+10. [可擴充的感測器與致動器支援](#10-可擴充的感測器與致動器支援)
+11. [雙通訊模式:Telegram Bot 與 MQTT](#11-雙通訊模式telegram-bot-與-mqtt)
 12. [Web 設定與聊天介面](#12-web-設定與聊天介面)
-13. [輸出淨化與 Markdown 清除](#13-輸出淨化與-markdown-清除)
-14. [跨設備代理與 MQTT 多模態通訊擴充](#14-跨設備代理與-MQTT-多模態通訊擴充)
-15. [隱憂與已知限制](#15-隱憂與已知限制)
+13. [輸出清理與 Markdown 過濾](#13-輸出清理與-markdown-過濾)
+14. [Agent 對 Agent 與 MQTT 多模態通訊](#14-agent-對-agent-與-mqtt-多模態通訊)
+15. [跨平台可移植性:AmebaPro2 與 ESP32-S3-CAM](#15-跨平台可移植性amebapro2-與-esp32-s3-cam)
+16. [可設定模型與排程容錯時間](#16-可設定模型與排程容錯時間)
+17. [限制與已知問題](#17-限制與已知問題)
 
 ---
 
-## 1. 提示詞驅動工具路由
+## 1. Prompt 驅動的工具路由
 
-這個設計最根本的突破是**完全不需要 Gemini 的原生 Function Calling API**。取而代之的是，一個精心設計的系統提示詞教導模型自行輸出正確結構的 `tool_call` JSON。
+本架構最根本的突破在於**完全不依賴 Gemini 原生的 function-calling API**。取而代之的是,透過精心設計的 system prompt,讓模型自行產出格式正確的 `tool_call` JSON。
 
-### 平台獨立性
-原生 Function Calling API 的格式隨時可能改變。由於所有路由邏輯完全存在於提示詞中，若 Gemini 模型版本更換或 API 格式更新，只需修改提示詞，無需任何韌體變更。
+這個選擇帶來幾項實際優勢:
 
-### 極高的靈活性
-工具可以在純文字層面新增、修改或移除。`skill.md` 與 `device.md` 都是純文字設定檔，用戶無需了解任何 C++ 程式碼就能擴充系統能力。
+**平台獨立性**:原生 function-calling API 的格式可能隨時改變。由於所有路由邏輯完全存在於 prompt 中,即使 Gemini 模型版本或 API 格式更新,也只需修改 prompt,不需要更動韌體。
 
-### 清晰的錯誤邊界
-所有 JSON 輸出在執行前都會透過 ArduinoJson 驗證，格式錯誤的回應會被直接拒絕，不存在模糊的部分執行情況。系統嚴格區分兩種輸出模式：**有效的 `tool_call` JSON** 與**自然語言回覆**，並禁止混合，使整個控制流程高度可預測。
+**極高彈性**:工具可在文字層級自由新增、修改或移除。`skill.md` 與 `device.md` 都是純文字設定檔,使用者無需撰寫任何 C++ 程式碼即可擴充系統能力。
 
-### 三層系統提示詞策略
-框架維護三個已編譯的系統提示詞：
+**清楚的錯誤邊界**:每一筆 JSON 輸出都會經過 ArduinoJson 驗證後才執行。格式錯誤的回應會被直接拒絕,不存在模糊的「部分執行」狀態。系統嚴格區分兩種輸出模式——**有效的 `tool_call` JSON** 與**自然語言回覆**——並禁止兩者混合,使整體控制流程高度可預期。
 
-| 提示詞 | 內容 | 使用場景 |
+**三層 System Prompt 策略**:框架維護三組編譯好的 system prompt:
+
+| Prompt | 內容 | 使用情境 |
 |--------|------|----------|
-| `systemContentTools` | 角色 + 裝置定義 + 裝置規則 + 技能 + 工具定義 | 標準用戶互動，完整工具存取 |
-| `systemContentNoTools` | 角色 + 裝置定義 + 裝置規則 | 輕量推理（例如 RTC 時間轉換） |
-| `systemContent` | 僅角色 | 最小上下文呼叫（例如時間預處理） |
+| `systemContentTools` | 角色 + 裝置定義 + 裝置規則 + 技能 + 工具定義 | 標準使用者互動,擁有完整工具存取權 |
+| `systemContentNoTools` | 角色 + 裝置定義 + 裝置規則 | 不需工具路由的輕量推理(如 RTC 轉換) |
+| `systemContent` | 僅角色 | 最小情境呼叫(如日期時間前處理) |
 
-`geminiChatRequest()` 和 `geminiSearchRequest()` 的 `tools` 整數參數在呼叫時選擇對應的提示詞（`1` = 工具、`0` = 無工具、`-1` = 僅角色）。STT 管線（`sendFileToGemini()`）完全繞過所有系統提示詞，只發送音訊資料與最簡的轉錄指令，將 token 使用降至最低，並避免在僅需要原始文字輸出的情境中引入工具路由干擾。
+`geminiChatRequest()` 與 `geminiSearchRequest()` 中的 `tools` 整數參數會在呼叫時選擇對應的 prompt(`1` = 含工具、`0` = 不含工具、`-1` = 僅角色)。STT 管線(`sendFileToGemini()`)則是一個獨立的轉錄專用呼叫,完全略過所有 system prompt——只傳送音訊資料與一段簡短的轉錄指示,在只需要純文字輸出的情境下,將 token 用量降到最低,並避免任何工具路由的干擾。
 
 ---
 
-## 2. 原子執行與最長有效前綴
+## 2. 原子化執行與「最長有效前綴」策略
 
-這兩個概念代表著嵌入式 AI Agent 系統中極為罕見的工程嚴謹性。
+這兩個概念展現出嵌入式 AI Agent 系統中少見的工程嚴謹度。
 
-### 原子執行規則
-每個 `tool_call` 只做**一件事**：一個腳位、一個操作、一個數值。在硬體控制場景中，這至關重要。若允許單一指令同時操作多個腳位，中途失敗會讓系統處於無法確定的半完成狀態，可能導致裝置損壞或安全危害。原子性確保每個步驟都是完整且可驗證的。
+**原子化執行規則**:每個 `tool_call` 只做**一件事**:一個 pin、一個操作、一個數值。在硬體控制情境下這點至關重要——若允許單一指令同時操作多個 pin,執行到一半失敗將使系統陷入不確定的半完成狀態,可能造成裝置損壞或安全疑慮。原子性保證每個步驟都是完整且可驗證的。
 
-### 最長有效前綴
-當 Gemini 以 JSON 陣列形式產生多步驟工作流時，`handleAgentResponse()` 不採用全有或全無的策略。它會從頭遍歷陣列，**盡可能執行最多的有效步驟**，在遇到第一個不完整或格式錯誤的項目時立即停止：
+**最長有效前綴**:當 Gemini 以 JSON 陣列產生多步驟工作流程時,`handleAgentResponse()` 並非採取全有全無策略,而是從頭逐項執行**盡可能多的有效步驟**,一旦遇到不完整或格式錯誤的項目就立即停止。即便 AI 產出部分錯誤的內容,系統仍可在最大有效範圍內動作,而非整體中止。對於重試成本高昂的資源受限嵌入式裝置而言,這是極為實用的設計。
 
-```cpp
-for (int i = 0; i < toolCount; i++) {
-    if (command == "" || params.isNull()) {
-        Serial.println("Incomplete tool detected → abort remaining tools");
-        break;
-    }
-    bool isLast = (i == toolCount - 1);
-    executeTool(workId, command, params, isLast);
-}
-```
-
-這意味著即使 AI 產生部分錯誤的輸出，系統仍然可以執行最大有效部分，而不是完全停止。對於重試成本高昂的資源受限嵌入式設備，這是極為實用的設計。
-
-### `reCheck` 旗標 — 選擇性延續評估
-在多工具陣列執行中，只有**最後一個工具**設置 `reCheck = true` 並觸發 `evaluateWorkflowContinuation()`。中間工具傳遞 `reCheck = false`，防止在序列中途發出多余的 Gemini 查詢，避免浪費網路資源和不必要地膨脹對話歷史。
+**`reCheck` 旗標——選擇性的後續評估**:在多工具陣列執行中,只有**最後一個工具**會設定 `reCheck = true` 並觸發 `evaluateWorkflowContinuation()`。中間的工具一律傳入 `reCheck = false`,避免序列執行中段產生多餘的 Gemini 查詢,浪費網路資源並使對話歷史不必要地膨脹。
 
 ---
 
 ## 3. 硬體安全層
 
-GPIO 控制系統受到多個獨立安全層的保護，每層各有其用途。
+GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
-### 明確映射要求
-系統只允許控制在 `device.md` 中明確定義的裝置。如果用戶說「開燈」但不存在「燈」的腳位映射，Gemini 被指示停下來請求澄清，而不是猜測。這防止 AI 幻覺導致直接的硬體誤動作。
+**明確對應要求**:系統只允許控制 `device.md` 中明確定義的裝置。若使用者說「把燈打開」但找不到「燈」的 pin 對應,Gemini 會被要求停下來詢問澄清,而非自行猜測——避免 AI 幻覺直接造成硬體誤動作。
 
-### 硬性數值限制
-`toolPinOutput()` 中的 `constrain(value, 0, 255)` 呼叫作為最後一道硬體防線。即使 Gemini 輸出超出範圍的類比數值，韌體層也會在其到達硬體之前強制限制在合法範圍內。數位輸出嚴格只接受 `0` 或 `1`，任何其他數值返回結構化錯誤 JSON。`tool_servo()` 中採用同樣的限制模式，伺服角度在韌體層被限制在 0–180° 範圍內，與 AI 指定的值無關。
+**強制數值限制**:`toolPinOutput()` 內的 `constrain(value, 0, 255)` 作為硬體層的最後防線。即使 Gemini 輸出超出範圍的類比值,韌體層也會在數值送達硬體前強制限制範圍。數位輸出嚴格僅接受 `0` 或 `1`,其餘數值會回傳結構化錯誤 JSON。`tool_servo()` 中也採用相同限制模式——伺服角度在韌體層被限制在 0–180° 範圍內,與 AI 的輸出無關。
 
-### 僅輸入腳位保護
-按鈕腳位（第 12 腳）在系統提示詞中明確標記為**僅輸入**，在生成任何 tool call 之前就在 AI 層面阻止將其用作輸出的嘗試。
+**唯讀腳位保護**:按鈕腳位(pin 12)在 system prompt 中明確標示為「僅輸入」,在 tool call 產生之前即在 AI 層級阻擋任何將其當作輸出使用的嘗試。
 
-### 裝置狀態與 GPIO 電位的區分
-系統提示詞明確禁止使用 `digitalread` / `analogread` 來判斷輸出裝置（LED、繼電器、致動器）的狀態。輸出裝置狀態必須從對話歷史和工具執行歷史中推斷。這防止了在輸出腳位上進行不必要的 GPIO 讀取操作，並避免在某些電路配置中產生錯誤的狀態讀取。
+**裝置狀態與 GPIO 電位的區分**:system prompt 明確禁止使用 `digitalread` / `analogread` 來判斷輸出裝置(LED、繼電器、致動器)的狀態。輸出裝置的狀態必須從對話歷史與工具執行紀錄推斷,避免對輸出腳位做不必要的讀取,也避免在特定電路配置下讀到錯誤狀態。
 
-### 用戶確認要求
-預設情況下，所有硬體操作在執行前都需要用戶明確確認。這在 AI 自主推理與人類監督之間保持了適當的平衡，在視覺分析或搜尋結果可能觸發實際硬體操作而沒有任何人介入的場景中尤為重要。技能觸發和排程的自主工作流明確免除此規則，在不影響互動安全的前提下啟用完全無人值守的自動化。
+**使用者確認機制**:預設情況下,所有硬體動作都需要使用者明確確認後才會執行,在自主 AI 推理與人為監督之間取得適當平衡——這在 Vision 分析或 Search 結果可能直接觸發實體硬體動作、卻無人在迴路中監看的情境下尤其重要。技能觸發與排程的自動化工作流程則明確排除此限制,讓全自動化情境得以運作,同時不影響互動情境下的安全性。
 
 ---
 
-## 4. 多模態整合與關注點分離
+## 4. 多模態整合與職責分離
 
-`/still` 和 `/vision` 的劃分表面上看似簡單，實際上反映了深刻的架構思考。
-
-### 工具角色定義
+`/still` 與 `/vision` 的分工表面看似簡單,實則反映了深刻的架構思考。
 
 | 工具 | 職責 | 限制 |
 |------|------|------|
-| `/still` | 僅擷取並傳送圖像 | 不得分析、推理或觸發任何後續動作 |
-| `/vision` | 擷取並分析圖像 | 僅返回觀察結果——不得直接觸發硬體 |
+| `/still` | 僅拍攝並傳送影像 | 不得分析、推理或觸發任何後續動作 |
+| `/vision` | 拍攝並分析影像 | 僅回傳觀察結果——不得直接觸發硬體 |
 
-### 感知層與動作層的分離
-這個設計建立了乾淨的**感知層 / 動作層**架構。感知層（Vision）只負責觀察和報告；動作層（硬體工具）只負責執行。兩者之間存在推理和確認緩衝區。在 AI 視覺觸發的自動化場景中，這至關重要——它防止了「看到某物 → 立即做某事」的危險直接耦合。
+**感知與行動分離**:此設計形成清楚的**感知層 / 行動層**架構。感知層(Vision)僅負責觀察與回報;行動層(硬體工具)僅負責執行。兩者之間夾著一層推理與確認緩衝。在 AI 視覺觸發自動化的情境中,這點極為關鍵——避免「看到什麼 → 立刻做什麼」的危險直接耦合。
 
-### 快取幀重用
-`/still` 和 `/vision` 都支援 `frames: false` 參數，允許工作流中的後續工具**重用先前擷取的幀**，而不是觸發新的相機擷取。若 `frames` 為 `false` 且緩衝區中不存在先前圖像（`imageLength == 0`），兩個函式都會檢測到此情況並提前返回錯誤，而不是繼續處理空緩衝區。在相機擷取在時間和 CPU 週期方面都很昂貴的資源受限硬體上，這是有意義的優化。
+**快取影格重用**:`/still` 與 `/vision` 皆支援 `frames: false` 參數,讓工作流程中的後續工具能**重用先前拍攝的影格**,而不需重新觸發相機擷取。若 `frames` 為 `false` 且緩衝區中無既有影像(`imageLength == 0`),兩個函式都會偵測此狀況並提早回傳錯誤,而非以空緩衝區繼續執行。在相機擷取成本高昂(時間與 CPU 週期)的資源受限硬體上,這是相當實際的優化。先進行 `/vision` 分析、再以 `/still` 將同一影格轉發至 Telegram,是這種設計能順暢處理的自然工作流程。在 ESP32-S3-CAM 版本中,同樣的快取機制改由 `esp_camera` 的影格緩衝(`esp_camera_fb_get()` / `esp_camera_fb_return()`)實作,prompt 層的工具語意完全不變。
 
-### 視覺請求架構
-`geminiVisionRequest()` 將擷取的 JPEG 幀作為 Base64 內聯資料在無狀態的 Gemini 呼叫中發送——與對話歷史請求分離。結果隨後被注入回 `historicalMessages`，以便 Agent 在後續輪次中對觀察進行推理。這保持了視覺呼叫的精簡性，同時確保分析結果完全參與正在進行的 Agent 工作流。
+**Vision 請求架構**:`geminiVisionRequest()` 將拍攝到的 JPEG 影格以 Base64 inline data 方式,透過一次獨立於對話歷史之外的無狀態 Gemini 呼叫送出。分析結果隨後會被寫回 `historicalMessages`,讓 Agent 能在後續輪次中針對觀察結果進行推理,同時保持 Vision 呼叫本身的精簡。
 
 ---
 
-## 5. Gemini STT 語音輸入
+## 5. 透過 Gemini STT 的語音輸入
 
-語音訊息支援從頭到尾都實現了對嵌入式記憶體限制的細心關注。
+語音訊息支援經過完整實作,並充分考量嵌入式記憶體限制。
 
-### 二進制安全下載管線
-來自 Telegram 的語音檔案故意使用 **HTTP/1.0** 下載——這禁用了分塊傳輸編碼，確保回應主體是乾淨的二進制串流，可以逐位元組讀入堆積緩衝區，無需複雜的塊邊界解析邏輯。`MAX_FILE_SIZE` 保護（256 KB）防止意外大型音訊檔案導致堆積溢位。
+**二進位安全的下載管線**:Telegram 的語音檔案刻意使用 **HTTP/1.0** 下載——停用 chunked transfer encoding,確保回應主體是一段乾淨的二進位串流,可逐位元組讀入 heap 緩衝區,無需複雜的 chunk 邊界解析邏輯。`MAX_FILE_SIZE` 限制(256 KB)可避免異常大型音訊檔造成 heap 溢位。
 
-### Gemini 的內聯 Base64 編碼
-音訊不上傳到檔案儲存服務，而是將 OGG/Opus 音訊 Base64 編碼後**以 `inline_data` 欄位內聯在 Gemini API JSON 請求中**發送。這消除了單獨的檔案託管步驟，將整個語音到回應的管線保持在單一 API 呼叫中。記憶體管理非常仔細：Base64 緩衝區以 `malloc` 分配，立即用於建構請求字串，然後在網路呼叫進行之前 `free`——確保大型編碼緩衝區不會在傳輸期間與 SSL 客戶端競爭堆積空間：
+**Gemini 的 Inline Base64 編碼**:不將音訊上傳至檔案儲存服務,而是將 OGG/Opus 音訊以 Base64 編碼後,透過 `inline_data` 欄位直接夾帶於 Gemini API 的 JSON 請求中。這省去獨立檔案託管步驟,讓整個語音轉回覆流程能在單一 API 呼叫內完成。記憶體管理也十分謹慎:Base64 緩衝區以 `malloc` 配置,立即用於組裝請求字串後即 `free`,確保大型編碼緩衝區不會在傳輸期間與 SSL client 競爭 heap 空間。
 
-```cpp
-char* encodedData = (char*)malloc(encodedLen);
-base64_encode(encodedData, (char*)fileinput, fileSize);
-// ... 用 encodedData 建構請求字串 ...
-free(encodedData);  // SSL 連線打開前釋放
-```
-
-### 統一輸入管線
-語音訊息轉錄後，透過**與文字輸入完全相同的處理管線**路由——包括斜線指令偵測和 Gemini 推理。轉錄後不存在語音與文字的特殊情況分支，這使得所有對文字管線的未來改進自動使語音輸入受益。
+**統一輸入管線**:語音訊息經轉錄後,會走過**與文字輸入完全相同的處理管線**,包含斜線指令偵測與 Gemini 推理。轉錄完成後沒有任何語音 / 文字的特殊分支處理,這種架構上的簡潔性意味著未來對文字管線的任何改進都會自動惠及語音輸入。
 
 ---
 
-## 6. 持久記憶與狀態恢復
+## 6. 持久化記憶與斷電復原
 
-對話記憶持久化設計解決了嵌入式設備上的一個根本挑戰：如何在重啟後恢復上下文。
+對話記憶持久化設計解決了嵌入式裝置的根本難題:重開機後如何還原情境。
 
-### 即時同步
-`storeDataToFile()` 在**每次對話更新後**被呼叫——而不是批次處理。這確保即使設備在任何時刻斷電，最近的對話狀態已經被保存。在啟動時，系統自動載入此記憶，使 Gemini 能夠在上下文中繼續對話，無需用戶重新解釋任何背景。
+**即時同步**:`storeDataToFile()` 在**每一次**對話更新後就會被呼叫,而非批次處理。這確保即使裝置在任何時刻斷電,最近一次的對話狀態都已被儲存。開機時系統會自動載入此記憶,讓 Gemini 能在情境中接續對話,使用者無需重新說明背景。
 
-### 帶備份的原子性檔案寫入
-在寫入新的 `memory.md` 之前，函式檢查當前檔案是否存在，將其重命名為 `memory.md.bak`，然後才寫入新版本。這種兩步驟的重命名再寫入策略確保寫入過程中的斷電使先前的備份完整保留，而不是損壞對話歷史的唯一副本：
+**帶備份的原子化檔案寫入**:在寫入新的 `memory.md` 之前,函式會先檢查目前檔案是否存在,將其重新命名為 `memory.md.bak`,接著才寫入新版本。這種「先改名、後寫入」的兩步驟策略,確保寫入過程中斷電時,先前的備份仍完整保留,而非毀損唯一一份對話歷史。
 
-```cpp
-if (fs.exists(currentFile)) {
-    if (fs.exists(backupFile)) fs.remove(backupFile);
-    fs.rename(currentFile, backupFile);  // 保留先前狀態
-}
-file = fs.open(currentFile);
-file.println(data.c_str());             // 寫入新狀態
-```
-
-### 模組化設定檔
+**模組化設定檔**:
 
 | 檔案 | 用途 |
 |------|------|
-| `soul.md` | AI 個性定義 |
-| `device.md` | 硬體腳位映射 |
-| `skill.md` | 技能工作流腳本 |
-| `env.json` | 認證憑證 |
-| `memory.md` | 持久對話歷史 |
-| `schedule.json` | 時間排程任務 |
-| `scheduleTodayExecuted.md` | 儲存當天已執行的排程任務，防止循環任務在同一個日曆日內重複觸發 |
-| `index.html` | Web 組態設定介面 |
-| `index_agent.html` | Web Agent 設定介面 |
-| `index_schedule.html` | Web 任務排程介面 |
+| `soul.md` | AI 人格定義 |
+| `device.md` | 硬體腳位對應 |
+| `skill.md` | 技能工作流程腳本 |
+| `env.json` | 驗證憑證、Gemini 模型選擇、排程容錯時間 |
+| `memory.md` | 持久化對話歷史 |
+| `schedule.json` | 排程任務 |
+| `scheduleTodayExecuted.md` | 記錄今日已執行的排程任務,避免週期性任務在同一天內重複觸發 |
+| `index.html` | Web 設定介面 |
+| `index_agent.html` | Web Agent 管理介面 |
+| `index_schedule.html` | Web 排程管理介面 |
 | `index_chat.html` | Web 聊天介面 |
-| `index_mqtt_chat.html` | Web MQTT 聊天介面 |
+| `index_mqtt_chat.html` | 透過 MQTT 的 Web 聊天介面 |
 
-所有檔案完全解耦。其中任何一個都可以獨立修改而無需重新燒錄韌體。存儲在 `env.json` 中的憑證在啟動時首先載入，允許相同的韌體二進制檔案在多個具有不同配置的設備上部署。
+所有檔案完全解耦,任一檔案都可獨立修改而無需重新燒錄韌體。`env.json` 中的憑證會在開機時最先載入,讓同一份韌體二進位檔可部署於多台設定各異的裝置——包含各裝置所對應的 Gemini 模型版本。
 
-### 基於時間戳記的 `workId` 事件追蹤機制
-在多任務並行與多模態交互的複雜環境下，系統為每個生成的工作流（Workflow）或工具調用分配一個帶有時間戳記的唯一識別碼 —— `workId`。這項設計帶來以下核心優點：
+**以時間戳記為基礎的 `workId` 事件追蹤機制**:在涉及並行多工與多模態互動的複雜環境中,系統會為每一個產生的工作流程或工具呼叫指派一個唯一、內嵌時間戳記的識別碼——`workId`。此設計帶來幾項核心架構優勢:
 
-* **全鏈路事件追蹤（End-to-End Traceability）：**
-  由於 `workId` 本身嵌入了精確的時間戳記，它成功將固件端、前端網頁與持久化對話歷史紀錄（`memory.md`）串聯在一起。開發者與使用者能依據這個單一的 ID，跨平台、跨任務追蹤同一個 AI 決策事件從「接收指令、推理路由、工具執行、到結果反饋」的完整生命歷程。
-* **非同步日誌與故障診斷（Asynchronous Logging & Diagnostics）：**
-  在 FreeRTOS 多任務（如 Telegram、Web 伺服器、排程器）並行運作時，終端日誌往往會交錯重疊。透過 `workId` 作為關鍵過濾器，可以輕鬆隔離並還原特定事件的上下文，大幅降低在邊緣端進行非同步除錯與硬體狀態審計（Audit）的難度。
-* **避免重複執行的冪等性防護（Idempotency Guard）：**
-  結合時間戳記與 `workId` 的時序特性，邊緣端固件能有效識別並拒絕因網路延遲、重試機制（Retry）或 Telegram 長輪詢重複發送引發的相同指令。這能確保敏感的硬體原子操作（如伺服馬達旋轉、GPIO 切換）僅被精確執行一次，避免硬體失控。
-  
+* **端到端可追溯性**:由於 `workId` 原生整合精確時間戳記,它在本地韌體、前端 Web 介面與持久化對話紀錄(`memory.md`)之間建立了統一的資料脈絡,讓使用者與開發者能以單一 ID,完整追蹤一次 AI 決策事件的整個生命週期。
+* **非同步紀錄與診斷**:在 Telegram 輪詢、Web 伺服器與排程器的紀錄可能交錯出現的多工 FreeRTOS 環境中,`workId` 是關鍵的篩選依據,可大幅簡化非同步除錯與裝置端硬體狀態稽核的複雜度。
+* **防止重複執行的冪等性保護**:利用 `workId` 的時序特性,邊緣韌體能可靠地偵測並拒絕因網路延遲、重試機制或 Telegram 長輪詢異常所造成的重複指令,確保伺服馬達轉動、GPIO 切換等敏感硬體原子操作只會執行一次。
+
 ---
 
-## 7. 透過 Gemini 與 HTTP Header 解析進行 RTC 時間同步
+## 7. 透過 Gemini 與 HTTP Header 解析的 RTC 時間同步
 
-在沒有 NTP 函式庫的嵌入式設備上實現時間感知是個非顯而易見的問題。fuClaw 使用兩種互補技術優雅地解決了它。
+在沒有 NTP 函式庫的嵌入式裝置上,時間感知並非小問題。fuClaw 以兩種互補技巧優雅地解決了這個問題。
 
-### Gemini API 回應 Header 作為時間源（Telegram 版本）
-在 `getTelegramMessage()` 輪詢迴圈中，韌體在讀取訊息主體的同時，從 HTTP 回應 header 中提取 `Date:` 欄位到 `getTime`。這以**零額外網路成本**提供了 GMT 時間戳——時間資料完全搭載在本來就必要的 Telegram 通訊上。
+**以 Gemini API 回應 Header 作為時間來源(Telegram 版本)**:在 `getTelegramMessage()` 輪詢迴圈中,韌體在讀取訊息內容的同時,從 HTTP 回應標頭擷取 `Date:` 欄位存入 `getTime`。這以**零額外網路成本**提供了 GMT 時間戳記——時間資料完全搭載在原本就必要的 Telegram 通訊上。
 
-### 專用 Gemini 預呼叫用於時間（通用）
-`getGeminiDatetime()` 發出一個輕量級 Gemini API 呼叫並從 HTTP 回應中擷取 `Date:` header。這種方法不依賴 Telegram，在兩個版本（Telegram 和 MQTT）中都可使用。若連線失敗，函式優雅地回退到 grounded search 提示詞。
+**專用 Gemini 預先呼叫取得時間(通用版本)**:`getGeminiDatetime()` 會發出一次輕量的 Gemini API 呼叫,並擷取 HTTP 回應中的 `Date:` 標頭。此作法不依賴 Telegram,因此 Telegram 版與 MQTT 版皆可使用。若連線失敗,函式會優雅地退回至有依據的搜尋提示詞。
 
-### Gemini 處理時區轉換——無需搜尋
-`rtcInitialTime()` 接收 GMT 時間字串，呼叫 `geminiChatRequest(workId, prompt, -1)`——使用僅角色系統提示詞——要求 Gemini 將 GMT 時間轉換為配置的 `timeZone` 並加上精確 4 秒的傳播補償。提示詞強制純 JSON 回應（無 Markdown，無說明文字，第一個字元必須是 `{`，最後一個必須是 `}`）。解析後，各欄位被提取並透過 `rtc.SetEpoch()` 和 `rtc.Write()` 寫入硬體 RTC。
+**由 Gemini 負責時區轉換——無需搜尋**:`rtcInitialTime()` 接收 GMT 時間字串,並以角色限定的 system prompt 呼叫 `geminiChatRequest(workId, prompt, -1)`,要求 Gemini 將 GMT 時間轉換為設定的 `timeZone`,並加上恰好 4 秒的傳播延遲補償。提示詞強制要求純 JSON 回應(無 Markdown、無說明文字、第一個字元須為 `{`、最後一個字元須為 `}`)。解析完成後,各欄位會被擷取並寫入硬體 RTC。
 
-### 排程僅在 RTC 就緒後運行
-`task_time_scheduling` 背景任務在每個評估週期前檢查 **rtcYear == 0**。如果 RTC 未初始化，任務會先呼叫 `executeTool("/syncrtc")` 嘗試自動重新同步硬體時鐘，進行自我修復。只有在同步嘗試仍然失敗、rtcYear 依然為 0 的情況下，任務才執行 **continue** 跳過當前週期。這種「**先自我修復再跳過**」的策略避免了因 RTC 初始化短暫失敗而導致的排程任務遺漏，同時仍然保證排程任務永遠不會基於未初始化的時鐘狀態觸發。
+**RTC 就緒後排程才會運作**:`task_time_scheduling` 背景任務在每次評估週期前都會檢查 `rtcYear == 0`。若 RTC 尚未初始化,任務會先嘗試**自我修復**,呼叫 `executeTool("/syncrtc")` 自動重新同步硬體時鐘。只有在該次同步嘗試也失敗、`rtcYear` 仍為 0 時,任務才會跳過當次週期。這種「先自我修復、再跳過」的策略,避免因暫時性 RTC 初始化失敗而錯過排程任務,同時保證絕不會有任何排程任務在未初始化的時鐘狀態下被觸發。
 
-### 智慧與精準兼具的「雙軌制」排程管理架構 (Dual-Mode Scheduler Management)
-fuClaw 為邊緣端排程管理設計了極具彈性且直覺的雙軌交互機制，讓使用者能依據不同場景自由切換：
+**雙模式排程管理:智慧與精準兼具**:fuClaw 為邊緣端排程管理引入高度靈活且直覺的雙模式互動機制:
 
-* **AI 自然語言語意建置 (AI Natural Language Mode)：**
-  使用者無需理解複雜的 Cron 運算式或程式語法，只需透過 Telegram 或網頁對話框輸入口語化的日常人類語言（例如：*「幫我設定每逢週一到週五的早上 8 點 30 分執行竊盜偵測」*）。雲端 Gemini 會自動精準解析使用者的「意圖（Intent）」與「時間參數」，將其轉譯為結構化的標準 JSON 任務格式發送給韌體。韌體在通過本地安全邊界驗證後，便會即時寫入板載 SD 卡中的 `schedule.json`。
-* **手動網頁 UI 密實管理 (Manual Web UI Mode)：**
-  為了確保在沒有網路、不便發聲或需要絕對精準控制時的實用性，系統同時內建了獨立的排程管理網頁（`index_schedule.html`）。使用者可以直接在圖形化介面上，以像素級的精準度進行排程任務的**手動新增、編輯、修改或即時刪除**。
+* **AI 自然語言解析模式**:使用者無需理解複雜的 Cron 表達式或程式語法,只要透過 Telegram 或聊天介面輸入日常語言(例如:「週一到週五早上 8:30 設定防盜偵測」),雲端的 Gemini 引擎便會自動解析使用者意圖與時間參數,轉換為結構化的 JSON 任務格式送至韌體。經過本地邊界安全驗證後,韌體會即時寫入儲存裝置上的 `schedule.json`。
+* **手動圖形化 Web UI 模式**:為確保離線或安靜環境下的高度可靠與精準控制,系統內建專屬的排程管理 Web 介面(`index_schedule.html`),使用者可透過標準圖形介面以確定性的方式**手動新增、編輯、修改或刪除**任一排程任務。
 
-**✨ 核心架構優勢：**
-這兩種截然不同的控制路徑，在底層會**即時同步讀寫板載 SD 卡上的同一個 `schedule.json` 核心檔案**。這項設計達成了「高彈性自然語言輸入」與「高確定性圖形化管理」的完美融合，確保系統在任何應用情境下皆能提供無縫且強固的操控體驗。
+**✨ 核心架構優勢**:兩條獨立的控制路徑**即時讀寫同一份核心 `schedule.json` 檔案**。此設計在「高度靈活的自然語言輸入」與「高度確定的圖形化管理」之間取得完美平衡,確保在各種部署條件下都有無縫且穩健的使用體驗。
 
 ---
 
 ## 8. FreeRTOS 多工架構
 
-多工設計解決了跨獨立執行關注點的具體並發和排程問題。
+多工設計解決了多個獨立執行面向上具體的並行性與排程問題。
 
-### 任務職責
+| 任務 | Stack | 用途 |
+|------|-------|------|
+| `task_getRequest` | 16384 bytes | 提供 Web 設定與 `/chat` 端點的 HTTP 伺服器 |
+| `task_getRequestStream` | 16384 bytes | 提供 Web 影像串流的 HTTP 伺服器 |
+| `task_getTelegramMessage` | 16384 bytes | 持續對 Telegram 進行長輪詢以接收使用者輸入 |
+| `task_getMqttMessage` | 32768 bytes | MQTT 保持連線、重新連線與收到訊息的派發 |
+| `task_theft_detection` | 6144 bytes | 週期性以視覺進行入侵偵測(每 5 分鐘) |
+| `task_time_scheduling` | 6144 bytes | 排程硬體動作評估(每 1 分鐘),現已套用 `schedule_timeout` |
 
-| 任務 | 堆疊 | 用途 |
-|------|------|------|
-| `task_getRequest` | 16384 位元組 | 用於 Web 設定和 `/chat` 端點的 HTTP 伺服器 |
-| `task_getRequestStream` | 16384 位元組 | 用於 Web 視訊串流的 HTTP 伺服器 |
-| `task_getTelegramMessage` | 16384 位元組 | 連續 Telegram 長輪詢以接收用戶輸入 |
-| `task_getMqttMessage` | 32768 位元組 | MQTT 保持連線、重連和入站訊息派送 |
-| `task_theft_detection` | 6144 位元組 | 定期基於視覺的入侵偵測（每 5 分鐘） |
-| `task_time_scheduling` | 6144 位元組 | 排程硬體動作評估（每 1 分鐘） |
+若這些任務在同一執行緒中運作,排程任務將阻塞使用者輸入,使用者互動也會干擾週期性排程。將其拆分為獨立的 FreeRTOS 任務,讓所有任務得以並行運作——系統能同時對使用者訊息保持回應,並依各自頻率執行背景監控與排程。
 
-若這些在同一執行緒中運行，排程任務會阻塞用戶輸入，而用戶互動會打亂定期排程。將它們拆分為獨立的 FreeRTOS 任務允許所有任務並發運行——系統在對用戶訊息保持響應的同時，在各自的節奏上執行背景監控和排程。
+**資源衝突避免(Telegram 版本)**:背景任務執行前都會呼叫 `botClient.stop()` 並等待 2 秒,避免多個任務同時使用 SSL 網路堆疊——這個細節反映了對嵌入式系統資源競爭的實務經驗。整體使用 `vTaskDelay()` 並搭配正確的 `portTICK_PERIOD_MS`,將 CPU 時間讓給其他任務,而非忙碌等待。
 
-### 資源衝突避免（Telegram 版本）
-在任何背景任務執行之前，它呼叫 `botClient.stop()` 並等待 2 秒再繼續。這防止多個任務同時使用 SSL 網路堆疊——這個細節反映了對嵌入式系統資源競爭的真實實踐經驗。整個程式碼中的 `vTaskDelay()` 呼叫都正確使用了 `portTICK_PERIOD_MS`，讓出 CPU 時間給其他任務，而不是忙等待。
+**非阻塞 MQTT(MQTT 版本)**:MQTT client 在初始化前以 `wifiClient.setNonBlockingMode()` 設定,避免 TCP 堆疊在 I/O 期間阻塞 RTOS 排程器。`task_getMqttMessage` 配置較大的 stack(32768 bytes),以容納 MQTT 函式庫的內部處理與 JPEG 影像負載發布。
 
-### 非阻塞 MQTT（MQTT 版本）
-MQTT 客戶端在初始化前以 `wifiClient.setNonBlockingMode()` 設定，防止 TCP 堆疊在 I/O 期間阻塞 RTOS 排程器。`task_getMqttMessage` 任務獲得更大的堆疊（32768 位元組），以容納 MQTT 函式庫的內部處理和 JPEG 圖像有效負載發布。
+**對 Watchdog 友善的任務設計(ESP32-S3-CAM)**:在 ESP32-S3-CAM 版本中,雙核心排程器需與 ESP-IDF 的 task watchdog(`esp_task_wdt.h`)互動。大型 SSL 傳輸、相機擷取與 JPEG 編碼等長時間阻塞操作之間,會穿插明確的 yield,確保即使在較重的多模態工作負載下 watchdog 仍持續被餵食。
 
-### 選擇性啟用的背景任務
-`task_time_scheduling` 排程任務在 `setup()` 中**預設啟用**。時間排程執行被視為核心執行期能力——建立了排程的用戶預期任務會自動觸發，無需額外設定。`task_theft_detection` 防盜任務則仍以注解塊在 `setup()` 中**預設禁用**。啟用自主視覺入侵偵測是一個具有直接硬體後果的重大行為改變，用戶應該有意識地選擇啟用，而不是在首次燒錄後意外激活，提供一項技能設計的範本。。
+**選擇性啟用的背景任務**:`task_time_scheduling` 在 `setup()` 中**預設啟用**——排程任務的執行被視為核心 runtime 能力,設定排程的使用者預期任務會自動觸發,無需額外設定步驟。相對地,`task_theft_detection` 功能透過 `setup()` 中的註解區塊**預設停用**。啟用自主視覺式入侵偵測是具有直接硬體後果的重大行為變更,使用者應主動選擇啟用,而非在初次燒錄後意外啟動,這也為日後的技能設計樹立了範例。
 
 ---
 
-## 9. 工作流狀態追蹤與自我評估
+## 9. 工作流程狀態追蹤與自我評估
 
 `evaluateWorkflowContinuation()` 是整個 Agent 自主性的核心。
 
-### 主動完成檢查
-每次工具執行後，系統不是靜默地等待用戶的下一條指令，而是主動詢問 Gemini：「當前工作流是否完成？是否還需要其他操作？」這讓系統能夠自主完成多步驟任務，而不需要用戶手動引導每個獨立步驟。
+**主動完成度檢查**:每次工具執行後,系統不會默默等待使用者下一個指令,而是主動詢問 Gemini:「目前的工作流程是否已完成?是否還需要其他動作?」這讓系統能自主完成多步驟任務,無需使用者逐步手動引導每個步驟。
 
-### 目標參考評估
-`task` 參數設計確保此自我評估有明確的參考點。當 Gemini 評估是否繼續時，它與**原始用戶意圖**比較——而不僅僅是最後執行步驟的結果。這使工作流完成偵測更加準確，並減少不必要的重複動作。提示詞還包含去重規則：Gemini 被明確指示不要在同一工作流中重複與其緊接上一回應相同語義的內容。
+**以目標為參照的評估**:`task` 參數的設計確保此自我評估有明確的參照點。Gemini 判斷是否繼續時,比對的是**使用者最初的意圖**,而非僅僅最後一步的執行結果,這讓工作流程完成度的判斷更為準確,並減少不必要的重複動作。提示詞中也包含去重規則:明確指示 Gemini 在同一工作流程中,不得重複前一輪回應的相同語意內容。
 
-### NONE 哨兵值
-當 Gemini 確定工作流完成時，它返回精確的字串 `"NONE"`。韌體在 `handleAgentResponse()` 中使用明確的 `message != "NONE"` 保護來處理此情況——不向用戶發送訊息，不發生進一步處理：
-
-```cpp
-} else if (message != "NONE") {
-    replyUserMessage(workId, message);
-}
-```
-
-這個乾淨的終止信號避免了 AI Agent 常見的失敗模式——為每個自動化步驟生成冗長的「任務完成」確認，這在背景監控情境中會非常干擾。
+**NONE 哨兵值**:當 Gemini 判定工作流程已完成時,會回傳精確的字串 `"NONE"`。韌體在 `handleAgentResponse()` 中以明確的 `message != "NONE"` 條件處理此狀況——不傳送訊息給使用者,也不進行任何後續處理。這個乾淨的終止訊號避免了 AI Agent 常見的失敗模式:為每個自動化步驟都產生冗長的「任務完成」確認訊息,這在背景監控情境中會造成干擾。
 
 ---
 
-## 10. 可擴展感測器與致動器支援
+## 10. 可擴充的感測器與致動器支援
 
-提示詞驅動的工具架構自然地擴展到基本 GPIO 以外更複雜的週邊設備。
+Prompt 驅動的工具架構能自然擴展至基本 GPIO 之外更複雜的周邊裝置。
 
-### 伺服電機控制（`/servo`）
-伺服控制使用以引用傳遞的 `AmebaServo` 實例而不是全局單例，使未來擴展到多個伺服腳位變得簡單。韌體層的角度限制（`constrain(angle, 0, 180)`）提供與現有 GPIO 工具相同的硬體安全保證。未定義的伺服腳位返回結構化錯誤 JSON 而不是靜默失敗，維護系統一致的錯誤契約。在 `servo.attach(pin)` 之前的 `servo.attached()` 檢查防止了冗餘的重新初始化。
+**伺服馬達控制(`/servo`)**:伺服控制使用以參考傳遞的伺服物件(AmebaPro2 使用 `AmebaServo`,ESP32-S3-CAM 版本使用 `ESP32Servo`),而非全域單例,便於未來擴充至多個伺服腳位。韌體層的角度限制(`constrain(angle, 0, 180)`)在兩個平台上提供相同的硬體安全保證。未定義的伺服腳位會回傳結構化錯誤 JSON 而非靜默失敗,維持系統一致的錯誤合約。`servo.attach(pin)` 前的 `servo.attached()` 檢查可避免重複初始化。
 
-### DHT11 溫溼度感測器（`/dht11`）
-DHT11 整合處理感測器的已知失敗模式——在讀取錯誤時返回 `NaN`——使用明確的 `isnan()` 檢查產生結構化的 `dht11_read_failed` 錯誤回應。這被反饋回 Gemini 對話歷史中，允許 AI 對感測器故障進行推理並自然回應（例如「感測器沒有回應——請檢查接線」），而不是將靜默錯誤傳播到下游。
+**DHT11 溫濕度感測器(`/dht11`)**:DHT11 整合處理了該感測器讀取錯誤時回傳 `NaN` 的已知失效模式,透過明確的 `isnan()` 檢查產生結構化的 `dht11_read_failed` 錯誤回應。此結果會回饋至 Gemini 對話歷史,讓 AI 能針對感測器失效做出自然回應(例如:「感測器沒有回應——請檢查接線」),而非將靜默錯誤向下游傳遞。
 
-### 一致的工具契約
-兩個新工具遵循與所有現有工具相同的 JSON 回應契約：表示成功或失敗的 `status` 欄位、識別工具的 `method` 欄位，以及結果資料或失敗時的 `reason` 欄位。這種一致性意味著 `evaluateWorkflowContinuation()` 可以對任何工具結果進行統一推理，無論底層硬體類型如何。
+**一致的工具合約**:兩個新工具皆遵循與所有既有工具相同的 JSON 回應合約——一個 `status` 欄位(`"success"` 或 `"error"`)、一個識別工具的 `method` 欄位,以及結果資料或失敗時的 `reason` 欄位。這種一致性讓 `evaluateWorkflowContinuation()` 能以統一方式推理任何工具結果,無論底層硬體類型或平台為何。
 
 ---
 
-## 11. 雙通訊模式：Telegram Bot 與 MQTT
+## 11. 雙通訊模式:Telegram Bot 與 MQTT
 
-fuClaw 提供兩個通訊變體，各自針對不同的部署場景優化。兩者共享相同的 Gemini 推理引擎、工具派送器和持久記憶系統。
+fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者共享完全相同的 Gemini 推理引擎、工具派發器與持久化記憶系統。
 
-### Telegram Bot 版本
+**Telegram Bot 版本**使用 HTTPS 長輪詢對 `getUpdates` API 進行查詢,維持一條持久的 SSL 連線。設計重點:`chatId` 作為天然的存取控制層,僅有設定的使用者能下達指令,無需額外驗證層;`telegrambotKeyboard` 在 `/help` 回應中注入持久化的回覆鍵盤,讓行動裝置可一鍵存取常用指令;每次輪詢回應中擷取的 `Date:` 標頭以零額外成本提供 RTC 初始化所需的 GMT 時間;語音訊息(OGG/Opus)會被下載、Base64 編碼後直接送至 Gemini STT,整條語音轉動作管線無需任何外部儲存服務;相機影格以 multipart JPEG 方式直接上傳至 Telegram 的 `sendPhoto` API,提供原生的聊天內照片訊息;`replyUserMessage()` 透過 `workId` 前綴(`<BOT>`、`<PAGE>`、`<TIME_SCHEDULING>`、`<THEFT_DETECTION>`)將回覆路由至正確的輸出通道,無需在整個呼叫堆疊中傳遞通道參考。
 
-Telegram 版本在持久的 `WiFiSSLClient` 連線上使用 HTTPS 長輪詢對 `getUpdates` API。主要設計特點：
+**MQTT 版本**使用 `PubSubClient` 連接至 Broker,並使用三個專屬主題:`xxx/subscribe`(接收任意 MQTT client 的使用者指令)、`xxx/publish`(發送文字回覆)、`xxx/publishimage`(發送拍攝的 JPEG 影格)。設計重點包括:以平台前綴加上隨機十六進位後綴產生的 client ID,避免多裝置共用同一 Broker 時的連線衝突;`wifiClient.setNonBlockingMode()` 確保 RTOS 排程器在 Broker I/O 期間不會被卡住;`reconnect()` 以 5 秒重試間隔進行迴圈重連,並在每次成功重連後自動重新訂閱指令主題;將 JPEG 資料發布至獨立的 `publishimage` 主題,讓二進位影像負載與文字回覆流量乾淨分離,便於 Broker 端篩選;標準 MQTT 協定使韌體可與任何 Broker(Mosquitto、HiveMQ、雲端 Broker)搭配使用而無需修改程式碼,只需更新 `env.json`。
 
-- **內建身份識別**：`chatId` 作為自然的存取控制層——只有配置的用戶才能發出指令，無需額外的身份驗證層。
-- **鍵盤快捷鍵**：`telegrambotKeyboard` 在 `/help` 回應中注入持久回覆鍵盤，為常用指令提供手機端一鍵存取。
-- **HTTP Header 時間寄生**：從每次輪詢回應中提取的 `Date:` header 以零額外成本為 RTC 初始化提供 GMT 時間。
-- **語音訊息支援**：Telegram 的語音訊息物件（OGG/Opus）被下載、Base64 編碼並內聯發送到 Gemini STT——整個語音到動作的管線無需外部儲存服務。
-- **圖像傳遞**：相機幀以 multipart JPEG 格式直接上傳到 Telegram 的 `sendPhoto` API，在聊天中傳遞原生照片訊息。
-- **WorkId 路由**：`replyUserMessage()` 函式使用 `workId` 前綴（`<BOT>`、`<PAGE>`、`<TIME_SCHEDULING>`、`<THEFT_DETECTION>`）將回覆路由到正確的輸出通道，而不需要在整個呼叫堆疊中傳遞通道引用。
-
-### MQTT 版本
-
-MQTT 版本使用具有三個專用主題的 `PubSubClient` 代理連線：
-
-| 主題 | 方向 | 用途 |
-|------|------|------|
-| `xxx/subscribe` | 入站 | 接收來自任何 MQTT 客戶端的用戶指令 |
-| `xxx/publish` | 出站 | 發送文字回覆 |
-| `xxx/publishimage` | 出站 | 發送擷取的 JPEG 幀 |
-
-主要設計特點：
-
-- **隨機客戶端 ID**：`"AmebaPro2" + String(random(0xffff), HEX)` 在每次啟動時生成唯一的客戶端標識符，防止多個設備共用同一代理時發生連線衝突。
-- **非阻塞 TCP**：`wifiClient.setNonBlockingMode()` 確保 RTOS 排程器在代理 I/O 期間永遠不會停滯。
-- **自動重連**：`reconnect()` 函式以 5 秒重試間隔循環，每次成功重連後重新訂閱指令主題，無需任何手動干預。
-- **獨立圖像主題**：將 JPEG 資料發布到專用 `publishimage` 主題使二進制圖像有效負載與文字回覆流量乾淨分離，使代理端過濾變得簡單。
-- **代理無關性**：標準 MQTT 協定意味著韌體與任何代理（Mosquitto、HiveMQ、雲端代理）都能工作，無需程式碼變更——只需更新 `env.json`。
-
-### 架構共通性
-儘管傳輸層不同，兩個版本共享完全相同的 `geminiChatRequest()`、`geminiSearchRequest()`、`geminiVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、所有工具處理器以及 SD 卡持久化層的實現。通訊傳輸是唯一的架構差異，使兩個變體的同步維護變得簡單。
+**架構共通性**:儘管傳輸層不同,兩個版本對 `geminiChatRequest()`、`geminiSearchRequest()`、`geminiVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、所有工具處理函式與持久化層的實作完全相同。通訊傳輸是唯一的架構差異,使兩個版本易於同步維護——而這種共通性如今也延伸至兩個受支援的硬體平台之間。
 
 ---
 
 ## 12. Web 設定與聊天介面
 
-### 內建 HTTP 伺服器（`task_getRequest`）
-
-一個專屬的 FreeRTOS 任務在**埠 81** 運行輕量 HTTP 伺服器，提供以下端點：
+**內建 HTTP 伺服器(`task_getRequest`)**:專屬的 FreeRTOS 任務在 **port 81** 上執行輕量 HTTP 伺服器,提供以下端點:
 
 | 端點 | 功能 |
 |------|------|
-| `GET /` | 提供 `index.html`，並預先填入目前憑證 |
-| `GET /updateConfig?{json}` | 將 `env.json` 儲存至 SD 卡並自動重啟 |
-| `GET /agent` | 提供 `index_agent.html`（Agent 設定介面） |
-| `GET /getSoul` | 取得 Soul 內容 |
-| `GET /updateSoul?{data}` | 使用新內容覆寫 Soul 定義 |
-| `GET /getDevice` | 取得 Device 內容 |
-| `GET /updateDevice?{data}` | 使用新內容覆寫 Device 定義 |
-| `GET /getSkill` | 取得 Skill 內容 |
-| `GET /updateSkill?{data}` | 使用新內容覆寫 Skill 定義 |
-| `GET /schedule` | 提供 `index_schedule.html`（排程管理器介面） |
+| `GET /` | 提供已預填目前憑證的 `index.html` |
+| `GET /updateConfig?{json}` | 將 `env.json` 儲存至儲存裝置並觸發自動重開機 |
+| `GET /agent` | 提供 `index_agent.html`(Agent 管理介面) |
+| `GET /getSoul` | 回傳 Soul 內容 |
+| `GET /updateSoul?{data}` | 以新內容覆寫 Soul 定義 |
+| `GET /getDevice` | 回傳 Device 內容 |
+| `GET /updateDevice?{data}` | 以新內容覆寫裝置定義 |
+| `GET /getSkill` | 回傳 Skill 內容 |
+| `GET /updateSkill?{data}` | 以新內容覆寫技能定義 |
+| `GET /schedule` | 提供 `index_schedule.html`(排程管理介面) |
 | `GET /getScheduleTasks` | 回傳原始 `schedule.json` 內容 |
 | `GET /updateScheduleTasks?{json}` | 以新任務陣列覆寫 `schedule.json` |
-| `GET /chat` | 提供 `index_chat.html`（Gemini 網頁聊天介面） |
-| `GET /mqtt` | 提供 `index_mqtt_chat.html`（Gemini 網頁聊天介面） |
+| `GET /chat` | 提供 `index_chat.html`(Gemini Web 聊天介面) |
+| `GET /mqtt` | 提供 `index_mqtt_chat.html`(Gemini Web 聊天介面) |
 | `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
 
-`/updateConfig` 端點在寫入 SD 卡前會驗證傳入資料是否為完整 JSON 物件（`startsWith("{") && endsWith("}")`），防止儲存不完整或損毀的設定。
+`/updateConfig` 端點會在寫入儲存裝置前驗證傳入的內容是否為完整 JSON 物件(`startsWith("{") && endsWith("}")`),避免儲存到部分或損毀的設定。設定頁面也會顯示目前選用的 `gemini_model` 與 `schedule_timeout`,讓使用者可直接在瀏覽器中檢視與變更,無需修改原始碼。
 
-**埠 82** 另設第二個伺服器，直接從相機串流 MJPEG 即時影像。
+另有一個在 **port 82** 上運作的伺服器,直接從相機串流即時 MJPEG 影像。
 
-### AP+STA 雙模並發
-`WiFi.enableConcurrent()` 同時啟動存取點（`192.168.1.1:81`）和站台連線。這意味著即使家用 Wi-Fi 不可用，設備也始終可以透過設定介面存取——這對初始設定和現場恢復是一個關鍵功能。
+**雙 AP+STA 並行模式**:裝置同時啟動一個 Access Point(`192.168.1.1:81`)與一個 Station 連線,即使家中 Wi-Fi 無法使用,裝置仍可供設定連線——這對初次設定與現場復原十分關鍵。
 
-### Web 聊天介面（`index_chat.html`）
-聊天頁面透過 `GET /message?<text>` 與設備通訊——純 HTTP 查詢，無需 WebSocket 或後端伺服器。設計亮點：
+**Web 聊天介面(`index_chat.html`)**:聊天頁面透過 `GET /message?<text>` 與裝置溝通——純 HTTP 查詢,無需 WebSocket 或後端伺服器。設計重點:輸入框會隨內容自動伸縮高度,維持行動裝置畫面整潔;三點跳動動畫作為輸入指示,避免重複送出;當回應內容含 `data:image` 時,訊息泡泡會切換為 HTML 渲染模式,直接於聊天內顯示拍攝影格;網路失敗會以限時浮層提示,不破壞 UI 狀態;`handleAgentResponse()` 針對 `<PAGE>` workId 採用獨立的清理路徑,將 `*` 清單標記轉為 `•` 項目符號並移除程式碼區塊標記,產出乾淨可讀、不含原始 Markdown 語法的內容。
 
-- **自動調整高度的輸入框**：輸入欄位隨內容增長，保持行動端視窗整潔。
-- **打字指示器**：三點彈跳動畫表示 Gemini 正在處理，防止重複提交。
-- **內聯圖像渲染**：當回應包含 `data:image` 時，氣泡切換到 HTML 渲染模式，直接在聊天中顯示擷取的幀。
-- **錯誤提示**：網路失敗以計時覆蓋層呈現，而不是破壞 UI 狀態。
-- **Web 情境的 Markdown 清除**：`handleAgentResponse()` 對 `<PAGE>` workId 應用單獨的清除路徑，將 `*` 列表標記轉換為 `•` 項目符號並刪除圍欄程式碼塊標記，產生乾淨可讀的輸出，不含原始 Markdown 語法。
-
-### Web MQTT 聊天介面（`index_mqtt_chat.html`）
-
-MQTT 版聊天介面專為需要**持續雙向串流**的場景設計，透過 WebSocket 直接連接 MQTT Broker，讓瀏覽器與 fuClaw 之間建立即時的發布／訂閱通道，無需輪詢。設計亮點：
-
-- **側邊欄設定面板**：Broker 位址、連接埠、帳號密碼可在執行期填寫，無需修改程式碼；設定區塊支援折疊，保持介面整潔。
-- **連線狀態指示器**：頂欄的彩色膠囊徽章即時反映連線狀態——綠色呼吸燈（已連線）、琥珀色快閃（連線中）、紅色（斷線），一目了然。
-- **動態 Topic 管理**：使用者可在執行中新增或移除訂閱主題，並為每個 Topic 獨立指定訊息格式（TEXT / HTML / BASE64 / BIN），連線後即時生效，訂閱清單以標籤色碼區分格式類型。
-- **多格式訊息渲染**：收到的 Payload 依 Topic 格式設定自動處理——純文字直接顯示、HTML 原生渲染、Base64 與二進位 Buffer 均自動解碼為內聯圖片，攝影機串流畫面可直接呈現於對話氣泡中。
-- **Topic 標籤標注**：每則收到的訊息上方標注來源 Topic 名稱，多主題同時訂閱時訊息來源清晰可辨。
-- **MQTT 萬用字元支援**：Topic 篩選邏輯實作 `+` 單層與 `#` 多層萬用字元比對，與標準 MQTT 規範相容。
+**透過 MQTT 的 Web 聊天介面(`index_mqtt_chat.html`)**:此介面為需要**持續雙向串流**的情境而設計,直接透過 WebSocket 連接至 MQTT Broker,在瀏覽器與 fuClaw 之間建立即時發布/訂閱通道,無需輪詢。重點功能:側邊欄可即時輸入 Broker 位址、Port、帳號與密碼,無需修改任何程式碼,並以可摺疊區塊保持介面簡潔;頂端的彩色圓點徽章一目了然地呈現連線狀態——常亮綠燈(已連線)、閃爍琥珀(連線中)、紅色(已斷線);主題可在 client 運作期間動態訂閱或取消訂閱,每個主題可獨立指定訊息格式(TEXT / HTML / BASE64 / BIN),連線後立即生效,主題清單以色塊標示格式類型,便於快速辨識;收到的內容會依各主題格式自動處理——純文字原樣顯示、HTML 原生渲染、Base64 字串與二進位 Buffer 皆會解碼為內嵌影像,讓相機影格能直接顯示於聊天泡泡中;每則訊息會標示其來源主題名稱,讓多主題對話保持清楚有條理;主題比對邏輯完整實作 `+`(單層)與 `#`(多層)萬用字元,完全符合 MQTT 規範。
 
 ---
 
-## 13. 輸出淨化與 Markdown 清除
+## 13. 輸出清理與 Markdown 過濾
 
-`handleAgentResponse()` 在將任何自然語言回應路由到用戶之前，應用系統性的文字標準化。對於 Telegram 輸出，HTML 特殊字元（`&`、`<`、`>`）被轉義以防止注入 Telegram 的 HTML 解析模式。對於 Web 聊天輸出，Markdown 格式化人工產物（`**`、`__`、`###`、` ``` `、反引號、`---`）被清除，`* ` 列表標記被轉換為 `•` 項目符號。
+`handleAgentResponse()` 在將任何自然語言回應路由給使用者之前,會進行系統性的文字正規化處理。對 Telegram 輸出而言,HTML 特殊字元(`&`、`<`、`>`)會被轉義,避免注入 Telegram 的 HTML 解析模式。對 Web 聊天輸出而言,Markdown 格式符號(`**`、`__`、`###`、` ``` `、反引號、`---`)會被移除,`* ` 清單標記則會轉換為 `•` 項目符號。
 
-這種雙路徑淨化確保 Gemini 使用 Markdown 格式的傾向不會將原始語法字元洩漏到 Telegram 聊天或 Web UI 中，無論模型的輸出風格如何。
+這套雙路徑清理機制確保無論 Gemini 模型的輸出風格如何,Markdown 格式傾向都不會洩漏原始語法字元至 Telegram 聊天或 Web UI 中。
 
 ---
 
-## 14. 跨設備代理與 MQTT 多模態通訊擴充
+## 14. Agent 對 Agent 與 MQTT 多模態通訊
 
-為了從單一邊緣設備（Standalone Edge Device）演進至**多設備協同運作（Multi-Agent Collaboration）**的物聯網生態系，fuClaw 擴充了其「提示詞編排工具路由機制」（Prompt-Orchestrated Tool Routing），原生新增了三項具備自主通訊能力的邊緣端工具：`/tcpSendMessage`、`/mqttSendMessage` 與 `/mqttSendImage`。
+為了從單一邊緣裝置進化為協作式的**多 Agent 生態系統**,fuClaw 以原生自主通訊工具擴充其 Prompt 驅動工具路由機制:`/tcpSendMessage`、`/mqttSendMessage`、`/mqttSendImage`、`/telegramSendMessage`、`/telegramSendImage`,以及 `/lineSendMessage`。
 
-這使得 Gemini 推理引擎在評估工作流時，不僅能控制本地端的硬體 GPIO（如指示燈、伺服馬達等），還能自主決定何時透過 P2P 網路或 MQTT 代理伺服器（Broker）向外發送狀態遙測、文字告警或原始二進位多媒體載荷。
+這些工具讓 Gemini 推理引擎不僅能操作本地 GPIO,更能自主決定何時將狀態遙測、文字告警或原始二進位資料,透過 P2P 網路、MQTT Broker、Telegram 與 Line 進行傳播。
 
-### 擴充工具合約定義
+**擴充的工具合約**:
 
-| 工具方法 (Method) | 核心職責 (Responsibility) | 限制與安全邊界 (Restrictions & Safety) |
+| 方法 | 職責 | 限制與安全邊界 |
 | :--- | :--- | :--- |
-| `/tcpSendMessage` | 發送直連 P2P 文字訊息至另一台指定的 fuClaw 節點設備。 | 目的端必須在網路可達範圍內，用於輕量級的設備間直接狀態同步。 |
-| `/mqttSendMessage` | 透過已連線的 Broker 將文字載荷發布至指定的 MQTT 主題。 | 依賴 `env.json` 中配置的連線狀態；若與 Broker 斷開會立即回傳 Error JSON。 |
-| `/mqttSendImage` | 擷取並將相機當前的視訊快照（Video Snapshot）以二進位發布至特定 MQTT 主題。 | 受 FreeRTOS 棧監視器保護；大圖傳輸會自動啟用動態分塊緩衝優化。 |
+| `/tcpSendMessage` | 直接以 P2P 文字訊息傳送給另一台指定的 fuClaw 節點 | 目標須網路可達;用於低開銷的邊緣對邊緣同步 |
+| `/mqttSendMessage` | 透過設定的 Broker,將文字負載發布至指定 MQTT 主題 | 依賴 `env.json` 中的連線狀態;Broker 中斷時回傳錯誤 JSON |
+| `/mqttSendImage` | 擷取並推送目前相機快照至指定 MQTT 主題 | 受 FreeRTOS stack 防護監控;大型影像封包使用自動動態分塊緩衝區 |
+| `/telegramSendMessage` | 直接將文字告警推送至設定的 Telegram 聊天,獨立於輪詢迴圈之外 | 重複使用 `env.json` 中的 bot token / chatID;不需要先有使用者訊息即可觸發 |
+| `/telegramSendImage` | 將目前相機影格以原生照片訊息推送至 Telegram | 與 `/still` 相同的影格快取規則;傳輸大小受可用 heap 限制 |
+| `/lineSendMessage` | 將文字通知發布至設定的 Line Bot / Line Notify 端點 | 須提供有效的 Line 頻道 token;傳送失敗時回傳錯誤 JSON |
 
-### 核心設計架構與技術優化
+**架構設計與優化**:
 
-1. **解耦的多代理人協同 (Decoupled Multi-Agent Collaboration — `/tcpSendMessage`)**
-   當 Gemini 引擎評估本地感測器數據（例如偵測到 DHT11 溫濕度超越安全臨界值），並判定需要觸發另一個物理區域的連動設備時，會自主調用 `/tcpSendMessage`。此設計跳過了中央伺服器的中轉，允許邊緣代理人在應用層直接進行「對話式協同」，且整個決策上下文將完整保留在 `memory.md` 中，具備天然的可解釋性。
+1. **去中心化多 Agent 協作(`/tcpSendMessage`)**:當 Gemini 引擎評估本地感測器異常(例如 DHT11 溫度超過閾值)並判斷需要遠端實體區域共同介入時,便會呼叫 `/tcpSendMessage`,繞過集中式伺服器邏輯,讓邊緣 Agent 在應用層直接協商動作,並將操作情境保留於 `memory.md` 中。
+2. **非同步 IoT 發布/訂閱拓樸(`/mqttSendMessage`)**:不同於標準 Telegram 的同步請求-回應迴圈,`/mqttSendMessage` 能進行次秒級的遙測廣播,訊息會直接送往 `env.json` 設定的主題,與工業 IoT 平台、Home Assistant、Node-RED 或自訂的 ESP32/Ameba 子節點開箱即用地整合。
+3. **影格重用與記憶體保護(`/mqttSendImage`、`/telegramSendImage`)**:在高度受限的 FreeRTOS 環境中,以 MQTT 或 HTTPS 傳輸數十 KB 等級的 JPEG 串流存在嚴重的 stack overflow 風險,故採取:**影格快取保留**——延續 `/still` 與 `/vision` 的行為規則,設定 `"frames": false` 可強制工具重用先前 Vision 任務鎖定的既有 JPEG 緩衝區,省去重複的相機感測讀取週期,節省大量 CPU 時脈;**Heap 配置安全**——執行區塊在 `task_getMqttMessage` 緊湊的 stack(配置 32 KB)之外動態配置記憶體(`malloc`/`free`),確保網路 socket 與 SSL 交握過程不會與核心 runtime 爭奪記憶體。
+4. **跨通道通知備援(`/telegramSendMessage`、`/lineSendMessage`)**:由於這兩項工具可在任何推理情境下被觸發——排程任務、防盜偵測或互動聊天——Agent 可同時將同一則告警分發至 Telegram 與 Line,讓部署環境內建通知備援路徑,無需額外的外部自動化伺服器。
 
-2. **非同步物聯網事件發布 (Asynchronous IoT Pub/Sub — `/mqttSendMessage`)**
-   相較於 Telegram 的同步請求-回應（Req-Res）迴圈，`/mqttSendMessage` 提供了亞秒級（Sub-second）的事件廣播能力。訊息能即時發布至 `env.json` 指定的 `mqtt_publishTextTopic` 主題，這讓 fuClaw 能無縫對接開源智慧家居（如 Home Assistant、Node-RED）或現有的標準物聯網節點（如 ESP32、STM32）。
-
-3. **快照複用與記憶體防護 (Frame-Reuse & Memory Shielding — `/mqttSendImage`)**
-   在資源極度受限的 FreeRTOS 環境下，透過 MQTT 傳輸數十 KB 的 JPEG 影像極易引發堆疊溢位（Stack Overflow）。為了解決此痛點：
-   * **幀快取複用機制 (Frame Cache Preservation)：** 補強並繼承了 `/still` 與 `/vision` 的核心邏輯。當傳入 `"frames": false` 時，工具會直接複用先前視覺任務已鎖定在記憶體中的 JPEG 緩衝區，避免重複觸發相機硬體擷取，大幅節省 CPU 週期。
-   * **堆積記憶體安全 (Heap Allocation Safety)：** 傳輸動態影像時，核心採用動態記憶體分配（`malloc`/`free`）而非佔用 `task_getMqttMessage` 的執行緒棧（該棧已配置為 32KB），確保 SSL 網路堆疊與 Wi-Fi 吞吐不會因資源爭奪而引發設備當機。
-     
 ---
 
-## 15. 隱憂與已知限制
+## 15. 跨平台可移植性:AmebaPro2 與 ESP32-S3-CAM
 
-### Token 用量與系統提示詞成本
+fuClaw 的 Prompt 驅動核心從一開始就以跨傳輸層、跨硬體為設計目標,如今程式碼庫已證明這一點——除了原本的 **Realtek AmebaPro2(RTL8735B)** 系列開發板之外,還新增了第二個完整可運作的硬體移植版本:**ESP32-S3-WROOM-CAM** 開發板。
 
-每次呼叫 `geminiChatRequest()` 和 `geminiSearchRequest()` 都會送出完整的 `systemContentTools` 提示詞——包含角色定義、所有已確認的裝置映射、硬體安全規則、技能工作流腳本以及完整的工具路由 schema——加上自啟動以來累積的完整對話歷史。在記憶體充裕但 API 預算有限的裝置上，這會產生複利式的後果。
+**完全不變的部分**:在兩個平台之間,整個推理與協調層完全相同:`geminiChatRequest()`、`geminiSearchRequest()`、`geminiVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、JSON 工具合約,以及 `device.md` / `skill.md` / `soul.md` 的解析邏輯與排程引擎。為其中一個平台撰寫的 `device.md` 或 `skill.md`,只要腳位編號符合目標板確認過的 GPIO 集合,即可不經修改直接在另一平台使用。
 
-- **每次呼叫的固定開銷。**：光是 `systemContentTools` 提示詞本身，在計入使用者訊息或對話歷史之前就可能超過數千個 token。對於一句簡單的問候或事實性問題，這些開銷完全是浪費：不會觸發任何工具、不會碰觸任何裝置，但完整的硬體規則集在每一輪對話中都會通過網路傳送。
+**平台邊界上的差異**:
 
-- **歷史記錄的膨脹。**：`historicalMessages` 只會累加，不會縮減。每次工具執行都會將其 JSON 結果注入回對話中。一個涉及數次硬體操作、一次視覺分析和一次排程任務評估的工作階段，在單次運行週期內就可能累積數千個 token 的歷史。目前沒有滑動視窗或摘要機制：每次後續呼叫都會逐字送出完整歷史。
+| 項目 | AmebaPro2 | ESP32-S3-CAM |
+|---|---|---|
+| 相機擷取 | `VideoStream` | `esp_camera`(`esp_camera_fb_get`/`fb_return`) |
+| 儲存裝置 | `AmebaFatFS`(SD 卡) | `SD_MMC` |
+| 伺服驅動 | `AmebaServo` | `ESP32Servo` |
+| TLS Client | `WiFiSSLClient` | `WiFiClientSecure` |
+| Watchdog | 僅靠 RTOS 任務延遲 | `esp_task_wdt` 於長阻塞呼叫前後明確餵食 |
 
-- **自主工作流下的成本放大。**：`evaluateWorkflowContinuation()` 在每次工具執行後都會觸發額外的 Gemini 呼叫，以評估工作流是否完成。在多步驟工作流中，一條使用者訊息可能導致四到六次 API 往返，每次都攜帶完整的系統提示詞和不斷增長的歷史記錄。因此，單條使用者訊息的實際 token 帳單，可能是表面估算值的五到十倍。
+這些差異全部侷限於各工具處理函式內的硬體抽象呼叫,每個工具回傳的 JSON 請求/回應合約在兩個平台間完全一致,因此 `evaluateWorkflowContinuation()` 與四個前端 Web 頁面都不需要任何平台專屬分支。
 
-- **缺乏提示詞分層路由。**：程式碼中已存在三個已編譯的系統提示詞（`systemContent`、`systemContentNoTools`、`systemContentTools`），但主訊息處理器無論使用者的輸入是否與硬體有任何關聯，都固定選用 `systemContentTools`。一個輕量的前置分類呼叫——只使用角色提示詞加上最後幾筆歷史——就能將純聊天輪次路由到 `systemContent`，避免在大多數互動中送出完整的工具 schema。這個優化在架構上直接可行，但尚未實作。
+**實務意義**:開發者若要將 fuClaw 移植至第三種開發板,只需替換上述五個硬體抽象點。推理引擎、prompt schema、持久化設計與所有四個 Web UI 皆可重複使用而無需修改——使 fuClaw 成為真正跨廠牌的 Agent 框架,而非僅限特定開發板的示範。
+
+---
+
+## 16. 可設定模型與排程容錯時間
+
+`env.json` 兩項小幅新增,在無需重新編譯韌體的前提下,顯著提升了實際部署的彈性。
+
+**可在執行期選擇的 Gemini 模型**:`gemini_model` 現在會從 `env.json` 讀入執行期的 `geminiModel` 字串,並直接代入每一次 `generateContent` 端點呼叫。這表示從某一代 Gemini 模型升級至下一代(例如改用較新的 flash 等級模型),或在發生退化時回退舊版,只是透過 `/updateConfig` 推送的一項設定變更,而非重新燒錄韌體。同一份韌體二進位檔也能依成本或延遲需求,讓不同裝置在艦隊部署時刻意對應不同的模型等級。
+
+**錯過排程的容錯時間窗**:`schedule_timeout` 定義 `task_time_scheduling` 迴圈在排程任務目標時間之後,仍將其視為可觸發的容許分鐘數。由於排程器每分鐘才評估一次,且依賴正確同步的 RTC,若某任務的觸發時間已超過 `schedule_timeout` 分鐘,該任務在本次週期會被視為錯過而非延遲執行——例如可避免「18:00 關窗」的自動化在 RTC 暫時失準或裝置重開機後,於數小時後才延遲觸發。將 `schedule_timeout` 設為 `0` 則會停用此容錯檢查,使排程器永遠嘗試執行任何時間已過的任務。
+
+---
+
+## 17. 限制與已知問題
+
+**Token 用量與 System Prompt 成本**
+
+每一次 `geminiChatRequest()` 與 `geminiSearchRequest()` 呼叫,都會送出完整的 `systemContentTools` prompt——其中包含角色定義、所有已確認的裝置對應、硬體安全規則、技能工作流程腳本與完整的工具路由 schema——再加上開機以來累積的完整對話歷史。在記憶體充裕但 API 預算有限的裝置上,這會帶來累積性的後果。
+
+- **單次呼叫開銷**:`systemContentTools` prompt 本身在計入使用者訊息或對話歷史之前,即可能超過數千 token。對於簡單的問候或事實性問題,這樣的開銷純屬浪費——不會觸發任何工具、不會碰觸任何裝置,但完整的硬體規則集仍會在每一輪對話中傳輸。
+- **歷史持續成長**:`historicalMessages` 採只增不減的方式累積。每次工具執行都會將其 JSON 結果寫回對話中。一次涉及多項硬體動作、一次 Vision 分析與一次排程任務評估的會話,可能在單一開機週期內累積數千 token 的歷史。目前沒有滑動視窗或摘要機制——每次後續呼叫都會原封不動送出整段歷史。
+- **自主工作流程下的成本放大**:`evaluateWorkflowContinuation()` 在每次工具執行後會觸發額外的 Gemini 呼叫以評估工作流程是否完成。在多步驟工作流程中,單一使用者請求可能導致四到六次 API 往返,每一次都帶著完整的 system prompt 與持續增長的歷史。單一使用者訊息的 token 帳單,因此可能是樸素估算的五到十倍。
+- **沒有依複雜度分級的 Prompt 路由**:程式碼庫中存在三組編譯好的 system prompt(`systemContent`、`systemContentNoTools`、`systemContentTools`),但主要訊息處理函式目前一律選用 `systemContentTools`,無論使用者輸入是否與硬體相關。一次僅使用角色 prompt 加上最近幾筆對話歷史的輕量預先分類呼叫,理論上可將單純的對話輪次導向 `systemContent`,避免在大多數互動中送出完整工具 schema——此優化在架構上相當直接,但目前尚未實作。
+- **模型選擇仍為手動,而非自適應**:雖然 `gemini_model` 現已可設定,韌體尚未依請求複雜度自動選擇較輕或較重的模型(例如將簡單聊天導向較小模型,而 Vision/Search 工作流程則導向能力較強的模型)。同一台裝置上的所有請求目前一律使用相同設定的模型,無論任務權重為何。
 
 ---
 
 ## 總結
 
-fuClaw 清楚地證明了一件事：完整的 AI Agent 不需要雲端伺服器。
+fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器。
 
-在一塊沒有作業系統、記憶體以 KB 計算的嵌入式開發板上，fuClaw 實現了完整的 Agent Loop——感知、推理、工具執行、記憶體持久化——全部在板端完成，延遲由網路決定，而非運算能力。
+在沒有作業系統、僅有數十 KB 可定址記憶體的裸機嵌入式開發板上,fuClaw 在裝置端完整實作了感知、推理、工具執行與持久化記憶的 Agent Loop,並橫跨兩個獨立的硬體平台。延遲受限於網路,而非硬體本身。
 
-核心架構突破在於以 Prompt Engineering 取代 Native Function Calling：透過嚴格的 JSON schema 約束 LLM 輸出，再由韌體層驗證並執行，不依賴任何特定 LLM 廠商的 API 擴充，使整個推理引擎具備高度可移植性。
+核心架構洞見在於以 Prompt Engineering 取代原生 function calling:嚴格的 JSON schema 約束 LLM 輸出,再由韌體層驗證並執行——沒有任何廠商專屬的 API 擴充。推理引擎不僅可完全跨 LLM 供應商移植,如同 AmebaPro2 / ESP32-S3-CAM 雙平台移植所證明的,也可完全跨嵌入式廠商移植。
 
-**fuClaw 是一個可運行的參考實作，而非經過生產優化的成品。** 它的設計目標是展示嵌入式硬體在架構層面的可能性，並提供一個完整、可直接執行的起點，而不是一張白紙。雙模式範例程式碼（Telegram 與 MQTT）端對端涵蓋了完整的 Agent Loop，適配新場景只需修改 `soul.md` 與 `device.md`，核心架構無需重新設計。
+**fuClaw 是一份可運作的參考實作,而非已針對生產環境優化的產品**,其設計目的在於展示資源受限嵌入式硬體上架構上的可能性,並提供一個完整、可運行的起點,而非一張空白頁。四種變體範例程式碼(兩種平台 × 兩種傳輸方式)涵蓋了完整的 Agent Loop,若要套用至新情境,只需修改 `soul.md` 與 `device.md`,核心架構無需重新設計。
 
-然而，若要在成本敏感或高頻率使用的環境中部署 fuClaw，需要審慎評估[第 15 節](#15-隱憂與已知限制)所描述的 token 用量問題。目前每次互動都會將完整的系統提示詞與完整的對話歷史送至 Gemini API。對於偶發的個人使用或低流量原型，這個成本微不足道。但對於每天處理數十次互動、長期運行數個月的裝置，或是任何已超出 Gemini API 免費額度的部署場景，累積的 token 消耗在正式上線前都值得仔細評估。
+話雖如此,在成本敏感或高頻率的環境中部署 fuClaw,需要仔細考量第 17 節所描述的 token 經濟學。每一次互動目前都會將完整的 system prompt 與完整的對話歷史送至 Gemini API。對於偶爾的個人使用或低流量原型而言,此成本可忽略不計;但對於每日處理數十次互動、持續運行數月的裝置,或任何已耗盡 Gemini API 免費額度的部署情境而言,累積的 token 支出在正式上線前值得審慎評估。
 
-如果你正在評估以 fuClaw 作為更大型專案的基礎，請將第 14 節視為擴展規模前需要逐一確認的檢查清單。架構本身是穩健的；成本結構只需與你的使用模式相匹配。
+若您正評估以 fuClaw 作為更大型專案的基礎,建議將第 14 節與第 17 節視為擴展規模前的檢查清單。架構本身是穩健的,只需將成本結構與您的使用模式相互配對。
 
 ---
+
+
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
 
