@@ -79,7 +79,6 @@ html, body {
 .logo-sub  { font-size: .68rem; color: var(--text2); margin-left: 4px; }
 
 .conn-pill {
-  margin-left: auto;
   display: flex; align-items: center; gap: 7px;
   padding: 5px 14px;
   background: var(--bg3);
@@ -91,6 +90,22 @@ html, body {
   transition: border-color .2s;
 }
 .conn-pill:hover { border-color: var(--accent); }
+
+.voice-link-btn {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 14px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 20px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: white;
+  text-decoration: none;
+  transition: transform .15s, opacity .15s;
+}
+.voice-link-btn:hover { transform: translateY(-1px); opacity: .92; }
+.voice-link-btn:active { transform: scale(.96); }
 .conn-dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--text3);
@@ -453,6 +468,8 @@ kbd {
 @media (max-width: 600px) {
   .app { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr; }
   .sidebar { max-height: 220px; overflow-y: auto; border-right: none; border-bottom: 1px solid var(--border); }
+  .voice-link-btn { padding: 6px; }
+  .voice-link-btn .voice-link-label { display: none; }
 }
 
 
@@ -475,6 +492,15 @@ kbd {
     </div>
     <span class="logo-text">fuClaw</span>
     <span class="logo-sub">MQTT Chat</span>
+    <a class="voice-link-btn" href="https://fustyles.github.io/webduino/fuClaw_mqtt_chat.html" target="_blank" rel="noopener" title="Open the voice-enabled remote version (https, supports microphone input)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      <span class="voice-link-label">Voice Chat (Remote)</span>
+    </a>
     <div class="conn-pill" onclick="toggleConnect()">
       <div class="conn-dot" id="connDot"></div>
       <span id="connLabel">Disconnected</span>
@@ -880,14 +906,15 @@ function onKey(e) {
   body { padding-bottom: 68px !important; }
 </style>
 <nav class="fc-nav">
-  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Home</span></a>
+  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
+  <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
   <a href="/mqtt" id="fcn-mqtt"     title="MQTT Chat"><span class="fc-ico">&#128225;</span><span>MQTT</span></a>
 </nav>
 <script>
   (function(){
-    var map={"/":"fcn-config","":"fcn-config",
+    var map={"/":"fcn-config","":"fcn-config","/agent":"fcn-agent",
              "/schedule":"fcn-schedule","/chat":"fcn-chat",
              "/mqtt":"fcn-mqtt"};
     var seg=location.pathname.replace(/\/$/,"") || "/";
