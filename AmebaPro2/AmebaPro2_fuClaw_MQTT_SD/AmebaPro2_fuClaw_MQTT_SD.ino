@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-06-26 23:30:00
+Build Date: 2026-07-03 18:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -3788,7 +3788,7 @@ void task_getRequest(void *param) {
           }
           
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
-          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          if (currentLine.startsWith("GET / ") && currentLine.endsWith(" HTTP/1.")) {
             
             mainPageHTML = getStringFromFile(configpageFilename);
 			
@@ -3808,7 +3808,7 @@ void task_getRequest(void *param) {
 
             currentLine = "";            
           }
-          else if ((currentLine.indexOf("GET /updateConfig?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /updateConfig?") && currentLine.endsWith(" HTTP/1.")) {
             
             String workId = String(taskTags[0]) + " " + getRtcTimeString();
             
@@ -3836,21 +3836,21 @@ void task_getRequest(void *param) {
             // executeTool(workId, "/reboot", JsonObject());			
             
           }
-          else if ((currentLine.indexOf("GET /agent") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /agent") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = getStringFromFile(agentpageFilename);
 
             currentLine = "";
 
           }
-          else if ((currentLine.indexOf("GET /getSoul") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /getSoul") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = geminiRole;
 
             currentLine = "";
 
           }
-          else if ((currentLine.indexOf("GET /updateSoul?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /updateSoul?") && currentLine.endsWith(" HTTP/1.")) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSoul?", "");
@@ -3868,14 +3868,14 @@ void task_getRequest(void *param) {
             // executeTool(workId, "/reboot", JsonObject());			
             
           }			  
-          else if ((currentLine.indexOf("GET /getDevice") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /getDevice") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = devicesDefinition;
 
             currentLine = "";
 
           }
-		  else if ((currentLine.indexOf("GET /updateDevice?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+		  else if (currentLine.startsWith("GET /updateDevice?") && currentLine.endsWith(" HTTP/1.")) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateDevice?", "");
@@ -3897,14 +3897,14 @@ void task_getRequest(void *param) {
             // executeTool(workId, "/reboot", JsonObject());			
             
           }
-          else if ((currentLine.indexOf("GET /getSkill") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /getSkill") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = skillsDefinition;
 
             currentLine = "";
 
           } 		  
-          else if ((currentLine.indexOf("GET /updateSkill?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /updateSkill?") && currentLine.endsWith(" HTTP/1.")) {
 
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /updateSkill?", "");
@@ -3922,14 +3922,14 @@ void task_getRequest(void *param) {
             // executeTool(workId, "/reboot", JsonObject());			
             
           }		  
-          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /chat") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = getStringFromFile(chatpageFilename);
 
             currentLine = "";
 
           }
-          else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /mqtt") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = getStringFromFile(mqttchatpageFilename);
       
@@ -3942,7 +3942,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }           
-          else if ((currentLine.indexOf("GET /schedule") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /schedule") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = getStringFromFile(schedulepageFilename);
 			if (mainPageHTML == "")
@@ -3951,7 +3951,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }
-          else if ((currentLine.indexOf("GET /getScheduleTasks") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /getScheduleTasks") && currentLine.endsWith(" HTTP/1.")) {
 
             if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
               mainPageHTML = scheduleTasks;
@@ -3961,7 +3961,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }                                            
-          else if ((currentLine.indexOf("GET /updateScheduleTasks?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /updateScheduleTasks?") && currentLine.endsWith(" HTTP/1.")) {
             
             String workId = String(taskTags[0]) + " " + getRtcTimeString();
             
@@ -3989,7 +3989,7 @@ void task_getRequest(void *param) {
             currentLine = "";        
             
           }
-          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /message?") && currentLine.endsWith(" HTTP/1.")) {
             
             mainPageStatus = true;
 

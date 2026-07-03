@@ -762,20 +762,20 @@ void task_getRequest(void *param) {
           }
           
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
-          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          if (currentLine.startsWith("GET / ") && currentLine.endsWith(" HTTP/1.")) {
             
             mainPageHTML = "Welcome to <a href=\"https://github.com/fustyles/fuClaw\">fuClaw</a> home!";
                 
             currentLine = "";            
           } 
-          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /chat") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = String(INDEX_CHAT_HTML);
 
             currentLine = "";
 
           }             
-          else if ((currentLine.indexOf("GET /mqtt") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+          else if (currentLine.startsWith("GET /mqtt") && currentLine.endsWith(" HTTP/1.")) {
 
             mainPageHTML = String(INDEX_MQTT_CHAT_HTML);
       
@@ -788,7 +788,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }  
-    		  else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP/1.") != -1)) {
+    		  else if (currentLine.startsWith("GET /message?") && currentLine.endsWith(" HTTP/1.")) {
             
             String workId = "<PAGE>";       
 
