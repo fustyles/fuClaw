@@ -17,8 +17,8 @@ Build Date: 2026-07-05 18:30
 // ---------------------------------------------------------
 // WiFi credentials used to join an existing (station) network
 // ---------------------------------------------------------
-String wifiSsid = "3COM";      // SSID of the WiFi network to connect to
-String wifiPassword = "godblessyou"; // Password for the WiFi network above
+String wifiSsid = "xxxxxxxxxx";      // SSID of the WiFi network to connect to
+String wifiPassword = "xxxxxxxxxx"; // Password for the WiFi network above
 
 // ---------------------------------------------------------
 // AP (Access Point) credentials - device also hosts its own network
@@ -214,15 +214,17 @@ void task_getRequest(void *param) {
 // join an existing WiFi network (station mode) concurrently
 // ---------------------------------------------------------
 void initWiFi() {
+
+  WiFi.mode(WIFI_AP_STA);
   
-  WiFi.softAP((char*)apSsid.c_str(), (char*)apPassword.c_str());
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());
 
   for (int i=0;i<2;i++) {  // Retry connecting to the station network up to 2 times
 
     if (wifiSsid=="")
       break;  // No station SSID configured, skip connecting
 
-    WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
     delay(1000);
 
     Serial.println();
@@ -240,7 +242,7 @@ void initWiFi() {
     }
 
     Serial.println("\n");   
-    Serial.println("Main page\nhttp://192.168.1.1");
+    Serial.println("Main page\nhttp://192.168.4.1");
     Serial.println("AP ssid : " + apSsid);
     Serial.println("AP password : " + apPassword);
     Serial.println("\n");  
