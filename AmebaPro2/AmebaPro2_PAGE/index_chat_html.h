@@ -7,7 +7,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>fuClaw — Gemini Chat</title>
+<title>Web page manager</title>
 <style>
   :root {
     --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
@@ -353,7 +353,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     </div>
     <div>
       <div class="header-title">fuClaw</div>
-      <div class="header-sub">Gemini AI Agent</div>
+      <div class="header-sub">Web page manager</div>
     </div>
     <div class="header-status">
       <div class="status-dot" id="statusDot"></div>
@@ -364,8 +364,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   <div class="messages" id="messages">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">&#10022;</div>
-      <div class="empty-title">Start a conversation with Gemini</div>
-      <div class="empty-hint">Enter your message and click Send.<br>fuClaw will invoke Gemini AI.</div>
+      <div class="empty-title">Start a conversation with device</div>
     </div>
   </div>
 
@@ -435,7 +434,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     var msg = document.createElement('div');
     msg.className = 'msg ' + role;
 
-    var avatarChar = role === 'user' ? 'U' : 'AI';
+    var avatarChar = role === 'user' ? 'U' : 'AP';
     var avatarCls  = role === 'user' ? 'user-av' : 'ai-av';
 	
 	var content = isHtml ? text : escHtml(text);
@@ -509,9 +508,15 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     setStatus('thinking');
     showTyping();
 
-    var url = '/message?' + encodeURIComponent(text);
+    var url = '/message';
 
-    fetch(url, { method: 'GET' })
+    fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: encodeURIComponent(text)
+      })
       .then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.text();
