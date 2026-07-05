@@ -241,8 +241,27 @@ void initWiFi() {
       if ((StartTime+5000) < millis())
         break;
     }
-  }
+
+    Serial.println("\n");   
+    Serial.println("Main page\nhttp://192.168.1.1");
+    Serial.println("AP ssid : " + apSsid);
+    Serial.println("AP password : " + apPassword);
+    Serial.println("\n");  
   
+    // If successfully connected to the station WiFi network, blink the LED
+    // and print the assigned IP address for convenience
+    if (WiFi.status() == WL_CONNECTED) {
+      for (int i=0 ; i<3 ; i++) {
+        digitalWrite(ledPin, 1);
+        delay(300);
+        digitalWrite(ledPin, 0);
+        delay(300);      
+      }
+      
+      Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()));
+      Serial.println("\n");   
+    }      
+  }
 }
 
 // ---------------------------------------------------------
@@ -274,28 +293,7 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_task_getRequest failed");
-  }        
-
-  Serial.println("\n");   
-  Serial.println("Main page\nhttp://192.168.1.1");
-  Serial.println("AP ssid : " + apSsid);
-  Serial.println("AP password : " + apPassword);
-  Serial.println("\n");  
-
-  // If successfully connected to the station WiFi network, blink the LED
-  // and print the assigned IP address for convenience
-  if (WiFi.status() == WL_CONNECTED) {
-    for (int i=0 ; i<3 ; i++) {
-      digitalWrite(ledPin, 1);
-      delay(300);
-      digitalWrite(ledPin, 0);
-      delay(300);      
-    }
-    
-    Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()));
-    Serial.println("\n");   
-  }   
-  
+  }         
 }
 
 // Main loop (unused - all work happens in the background task)
