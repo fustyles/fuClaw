@@ -17,8 +17,8 @@ Build Date: 2026-07-05 18:30
 // ---------------------------------------------------------
 // WiFi credentials used to join an existing (station) network
 // ---------------------------------------------------------
-String wifiSsid = "teacher";      // SSID of the WiFi network to connect to
-String wifiPassword = "12345678"; // Password for the WiFi network above
+String wifiSsid = "xxxxxxxxxx";      // SSID of the WiFi network to connect to
+String wifiPassword = "xxxxxxxxxx"; // Password for the WiFi network above
 
 // ---------------------------------------------------------
 // AP (Access Point) credentials - device also hosts its own network
