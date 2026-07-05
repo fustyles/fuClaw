@@ -3895,8 +3895,7 @@ void task_getRequest(void *param) {
     if (client) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
-      while (client.connected()) {
-        
+      while (client.connected() || client.available()) {
         
         if (client.available()) {
           char c = client.read();
@@ -4199,8 +4198,7 @@ void task_getRequestStream(void *param) {
     if (client) {
       String currentLine = "";
 
-      while (client.connected()) {
-        
+      while (client.connected() || client.available()) {
 
         if (client.available()) {
           char c = client.read();
