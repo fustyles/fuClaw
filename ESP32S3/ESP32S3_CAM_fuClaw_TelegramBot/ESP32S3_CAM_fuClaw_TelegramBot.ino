@@ -2273,7 +2273,7 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
   bool headersEnded = false;
   String line = "";
 
-  while (client.connected() && millis() < timeout) {
+  while ((client.connected() || client.available()) && millis() < timeout) {
     while (client.available()) {
       char c = client.read();
 
@@ -2673,7 +2673,7 @@ void task_getRequest(void *param) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
 
-      while (client.connected()) {
+      while (client.connected() || client.available()) {
         esp_task_wdt_reset();
 
         if (client.available()) {
@@ -2934,7 +2934,7 @@ void task_getRequestStream(void *param) {
     if (client) {
       String currentLine = "";
 
-      while (client.connected()) {
+      while (client.connected() || client.available()) {
         esp_task_wdt_reset();
 
         if (client.available()) {
