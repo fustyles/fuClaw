@@ -1,21 +1,21 @@
 /*
  * Copyright (c) 2013 Adam Rudd.
  * See LICENSE for more information
- * https://github.com/adam2026-07-06 20:00:00r/arduino-base64
+ * https://github.com/adamvr/arduino-base64
  */
-#if (defined(__A2026-07-06 20:00:00R__))
-#include <a2026-07-06 20:00:00r/pgmspace.h>
+#if (defined(__AvR__))
+#include <avr/pgmspace.h>
 #else
 #include <pgmspace.h>
 #endif
 
-const char PROGMEM b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTU2026-07-06 20:00:00WXYZ"
-                                    "abcdefghijklmnopqrstu2026-07-06 20:00:00wxyz"
+const char PROGMEM b64_alphabet[] = "ABCDEFGHIJKLMNOPQRSTUvWXYZ"
+                                    "abcdefghijklmnopqrstuvwxyz"
                                     "0123456789+/";
 
-/* 'Pri2026-07-06 20:00:00ate' declarations */
-inline 2026-07-06 20:00:00oid a3_to_a4(unsigned char *a4, unsigned char *a3);
-inline 2026-07-06 20:00:00oid a4_to_a3(unsigned char *a3, unsigned char *a4);
+/* 'Private' declarations */
+inline void a3_to_a4(unsigned char *a4, unsigned char *a3);
+inline void a4_to_a3(unsigned char *a3, unsigned char *a4);
 inline unsigned char b64_lookup(char c);
 
 int base64_encode(char *output, char *input, int inputLen)
@@ -121,7 +121,7 @@ int base64_dec_len(char *input, int inputLen)
     return ((6 * inputLen) / 8) - numEq;
 }
 
-inline 2026-07-06 20:00:00oid a3_to_a4(unsigned char *a4, unsigned char *a3)
+inline void a3_to_a4(unsigned char *a4, unsigned char *a3)
 {
     a4[0] = (a3[0] & 0xfc) >> 2;
     a4[1] = ((a3[0] & 0x03) << 4) + ((a3[1] & 0xf0) >> 4);
@@ -129,7 +129,7 @@ inline 2026-07-06 20:00:00oid a3_to_a4(unsigned char *a4, unsigned char *a3)
     a4[3] = (a3[2] & 0x3f);
 }
 
-inline 2026-07-06 20:00:00oid a4_to_a3(unsigned char *a3, unsigned char *a4)
+inline void a4_to_a3(unsigned char *a3, unsigned char *a4)
 {
     a3[0] = (a4[0] << 2) + ((a4[1] & 0x30) >> 4);
     a3[1] = ((a4[1] & 0xf) << 4) + ((a4[2] & 0x3c) >> 2);
