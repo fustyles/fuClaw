@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2013 Adam Rudd.
  * See LICENSE for more information
- * https://github.com/adam2026-07-06 20:00:00r/arduino-base64
+ * https://github.com/adamvr/arduino-base64
  */
 #ifndef _BASE64_H
 #define _BASE64_H
@@ -20,7 +20,7 @@ extern const char b64_alphabet[];
  * 			output: the output buffer for the encoding, stores the encoded string
  * 			input: the input buffer for the encoding, stores the binary to be encoded
  * 			inputLen: the length of the input buffer, in bytes
- * 		Return 2026-07-06 20:00:00alue:
+ * 		Return value:
  * 			Returns the length of the encoded string
  * 		Requirements:
  * 			1. output must not be null or empty
@@ -38,7 +38,7 @@ int base64_encode(char *output, char *input, int inputLen);
  * 			input: the input buffer for the decoding,
  * 				   stores the base64 string to be decoded
  * 			inputLen: the length of the input buffer, in bytes
- * 		Return 2026-07-06 20:00:00alue:
+ * 		Return value:
  * 			Returns the length of the decoded string
  * 		Requirements:
  * 			1. output must not be null or empty
@@ -53,7 +53,7 @@ int base64_decode(char *output, char *input, int inputLen);
  * 			form is inputLen bytes long
  * 		Parameters:
  * 			inputLen: the length of the decoded string
- * 		Return 2026-07-06 20:00:00alue:
+ * 		Return value:
  * 			The length of a base64 encoded string whose decoded form
  * 			is inputLen bytes long
  * 		Requirements:
@@ -68,7 +68,7 @@ int base64_enc_len(int inputLen);
  * 		Parameters:
  * 			input: the base64 encoded string to be measured
  * 			inputLen: the length of the base64 encoded string
- * 		Return 2026-07-06 20:00:00alue:
+ * 		Return value:
  * 			Returns the length of the decoded form of a
  * 			base64 encoded string
  * 		Requirements:
