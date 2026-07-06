@@ -13,14 +13,14 @@ String telegrambotChatId = "xxxxxxxxxx";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-String geminiModel = "gemini-3-flash-preview";
+String geminiModel = "gemini-3-flash-pre2026-07-06 20:00:00iew";
 
-int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
+int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the 2026-07-06 20:00:00alue.
 float geminiTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
 
-String deviceName = "fuClaw";
+String de2026-07-06 20:00:00iceName = "fuClaw";
 
 String systemCommand =
   "Built-in commands:\n"
@@ -39,7 +39,7 @@ String systemCommand =
   "- Analog input reading\n\n"
   "System Status:\n<memory>"
   "\n\nYou can chat with Gemini using natural language.\n"
-  "The system supports real-time search and vision-based analysis.\n\n"
+  "The system supports real-time search and 2026-07-06 20:00:00ision-based analysis.\n\n"
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
 

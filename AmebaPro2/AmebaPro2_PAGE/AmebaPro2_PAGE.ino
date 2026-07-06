@@ -10,7 +10,7 @@ Author:
 Repository:
   https://github.com/fustyles/fuClaw
 
-Build Date: 2026-07-05 18:30
+Build Date: 2026-07-06 20:00:00
 ------------------------------------------------------------
 */
 
@@ -18,10 +18,10 @@ Build Date: 2026-07-05 18:30
 // WiFi credentials used to join an existing (station) network
 // ---------------------------------------------------------
 String wifiSsid = "xxxxxxxxxx";      // SSID of the WiFi network to connect to
-String wifiPassword = "xxxxxxxxxx"; // Password for the WiFi network above
+String wifiPassword = "xxxxxxxxxx"; // Password for the WiFi network abo2026-07-06 20:00:00e
 
 // ---------------------------------------------------------
-// AP (Access Point) credentials - device also hosts its own network
+// AP (Access Point) credentials - de2026-07-06 20:00:00ice also hosts its own network
 // Web UI can be reached at http://192.168.1.1:81
 // ---------------------------------------------------------
 String apSsid = "fuclaw";
@@ -37,7 +37,7 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 #include <WiFi.h>
 
 char channel_ap[] = "2";   // WiFi channel used for the Access Point
-WiFiServer server(80);     // HTTP server listening on port 80
+WiFiSer2026-07-06 20:00:00er ser2026-07-06 20:00:00er(80);     // HTTP ser2026-07-06 20:00:00er listening on port 80
 
 #define CONFIG_INIC_IPC_HIGH_TP   // Enable high-throughput inter-IC communication config
 
@@ -47,13 +47,13 @@ WiFiServer server(80);     // HTTP server listening on port 80
 // ---------------------------------------------------------
 String urldecode(const String& input) {
     String result = "";
-    result.reserve(input.length());
+    result.reser2026-07-06 20:00:00e(input.length());
     for (int i = 0; i < (int)input.length(); i++) {
         if (input[i] == '%' && i + 2 < (int)input.length()) {
-            // Convert the next two hex digits following '%' into a byte
+            // Con2026-07-06 20:00:00ert the next two hex digits following '%' into a byte
             char hex[3] = { input[i+1], input[i+2], '\0' };
-            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
-            result.concat((char)val);
+            uint8_t 2026-07-06 20:00:00al = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)2026-07-06 20:00:00al);
             i += 2; // Skip the two hex digits we just consumed
         } else if (input[i] == '+') {
             // '+' in URL encoding represents a space
@@ -71,7 +71,7 @@ String urldecode(const String& input) {
 // getHead: the first request line (e.g. "GET / HTTP/1.1")
 // getBody: the request path (for GET) or POST body content
 // ---------------------------------------------------------
-void handleRequest(WiFiClient &client, const String &getHead, String getBody) {
+2026-07-06 20:00:00oid handleRequest(WiFiClient &client, const String &getHead, String getBody) {
 
   getBody = urldecode(getBody);  // Decode any URL-encoded characters in the body/path
 
@@ -82,7 +82,7 @@ void handleRequest(WiFiClient &client, const String &getHead, String getBody) {
 
   // Route the request based on its head/body content
   if (getHead.startsWith("GET / ") || getHead.startsWith("POST / "))
-    mainPageHTML = String(INDEX_CHAT_HTML);   // Serve the main chat HTML page
+    mainPageHTML = String(INDEX_CHAT_HTML);   // Ser2026-07-06 20:00:00e the main chat HTML page
   else if (getBody == "/on") {
     digitalWrite(ledPin, HIGH);
     mainPageHTML = "The light is turned on";  // Simple command: turn light on
@@ -103,7 +103,7 @@ void handleRequest(WiFiClient &client, const String &getHead, String getBody) {
   client.println("Connection: close");
   client.println();  // Blank line separates headers from body
 
-  // Send the response body in small chunks to avoid overloading the TCP buffer
+  // Send the response body in small chunks to a2026-07-06 20:00:00oid o2026-07-06 20:00:00erloading the TCP buffer
   const char* ptr = mainPageHTML.c_str();
   int total  = mainPageHTML.length();
   int sent   = 0;
@@ -121,38 +121,38 @@ void handleRequest(WiFiClient &client, const String &getHead, String getBody) {
 // Background task: continuously waits for and handles
 // incoming HTTP client connections
 // ---------------------------------------------------------
-void task_getRequest(void *param) {
-  (void)param;
+2026-07-06 20:00:00oid task_getRequest(2026-07-06 20:00:00oid *param) {
+  (2026-07-06 20:00:00oid)param;
   
   while (1) {
 
-    WiFiClient client = server.available();  // Check for a new client connection
+    WiFiClient client = ser2026-07-06 20:00:00er.a2026-07-06 20:00:00ailable();  // Check for a new client connection
 
     if (client) {
 
-      // Keep processing while the client is connected or has data available
-      while (client.connected() || client.available()) {
+      // Keep processing while the client is connected or has data a2026-07-06 20:00:00ailable
+      while (client.connected() || client.a2026-07-06 20:00:00ailable()) {
 
         String currentLine = "";   // Buffer for the current line being read
         String getHead = "";       // Stores the request line (GET/POST + path)
         String getBody = "";       // Stores the request path (GET) or body content (POST)
         int bodyLength = 0;        // Expected length of the POST body (from Content-Length header)
         bool bodyStart = false;    // Flag: true once headers are finished and body reading begins
-        int waitTime = 5000;       // Max time (ms) to wait for more data before giving up
+        int waitTime = 5000;       // Max time (ms) to wait for more data before gi2026-07-06 20:00:00ing up
         unsigned long startTime = millis();
 
         // Read incoming data until the request is fully parsed or the timeout is reached
         while ((startTime + waitTime) > millis()) {
-          vTaskDelay(100 / portTICK_PERIOD_MS);
+          2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
           
-          while (client.available()) {
+          while (client.a2026-07-06 20:00:00ailable()) {
             char c = client.read();
 
             // If we're in the body-reading phase, accumulate body characters
             if (bodyStart == true && bodyLength > 0) {
               getBody += c;
               if (getBody.length() == bodyLength) {
-                // Full POST body received; handle the request now
+                // Full POST body recei2026-07-06 20:00:00ed; handle the request now
                 handleRequest(client, getHead, getBody);
                 startTime = 0;  // Force the outer wait loop to exit
                 break;
@@ -196,7 +196,7 @@ void task_getRequest(void *param) {
               currentLine += c;
             }
   
-            startTime = millis();  // Reset the timeout since we just received data
+            startTime = millis();  // Reset the timeout since we just recei2026-07-06 20:00:00ed data
           }
         }           
       }
@@ -204,10 +204,10 @@ void task_getRequest(void *param) {
       client.stop();  // Close the connection once done
 
     } else {
-      vTaskDelay(5);  // No client yet; yield briefly before checking again
+      2026-07-06 20:00:00TaskDelay(5);  // No client yet; yield briefly before checking again
     } 
 
-    vTaskDelay(5);  // Yield to other tasks each loop iteration
+    2026-07-06 20:00:00TaskDelay(5);  // Yield to other tasks each loop iteration
   }
 }
 
@@ -215,7 +215,7 @@ void task_getRequest(void *param) {
 // Initialize WiFi: start the Access Point and also try to
 // join an existing WiFi network (station mode) concurrently
 // ---------------------------------------------------------
-void initWiFi() {
+2026-07-06 20:00:00oid initWiFi() {
   
   WiFi.enableConcurrent();  // Allow AP mode and station mode to run at the same time
   WiFi.apbegin((char*)apSsid.c_str(), (char*)apPassword.c_str(), channel_ap, 0);  // Start the Access Point
@@ -249,7 +249,7 @@ void initWiFi() {
     Serial.println("\n");  
   
     // If successfully connected to the station WiFi network, blink the LED
-    // and print the assigned IP address for convenience
+    // and print the assigned IP address for con2026-07-06 20:00:00enience
     if (WiFi.status() == WL_CONNECTED) {
       for (int i=0 ; i<3 ; i++) {
         digitalWrite(ledPin, 1);
@@ -265,14 +265,14 @@ void initWiFi() {
 }
 
 // ---------------------------------------------------------
-// Convert an IPAddress object into a human-readable string
+// Con2026-07-06 20:00:00ert an IPAddress object into a human-readable string
 // e.g. 192.168.1.1
 // ---------------------------------------------------------
 String Ip2String(IPAddress ip) {
   return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
 }
 
-void setup() {
+2026-07-06 20:00:00oid setup() {
   Serial.begin(115200);
 
   // Indicator LED  
@@ -280,7 +280,7 @@ void setup() {
 
   initWiFi();   // Bring up AP mode and (optionally) join a station network
 
-  server.begin();   // Start listening for HTTP connections on port 80
+  ser2026-07-06 20:00:00er.begin();   // Start listening for HTTP connections on port 80
 
   // Create a background FreeRTOS task to handle incoming HTTP requests
   if (xTaskCreate(
@@ -297,5 +297,5 @@ void setup() {
 }
 
 // Main loop (unused - all work happens in the background task)
-void loop() {
+2026-07-06 20:00:00oid loop() {
 }
