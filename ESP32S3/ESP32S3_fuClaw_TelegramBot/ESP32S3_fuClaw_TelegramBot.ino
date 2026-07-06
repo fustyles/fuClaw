@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-03 18:30:00
+Build Date: 2026-07-06 23:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -1738,7 +1738,7 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
   bool headersEnded = false;
   String line = "";
 
-  while (client.connected() && millis() < timeout) {
+  while ((client.connected() || client.available()) && millis() < timeout) {
     while (client.available()) {
       char c = client.read();
 
@@ -2097,7 +2097,7 @@ void task_getRequest(void *param) {
     if (client) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
-      while (client.connected()) {
+      while (client.connected() || client.available()) {
 		esp_task_wdt_reset();
 		  
         if (client.available()) {
@@ -2590,38 +2590,44 @@ void task_time_scheduling(void *param) {
           String schedule = obj["schedule"].as<String>();
           String item = obj["task"].as<String>();           
 
-          String prompt =
-            "This is a deterministic scheduling execution step. "
-          
-            "\n\nUnfinished scheduled tasks:\n" +
-            item +
-          
-            "\n\nThe task list above already contains ONLY tasks that have not been executed. "
-            "Evaluate EVERY task in this list independently. "
-            "If a task's scheduled time is less than or equal to the current time, "
-            "it MUST be executed immediately. "
-            "Do NOT skip any eligible task. "
-            "More than one task may be eligible at the same time. "
-            "If multiple tasks are eligible, execute ALL of them in the same response. "
-            "Tasks whose scheduled time is still in the future must be ignored. "
-          
-            "Output rules: "
-            "1. If no task is eligible for execution, return EXACTLY: NONE. "
-            "2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
-            "3. Never return natural language. "
-            "4. Never explain. "
-            "5. Never summarize. "
-            "6. Never ask questions. "
-            "7. Never claim success without tool execution results. "
-            "8. Process every task in the provided task list. "
-            "9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
-            "10. Do not stop after the first eligible task.";
+          if ((item.startsWith("{") && item.endsWith("}")) || (item.startsWith("[") && item.endsWith("]"))) {
+			  handleAgentResponse(workId, item);
+          } 
+		  else {
+			  String prompt =
+				"This is a deterministic scheduling execution step. "
+			  
+				"\n\nUnfinished scheduled tasks:\n" +
+				item +
+			  
+				"\n\nThe task list above already contains ONLY tasks that have not been executed. "
+				"Evaluate EvERY task in this list independently. "
+				"If a task's scheduled time is less than or equal to the current time, "
+				"it MUST be executed immediately. "
+				"Do NOT skip any eligible task. "
+				"More than one task may be eligible at the same time. "
+				"If multiple tasks are eligible, execute ALL of them in the same response. "
+				"Tasks whose scheduled time is still in the future must be ignored. "
+			  
+				"Output rules: "
+				"1. If no task is eligible for execution, return EXACTLY: NONE. "
+				"2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
+				"3. Never return natural language. "
+				"4. Never explain. "
+				"5. Never summarize. "
+				"6. Never ask questions. "
+				"7. Never claim success without tool execution results. "
+				"8. Process every task in the provided task list. "
+				"9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
+				"10. Do not stop after the first eligible task.";
 
-          response = geminiChatRequest(workId, prompt);
-          esp_task_wdt_reset();   // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
+			  response = geminiChatRequest(workId, prompt);
+				 // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
 
-          handleAgentResponse(workId, response);
-          esp_task_wdt_reset();   // [WDT FIX] handleAgentResponse may chain another Gemini call
+			  handleAgentResponse(workId, response);
+				 // [WDT FIX] handleAgentResponse may chain another Gemini call
+				 
+          }	
 
           if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
             markExecutedToday(schedule + " " + item);
