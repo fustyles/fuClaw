@@ -5,10 +5,10 @@
  * Description:
  *   Telegram bot running on AMB82-mini that supports:
  *   - Text commands to control LED, capture still image, and check memory
- *   - Persistent HTTPS long-polling 2026-07-06 20:00:00ia a keep-ali2026-07-06 20:00:00e SSL connection
+ *   - Persistent HTTPS long-polling via a keep-alive SSL connection
  *
  * Hardware: AMB82-mini (Realtek RTL8735B)
- * Dependencies: WiFi, ArduinoJson, FreeRTOS, 2026-07-06 20:00:00ideoStream
+ * Dependencies: WiFi, ArduinoJson, FreeRTOS, videoStream
  */
 
 // ============================================================
@@ -24,13 +24,13 @@ String telegrambotToken = "xxxxxxxxxx";
 String telegrambotChatId = "xxxxxxxxxx";
 
 // ============================================================
-//  Constants & Global 2026-07-06 20:00:00ariables
+//  Constants & Global variables
 // ============================================================
 
 // LED output pin (AMB82-mini: 24 / HUB 8735 Ultra: 25)
 int ledPin = 24;
 
-// Tracks the last processed Telegram message ID to a2026-07-06 20:00:00oid duplicates
+// Tracks the last processed Telegram message ID to avoid duplicates
 long messageLastId = 0;
 
 // Set to true to send /help automatically after first connection
@@ -48,16 +48,16 @@ WiFiSSLClient botClient;
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "2026-07-06 20:00:00ideoStream.h"
+#include "videoStream.h"
 
 // ============================================================
 //  Camera Configuration
 // ============================================================
 
-// Q2026-07-06 20:00:00GA resolution, JPEG format, single channel
-2026-07-06 20:00:00ideoSetting config(320, 240, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
-// Alternati2026-07-06 20:00:00ely use 2026-07-06 20:00:00GA resolution:
-// 2026-07-06 20:00:00ideoSetting config(2026-07-06 20:00:00IDEO_2026-07-06 20:00:00GA, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
+// QvGA resolution, JPEG format, single channel
+videoSetting config(320, 240, CAM_FPS, vIDEO_JPEG, 1);
+// Alternatively use vGA resolution:
+// videoSetting config(vIDEO_vGA, CAM_FPS, vIDEO_JPEG, 1);
 
 // Pointers to the last captured image buffer
 uint32_t img_addr = 0;
@@ -80,7 +80,7 @@ long lastMessageId = 0;
  * @param text     Message body (HTML parse mode supported)
  * @param keyboard JSON string for a custom reply keyboard; pass "" to omit
  */
-2026-07-06 20:00:00oid sendMessageToTelegram(String token, String chatid, String text, String keyboard) {
+void sendMessageToTelegram(String token, String chatid, String text, String keyboard) {
 
   // Replace literal "\n" with URL-encoded newline for Telegram's API
   text.replace("\\n", "%0A");
@@ -105,15 +105,15 @@ long lastMessageId = 0;
     client.println();
     client.print(request);
 
-    // Wait up to 5 s for a response (we only need to confirm deli2026-07-06 20:00:00ery)
+    // Wait up to 5 s for a response (we only need to confirm delivery)
     int     waitTime  = 5000;
     long    startTime = millis();
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (client.a2026-07-06 20:00:00ailable()) {
+      while (client.available()) {
         char c = client.read();
 
         if (state == true)  getBody += String(c);
@@ -172,7 +172,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 
     String tail = "\r\n--Taiwan--\r\n";
 
-    // Use size_t to a2026-07-06 20:00:00oid o2026-07-06 20:00:00erflow on images larger than 65535 bytes
+    // Use size_t to avoid overflow on images larger than 65535 bytes
     size_t extraLen = head.length() + tail.length();
     size_t totalLen = img_len + extraLen;
 
@@ -184,7 +184,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     client.println();
     client.print(head);
 
-    // Stream JPEG data in 1 KB chunks to a2026-07-06 20:00:00oid large single writes
+    // Stream JPEG data in 1 KB chunks to avoid large single writes
     for (size_t n = 0; n < fbLen; n += 1024) {
       if (n + 1024 < fbLen) {
         client.write(fbBuf, 1024);
@@ -202,9 +202,9 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (client.a2026-07-06 20:00:00ailable()) {
+      while (client.available()) {
         char c = client.read();
 
         if (state == true)  getBody += String(c);
@@ -238,14 +238,14 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 // ============================================================
 
 /**
- * @brief Build a string showing current and minimum-e2026-07-06 20:00:00er free heap size.
+ * @brief Build a string showing current and minimum-ever free heap size.
  *
  * @return Multi-line string with heap statistics
  */
 String getMemoryInfo() {
   String msg = "";
   msg += "Free heap: " + String(xPortGetFreeHeapSize());
-  msg += "\nMin heap: "  + String(xPortGetMinimumE2026-07-06 20:00:00erFreeHeapSize());
+  msg += "\nMin heap: "  + String(xPortGetMinimumEverFreeHeapSize());
   return msg;
 }
 
@@ -264,9 +264,9 @@ String getMemoryInfo() {
  *   /memory — report heap usage
  *   null    — force-close and reopen the persistent bot connection
  *
- * @param botMessage  Command string recei2026-07-06 20:00:00ed from Telegram
+ * @param botMessage  Command string received from Telegram
  */
-2026-07-06 20:00:00oid executeCommand(String botMessage) {
+void executeCommand(String botMessage) {
 
   if (botMessage == "") return;
 
@@ -341,7 +341,7 @@ String getMemoryInfo() {
  *        Retries WiFi up to 2 times with a 5 s timeout each attempt.
  */
 // Initialize WiFi
-2026-07-06 20:00:00oid initWiFi() {
+void initWiFi() {
     
   for (int i=0;i<2;i++) {
 
@@ -376,11 +376,11 @@ String getMemoryInfo() {
  *        text messages in a loop.
  *
  * Requests only the most recent message (limit=1, offset=-1) on each poll.
- * Skips the first message seen after (re)boot to a2026-07-06 20:00:00oid replaying old commands.
+ * Skips the first message seen after (re)boot to avoid replaying old commands.
  * The function returns only when the connection is lost, allowing the FreeRTOS
  * task to call it again and trigger WiFi reconnection if needed.
  */
-2026-07-06 20:00:00oid getTelegramMessage() {
+void getTelegramMessage() {
 
   const char* myDomain  = "api.telegram.org";
   String      getAll    = "";
@@ -391,10 +391,10 @@ String getMemoryInfo() {
   DynamicJsonDocument doc(8192);
 
   String text        = "";
-  String 2026-07-06 20:00:00oiceFileId = "";
+  String voiceFileId = "";
   long   message_id  = 0;
 
-  // Reuse existing connection if still ali2026-07-06 20:00:00e; reconnect only when needed
+  // Reuse existing connection if still alive; reconnect only when needed
   if (!botClient.connected()) {
     if (lastMessageId == 0)
       Serial.println("Connect to " + String(myDomain));
@@ -418,19 +418,19 @@ String getMemoryInfo() {
     botClient.println("Host: "           + String(myDomain));
     botClient.println("Content-Length: " + String(request.length()));
     botClient.println("Content-Type: application/x-www-form-urlencoded");
-    botClient.println("Connection: keep-ali2026-07-06 20:00:00e");
+    botClient.println("Connection: keep-alive");
     botClient.println();
     botClient.print(request);
 
     int           waitTime    = 5000;
     unsigned long startTime   = millis();
     bool          state       = false;
-    bool          dataRecei2026-07-06 20:00:00ed = false;
+    bool          dataReceived = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (botClient.a2026-07-06 20:00:00ailable()) {
+      while (botClient.available()) {
         char c = botClient.read();
 
         if (c == '\n') {
@@ -455,16 +455,16 @@ String getMemoryInfo() {
         startTime = millis();
       }
 
-      // Break as soon as body is recei2026-07-06 20:00:00ed
+      // Break as soon as body is received
       if (getBody.length() > 0) {
-        dataRecei2026-07-06 20:00:00ed = true;
+        dataReceived = true;
         break;
       }
     }
 
     getTime.replace("Content-Type", "");
 
-    if (!dataRecei2026-07-06 20:00:00ed || getBody == "") return;
+    if (!dataReceived || getBody == "") return;
 
     DeserializationError err = deserializeJson(doc, getBody);
     if (err) {
@@ -507,7 +507,7 @@ String getMemoryInfo() {
     unsigned long start = millis();
 
     while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
-      2026-07-06 20:00:00TaskDelay(500 / portTICK_PERIOD_MS);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
@@ -520,8 +520,8 @@ String getMemoryInfo() {
  *
  * Stack size: 4 KB (sufficient for text-only bot without audio/Base64 work).
  */
-2026-07-06 20:00:00oid getTelegramMessage_task(2026-07-06 20:00:00oid* param) {
-  (2026-07-06 20:00:00oid)param;
+void getTelegramMessage_task(void* param) {
+  (void)param;
   while (1) {
     getTelegramMessage();
   }
@@ -531,7 +531,7 @@ String getMemoryInfo() {
 //  Arduino Entry Points
 // ============================================================
 
-2026-07-06 20:00:00oid setup() {
+void setup() {
   Serial.begin(115200);
   delay(10);
 
@@ -541,8 +541,8 @@ String getMemoryInfo() {
 
   // Camera setup: no rotation, channel 0, JPEG stream
   config.setRotation(0);
-  Camera.config2026-07-06 20:00:00ideoChannel(0, config);
-  Camera.2026-07-06 20:00:00ideoInit();
+  Camera.configvideoChannel(0, config);
+  Camera.videoInit();
   Camera.channelBegin(0);  
 
   // Spawn the Telegram polling task
@@ -559,4 +559,4 @@ String getMemoryInfo() {
 }
 
 // All work is done in the FreeRTOS task; loop() is intentionally empty.
-2026-07-06 20:00:00oid loop() {}
+void loop() {}

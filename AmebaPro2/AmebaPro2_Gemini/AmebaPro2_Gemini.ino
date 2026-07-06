@@ -6,13 +6,13 @@ Author:
 Repository:
   https://github.com/fustyles/fuClaw
 ------------------------------------------------------------
-2026-07-06 20:00:00ersion
+version
 -----------------------------------------------------------
-Build Date: 2026-07-06 20:00:00
+Build Date: 2026-07-06 22:00
 ------------------------------------------------------------
-O2026-07-06 20:00:00er2026-07-06 20:00:00iew
+Overview
 ------------------------------------------------------------
-Realtek Ameba Pro2 de2026-07-06 20:00:00ices:
+Realtek Ameba Pro2 devices:
 
 - AMB82-mini
 - HUB 8735 Ultra
@@ -27,7 +27,7 @@ index_chat.html
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
-Confirmed de2026-07-06 20:00:00ice mappings only.
+Confirmed device mappings only.
 
 AMB82-mini
 - Green LED : GPIO 24
@@ -37,7 +37,7 @@ HUB 8735 Ultra
 - Green LED : GPIO 25
 - Blue LED  : GPIO 26
 - Fill LED  : GPIO 13
-- Button    : GPIO 12 (input only, acti2026-07-06 20:00:00e-low)
+- Button    : GPIO 12 (input only, active-low)
 ------------------------------------------------------------
 Software Stack
 ------------------------------------------------------------
@@ -45,7 +45,7 @@ Software Stack
 - WiFiSSLClient
 - ArduinoJson
 - FreeRTOS
-- 2026-07-06 20:00:00ideoStream
+- videoStream
 - Base64
 ------------------------------------------------------------
 */
@@ -59,26 +59,26 @@ String apSsid = "fuclaw";
 String apPassword = "12345678";
 
 // MQTT broker settings
-String mqttSer2026-07-06 20:00:00er   = "mqttgo.io";                          // Broker hostname or IP
+String mqttServer   = "mqttgo.io";                          // Broker hostname or IP
 uint16_t mqttPort   = 1883;                                  // Standard MQTT port (unencrypted)
-String mqttUser     = "";                                    // Lea2026-07-06 20:00:00e empty if no auth required
-String mqttPassword = "";                                    // Lea2026-07-06 20:00:00e empty if no auth required
+String mqttUser     = "";                                    // Leave empty if no auth required
+String mqttPassword = "";                                    // Leave empty if no auth required
 
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
-//   Publish topics  : de2026-07-06 20:00:00ice pushes text replies and camera images here
+//   Publish topics  : device pushes text replies and camera images here
 String mqttSubscribeTextTopic      = "fuclaw1/subscribe";       // Inbound command topic
 String mqttPublishTextTopic        = "fuclaw1/publish";         // Outbound text reply topic
 String mqttPublishImageTopic       = "fuclaw1/publishimage";    // Outbound JPEG topic
 
-// Stores the MQTT Client ID for this de2026-07-06 20:00:00ice (generated from MAC address to ensure uniqueness)
+// Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
 String wifiClientId = "";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-String geminiModel = "gemini-3-flash-pre2026-07-06 20:00:00iew";
+String geminiModel = "gemini-3-flash-preview";
 
-int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the 2026-07-06 20:00:00alue.
+int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
 String systemContent = "";
@@ -86,14 +86,14 @@ String systemContent = "";
 String mainPageHTML = "";
 bool mainPageStatus = false;
 
-// System prompt that defines assistant beha2026-07-06 20:00:00ior.
-// Must be JSON-safe (a2026-07-06 20:00:00oid in2026-07-06 20:00:00alid escape characters or unsupported symbols).
+// System prompt that defines assistant behavior.
+// Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
 String geminiRole = R"(
-You are a professional assistant with a li2026-07-06 20:00:00ely, natural, and friendly personality, responding according to the user's language.
+You are a professional assistant with a lively, natural, and friendly personality, responding according to the user's language.
 )"; 
   
 // Stores entire chat history in Gemini API JSON format
-// Used to preser2026-07-06 20:00:00e con2026-07-06 20:00:00ersation memory across requests
+// Used to preserve conversation memory across requests
 String historicalMessages = "";
 
 // Indicator LED output pin
@@ -105,7 +105,7 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 WiFiClient wifiClient;
 
 char channel_ap[] = "2";
-WiFiSer2026-07-06 20:00:00er ser2026-07-06 20:00:00er(81);
+WiFiServer server(81);
 
 #include "Base64.h"
 #include <ArduinoJson.h>
@@ -121,11 +121,11 @@ PubSubClient mqttClient(wifiClient);
 #include "index_chat.h";    // TCP Chat
 #include "index_mqtt_chat.h";    // MQTT Chat
 
-#include "2026-07-06 20:00:00ideoStream.h"
+#include "videoStream.h"
 
-// Camera 2026-07-06 20:00:00ideo configuration
-2026-07-06 20:00:00ideoSetting config(320, 240, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
-//2026-07-06 20:00:00ideoSetting config(2026-07-06 20:00:00IDEO_2026-07-06 20:00:00GA, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
+// Camera video configuration
+videoSetting config(320, 240, CAM_FPS, vIDEO_JPEG, 1);
+//videoSetting config(vIDEO_vGA, CAM_FPS, vIDEO_JPEG, 1);
 
 // Captured image buffer address and length
 uint32_t imageAddress = 0;
@@ -136,12 +136,12 @@ uint32_t imageLength = 0;
 // Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
     String result = "";
-    result.reser2026-07-06 20:00:00e(input.length());
+    result.reserve(input.length());
     for (int i = 0; i < (int)input.length(); i++) {
         if (input[i] == '%' && i + 2 < (int)input.length()) {
             char hex[3] = { input[i+1], input[i+2], '\0' };
-            uint8_t 2026-07-06 20:00:00al = (uint8_t)strtol(hex, nullptr, 16);
-            result.concat((char)2026-07-06 20:00:00al);
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
             i += 2;
         } else if (input[i] == '+') {
             result += ' ';
@@ -152,7 +152,7 @@ String urldecode(const String& input) {
     return result;
 }
 
-// Generates a unique MQTT Client ID based on the de2026-07-06 20:00:00ice's Wi-Fi MAC address
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
 String generateMqttClientId() {
   uint8_t mac[6];
   WiFi.macAddress(mac);
@@ -171,7 +171,7 @@ String generateMqttClientId() {
  * @brief Publish a plain-text message to an MQTT topic.
  *
  * Connects (or re-uses an existing connection) to the broker and
- * publishes a single UTF-8 string payload.  The MQTT QoS le2026-07-06 20:00:00el used
+ * publishes a single UTF-8 string payload.  The MQTT QoS level used
  * by PubSubClient::publish() is QoS 0 (at-most-once / fire-and-forget).
  *
  * @param topic  Destination MQTT topic string.
@@ -189,7 +189,7 @@ String mqttSendText(String topic, String text) {
           return "Publishing message to MQTT Failed";
     }
     else
-    	return "Connect to MQTT Ser2026-07-06 20:00:00er Failed";
+    	return "Connect to MQTT Server Failed";
 	
 }
 
@@ -202,8 +202,8 @@ String mqttSendText(String topic, String text) {
  *
  * Two encoding modes are supported:
  *   - Raw binary  (base64 = false, default): the JPEG bytes are streamed
- *     directly in MQTT_MAX_PACKET_SIZE chunks 2026-07-06 20:00:00ia beginPublish / write /
- *     endPublish.  Suitable for subscribers that can recei2026-07-06 20:00:00e binary payloads.
+ *     directly in MQTT_MAX_PACKET_SIZE chunks via beginPublish / write /
+ *     endPublish.  Suitable for subscribers that can receive binary payloads.
  *   - Base64       (base64 = true): the JPEG is Base64-encoded and prefixed
  *     with a data-URI header ("data:image/jpeg;base64,…").  Useful for
  *     web-based MQTT dashboards that render <img src="…"> tags directly.
@@ -257,18 +257,18 @@ String mqttSendImage(String topic, bool base64 = false) {
             // Output buffer for one Base64-encoded group (4 chars + null terminator per 3 input bytes)
             char output[base64_enc_len(3)];
             
-            // Pre-calculate the final string length to a2026-07-06 20:00:00oid repeated heap reallocations during +=
+            // Pre-calculate the final string length to avoid repeated heap reallocations during +=
             //   23            : length of the data-URI prefix "data:image/jpeg;base64,"
-            //   (fbLen+2)/3*4 : Base64 expands e2026-07-06 20:00:00ery 3 bytes → 4 chars (ceiling di2026-07-06 20:00:00ision handles padding)
+            //   (fbLen+2)/3*4 : Base64 expands every 3 bytes → 4 chars (ceiling division handles padding)
             //    1            : null terminator
             size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
             
             // Initialise the String with the data-URI prefix (small initial allocation)
             String imageFile = "data:image/jpeg;base64,";
             
-            // Reser2026-07-06 20:00:00e the full estimated capacity in one shot so subsequent += calls
+            // Reserve the full estimated capacity in one shot so subsequent += calls
             // write into already-allocated space without triggering further heap reallocations
-            imageFile.reser2026-07-06 20:00:00e(estimatedSize);
+            imageFile.reserve(estimatedSize);
             
             // Encode the raw JPEG bytes to Base64 and append to imageFile.
             for (int i = 0; i < fbLen; i++) {
@@ -299,12 +299,12 @@ String mqttSendImage(String topic, bool base64 = false) {
             return "Publishing Photo to MQTT Failed";
 
     } else {
-        return "Connect to MQTT Ser2026-07-06 20:00:00er Failed";
+        return "Connect to MQTT Server Failed";
     }
 	
 }
 
-2026-07-06 20:00:00oid replyUserMessage(String workId, String text) {
+void replyUserMessage(String workId, String text) {
 if (text.startsWith("NONE") || text == "") return;
   
 	if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
@@ -334,7 +334,7 @@ String replyUserImage(String workId) {
                   
       size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
       String imageFile = "<img src='data:image/jpeg;base64,";
-      imageFile.reser2026-07-06 20:00:00e(estimatedSize);
+      imageFile.reserve(estimatedSize);
       
       for (int i = 0; i < fbLen; i++) {
           base64_encode(output, (input++), 3);
@@ -349,7 +349,7 @@ String replyUserImage(String workId) {
   return "";
 }
 
-// Con2026-07-06 20:00:00ert role/content pair into Gemini-compatible JSON message object
+// Convert role/content pair into Gemini-compatible JSON message object
 String buildGeminiMessage(String role, String message, bool comma = true) {
   
   message.replace("\"", "\\\"");
@@ -368,8 +368,8 @@ String buildGeminiMessage(String role, String message, bool comma = true) {
   return jsonMessage;
 }
 
-// Reset con2026-07-06 20:00:00ersation memory to initial system prompt state
-2026-07-06 20:00:00oid geminiChatReset() {
+// Reset conversation memory to initial system prompt state
+void geminiChatReset() {
   
   historicalMessages = "";
 
@@ -394,10 +394,10 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   WiFiSSLClient client;
   String responseText = "";
 
-  if (client.connect("generati2026-07-06 20:00:00elanguage.googleapis.com", 443)) {
-    client.println("POST /2026-07-06 20:00:001beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
-    client.println("Host: generati2026-07-06 20:00:00elanguage.googleapis.com");
+    client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(request.length()));
     client.println();
@@ -411,8 +411,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     bool headersEnded = false;
     String line = "";
 
-    while ((client.connected() || client.a2026-07-06 20:00:00ailable()) && millis() < timeout) {
-      while (client.a2026-07-06 20:00:00ailable()) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
         char c = client.read();
 
         if (!headersEnded) {
@@ -430,7 +430,7 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
           timeout = millis() + 20000;
         }
       }
-      2026-07-06 20:00:00TaskDelay(1);
+      vTaskDelay(1);
     }
     
     client.stop();
@@ -497,11 +497,11 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   WiFiSSLClient client;
   String responseText = "";
 
-  if (client.connect("generati2026-07-06 20:00:00elanguage.googleapis.com", 443)) {
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
     // Send HTTP Request
-    client.println("POST /2026-07-06 20:00:001beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
-    client.println("Host: generati2026-07-06 20:00:00elanguage.googleapis.com");
+    client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(request.length()));
     client.println();
@@ -515,8 +515,8 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
     bool headersEnded = false;
     String line = "";
 
-    while ((client.connected() || client.a2026-07-06 20:00:00ailable()) && millis() < timeout) {
-      while (client.a2026-07-06 20:00:00ailable()) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
         char c = client.read();
 
         if (!headersEnded) {
@@ -533,7 +533,7 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
           timeout = millis() + 20000;
         }
       }
-      2026-07-06 20:00:00TaskDelay(1);
+      vTaskDelay(1);
     }
     
     client.stop();  
@@ -577,15 +577,15 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   return responseText;
 }
 
-// Capture camera frame and send it to Gemini 2026-07-06 20:00:00ision for multimodal analysis
-String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
+// Capture camera frame and send it to Gemini vision for multimodal analysis
+String geminivisionRequest(String workId, String message) {
   String timestamps = "\n" + workId;
   
   historicalMessages += buildGeminiMessage("user", message + timestamps);
 
   WiFiSSLClient client;
   String responseText = "";
-  const char* myDomain = "generati2026-07-06 20:00:00elanguage.googleapis.com";
+  const char* myDomain = "generativelanguage.googleapis.com";
 
   if (client.connect(myDomain, 443)) {
     Camera.getImage(0, &imageAddress, &imageLength);
@@ -606,7 +606,7 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
                   "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
                   imageFile + "\"}}]}]}";
 
-    client.println("POST /2026-07-06 20:00:001beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Host: " + String(myDomain));
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(Data.length()));
@@ -622,8 +622,8 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
     bool headersEnded = false;
     String line = "";
 
-    while ((client.connected() || client.a2026-07-06 20:00:00ailable()) && millis() < timeout) {
-      while (client.a2026-07-06 20:00:00ailable()) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
         char c = client.read();
 
         if (!headersEnded) {
@@ -640,7 +640,7 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
           timeout = millis() + 20000;
         }
       }
-      2026-07-06 20:00:00TaskDelay(1);
+      vTaskDelay(1);
     }
     
     client.stop();   
@@ -661,20 +661,20 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
     } 
     else if (doc["error"]) {
-      responseText = "Gemini 2026-07-06 20:00:00ision API Error: " + doc["error"]["message"].as<String>();
+      responseText = "Gemini vision API Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
     } 
     else {
-      responseText = "Unexpected response from Gemini 2026-07-06 20:00:00ision.";
+      responseText = "Unexpected response from Gemini vision.";
     }
 
   } else {
-    Serial.println("Failed to connect to Gemini API (2026-07-06 20:00:00ision)");
+    Serial.println("Failed to connect to Gemini API (vision)");
     responseText = "Connection failed";
   }
 
   if (responseText == "") {
-    responseText = "Gemini 2026-07-06 20:00:00ision did not respond. Please try again.";
+    responseText = "Gemini vision did not respond. Please try again.";
   }
 
   responseText.replace(timestamps, "");
@@ -685,7 +685,7 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
 }
 
 // Initialize WiFi
-2026-07-06 20:00:00oid initWiFi() {
+void initWiFi() {
     
   for (int i=0;i<2;i++) {
 
@@ -712,19 +712,19 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.
-2026-07-06 20:00:00oid task_getRequest(2026-07-06 20:00:00oid *param) {
-  (2026-07-06 20:00:00oid)param;
+void task_getRequest(void *param) {
+  (void)param;
   while (1) {
 	  
-    WiFiClient client = ser2026-07-06 20:00:00er.a2026-07-06 20:00:00ailable();
+    WiFiClient client = server.available();
 
     if (client) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
 
-      while (client.connected() || client.a2026-07-06 20:00:00ailable()) {
+      while (client.connected() || client.available()) {
 		  
-        if (client.a2026-07-06 20:00:00ailable()) {
+        if (client.available()) {
           char c = client.read();
 
           if (c == '\n') {
@@ -780,7 +780,7 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
 
             mainPageHTML = String(INDEX_MQTT_CHAT_HTML);
       
-            mainPageHTML.replace("mqttSer2026-07-06 20:00:00er", mqttSer2026-07-06 20:00:00er);
+            mainPageHTML.replace("mqttServer", mqttServer);
             mainPageHTML.replace("mqttUser", mqttUser);
             mainPageHTML.replace("mqttPassword", mqttPassword);
             mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
@@ -801,8 +801,8 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
 				
       				if (currentLine == "/still")
       					replyUserImage(workId);
-      				else if (currentLine == "/2026-07-06 20:00:00ision")
-      					replyUserMessage(workId, gemini2026-07-06 20:00:00isionRequest(workId, "Describe the image in detail.")); 
+      				else if (currentLine == "/vision")
+      					replyUserMessage(workId, geminivisionRequest(workId, "Describe the image in detail.")); 
       				else {
       					replyUserMessage(workId, geminiChatRequest(workId, currentLine)); 
       				}
@@ -825,17 +825,17 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
 // ============================================================
 
 /**
- * @brief PubSubClient callback in2026-07-06 20:00:00oked on e2026-07-06 20:00:00ery recei2026-07-06 20:00:00ed MQTT message.
+ * @brief PubSubClient callback invoked on every received MQTT message.
  *
  * PubSubClient does NOT null-terminate the payload buffer, so a local
  * copy is allocated, null-terminated, and forwarded to executeCommand().
  * Memory is freed immediately after the command is dispatched.
  *
- * @param topic    C-string of the topic on which the message arri2026-07-06 20:00:00ed.
+ * @param topic    C-string of the topic on which the message arrived.
  * @param payload  Raw (non-terminated) byte array of the message payload.
- * @param length   Number of 2026-07-06 20:00:00alid bytes in payload[].
+ * @param length   Number of valid bytes in payload[].
  */
-2026-07-06 20:00:00oid callback(char* topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte* payload, unsigned int length) {
 
     String workId = "<MQTT>";
 
@@ -868,18 +868,18 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
  *
  * Loops indefinitely, attempting to connect with the configured client ID,
  * username, and password.  On success, re-subscribes to the command topic
- * to restore message deli2026-07-06 20:00:00ery after a dropped connection.  On failure,
- * waits 5 seconds before retrying to a2026-07-06 20:00:00oid hammering the broker.
+ * to restore message delivery after a dropped connection.  On failure,
+ * waits 5 seconds before retrying to avoid hammering the broker.
  */
-2026-07-06 20:00:00oid reconnect() {
+void reconnect() {
     while (!mqttClient.connected()) {
         
         if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
             // Re-subscribe to the inbound command topic after each reconnect
             mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
         } else {
-            // Wait before retrying to pre2026-07-06 20:00:00ent rapid reconnect storms
-            2026-07-06 20:00:00TaskDelay(5000 / portTICK_PERIOD_MS);
+            // Wait before retrying to prevent rapid reconnect storms
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
         }
     }
 }
@@ -890,17 +890,17 @@ String gemini2026-07-06 20:00:00isionRequest(String workId, String message) {
  * Should be called repeatedly from a dedicated FreeRTOS task.
  * - Detects a dropped connection and triggers reconnect().
  * - Calls mqttClient.loop() which:
- *     1. Sends keep-ali2026-07-06 20:00:00e PINGREQ packets to the broker.
+ *     1. Sends keep-alive PINGREQ packets to the broker.
  *     2. Reads incoming PUBLISH packets and dispatches callback().
  *     3. Handles QoS acknowledgement handshakes (not used here at QoS 0).
  */
-2026-07-06 20:00:00oid task_getMqttMessage(2026-07-06 20:00:00oid* param) {
-    (2026-07-06 20:00:00oid)param;          // Suppress unused-parameter warning
+void task_getMqttMessage(void* param) {
+    (void)param;          // Suppress unused-parameter warning
     while (1) {
       if (!mqttClient.connected()) {
         reconnect();          // Re-establish connection if it was lost
       }
-      mqttClient.loop();        // Process keep-ali2026-07-06 20:00:00e and inbound messages
+      mqttClient.loop();        // Process keep-alive and inbound messages
     }
 }
 
@@ -909,7 +909,7 @@ String Ip2String(IPAddress ip) {
 }
 
 // Arduino setup
-2026-07-06 20:00:00oid setup() {
+void setup() {
   Serial.begin(115200);
 
   // Indicator LED  
@@ -918,13 +918,13 @@ String Ip2String(IPAddress ip) {
   initWiFi();
 
   config.setRotation(0);
-  Camera.config2026-07-06 20:00:00ideoChannel(0, config);
-  Camera.2026-07-06 20:00:00ideoInit();
+  Camera.configvideoChannel(0, config);
+  Camera.videoInit();
   Camera.channelBegin(0);
 
   systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK"); 
     
-  ser2026-07-06 20:00:00er.begin();
+  server.begin();
   
   if (xTaskCreate(
         task_getRequest,
@@ -941,7 +941,7 @@ String Ip2String(IPAddress ip) {
   Serial.println("\n");
   Serial.println("Main page\nhttp://192.168.1.1:81/chat");    
   Serial.println("Web Chat\nhttp://192.168.1.1:81/chat");
-  Serial.println("Web Chat 2026-07-06 20:00:00ia MQTT\nhttp://192.168.1.1:81/mqtt"); 
+  Serial.println("Web Chat via MQTT\nhttp://192.168.1.1:81/mqtt"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println("\n");  
@@ -956,7 +956,7 @@ String Ip2String(IPAddress ip) {
 
     Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()) + ":81");     
     Serial.println("Web Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");
-    Serial.println("Web Chat 2026-07-06 20:00:00ia MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
+    Serial.println("Web Chat via MQTT\nhttp://" + Ip2String(WiFi.localIP()) + ":81/mqtt");        
     Serial.println("\n");   
   }   
 
@@ -964,7 +964,7 @@ String Ip2String(IPAddress ip) {
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
   wifiClientId = generateMqttClientId();    
   wifiClient.setNonBlockingMode();
-  mqttClient.setSer2026-07-06 20:00:00er(mqttSer2026-07-06 20:00:00er.c_str(), mqttPort); // Set broker endpoint
+  mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
   mqttClient.setCallback(callback);                   // Register inbound handler
 
   // Establish the initial MQTT connection and subscribe to the command topic
@@ -985,6 +985,6 @@ String Ip2String(IPAddress ip) {
 }
 
 // Main loop
-2026-07-06 20:00:00oid loop() {
+void loop() {
  
 }

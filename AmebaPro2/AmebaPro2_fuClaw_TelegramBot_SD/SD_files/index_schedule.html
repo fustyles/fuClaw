@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="2026-07-06 20:00:00iewport" content="width=de2026-07-06 20:00:00ice-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>fuClaw Task Scheduler</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -30,11 +30,11 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: 2026-07-06 20:00:00ar(--bg);
-    color: 2026-07-06 20:00:00ar(--text);
-    font-family: 2026-07-06 20:00:00ar(--sans);
-    min-height: 1002026-07-06 20:00:00h;
-    o2026-07-06 20:00:00erflow-x: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
   }
 
   body::before {
@@ -45,7 +45,7 @@
       radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
       radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
       radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
-    pointer-e2026-07-06 20:00:00ents: none;
+    pointer-events: none;
     z-index: 0;
   }
 
@@ -55,7 +55,7 @@
     max-width: 1100px;
     margin: 0 auto;
     padding: 24px 16px 60px;
-    position: relati2026-07-06 20:00:00e;
+    position: relative;
     z-index: 1;
   }
 
@@ -68,7 +68,7 @@
     gap: 12px;
     margin-bottom: 28px;
     padding-bottom: 18px;
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-bottom: 1px solid var(--border);
   }
 
   .logo {
@@ -84,9 +84,9 @@
   }
 
   .logo h1 {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 1.1rem;
-    color: 2026-07-06 20:00:00ar(--accent);
+    color: var(--accent);
     letter-spacing: 0.08em;
     line-height: 1.2;
   }
@@ -94,7 +94,7 @@
   .logo h1 span {
     display: block;
     font-size: 0.65rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     letter-spacing: 0.12em;
     margin-top: 2px;
   }
@@ -103,23 +103,23 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.72rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
   }
 
   .status-dot {
     width: 8px; height: 8px;
     border-radius: 50%;
-    background: 2026-07-06 20:00:00ar(--text-dim);
+    background: var(--text-dim);
     display: inline-block;
     margin-right: 6px;
-    position: relati2026-07-06 20:00:00e;
+    position: relative;
   }
 
   .status-dot.online {
-    background: 2026-07-06 20:00:00ar(--success);
-    box-shadow: 0 0 8px 2026-07-06 20:00:00ar(--success);
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
     animation: pulse 2s infinite;
   }
 
@@ -138,12 +138,12 @@
   }
 
   .btn {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.78rem;
     letter-spacing: 0.06em;
     padding: 8px 18px;
     border: 1px solid;
-    border-radius: 2026-07-06 20:00:00ar(--radius);
+    border-radius: var(--radius);
     cursor: pointer;
     background: transparent;
     transition: all 0.18s;
@@ -154,41 +154,41 @@
   }
 
   .btn-primary {
-    border-color: 2026-07-06 20:00:00ar(--accent);
-    color: 2026-07-06 20:00:00ar(--accent);
+    border-color: var(--accent);
+    color: var(--accent);
   }
-  .btn-primary:ho2026-07-06 20:00:00er {
-    background: 2026-07-06 20:00:00ar(--accent);
+  .btn-primary:hover {
+    background: var(--accent);
     color: #fff;
     box-shadow: 0 4px 16px rgba(79,110,247,0.35);
   }
 
   .btn-success {
-    border-color: 2026-07-06 20:00:00ar(--accent2);
-    color: 2026-07-06 20:00:00ar(--accent2);
+    border-color: var(--accent2);
+    color: var(--accent2);
   }
-  .btn-success:ho2026-07-06 20:00:00er {
-    background: 2026-07-06 20:00:00ar(--accent2);
+  .btn-success:hover {
+    background: var(--accent2);
     color: #fff;
     box-shadow: 0 4px 16px rgba(16,185,129,0.35);
   }
 
   .btn-danger {
-    border-color: 2026-07-06 20:00:00ar(--danger);
-    color: 2026-07-06 20:00:00ar(--danger);
+    border-color: var(--danger);
+    color: var(--danger);
   }
-  .btn-danger:ho2026-07-06 20:00:00er {
-    background: 2026-07-06 20:00:00ar(--danger);
+  .btn-danger:hover {
+    background: var(--danger);
     color: #fff;
     box-shadow: 0 0 16px rgba(255,51,102,0.35);
   }
 
   .btn-warn {
-    border-color: 2026-07-06 20:00:00ar(--warn);
-    color: 2026-07-06 20:00:00ar(--warn);
+    border-color: var(--warn);
+    color: var(--warn);
   }
-  .btn-warn:ho2026-07-06 20:00:00er {
-    background: 2026-07-06 20:00:00ar(--warn);
+  .btn-warn:hover {
+    background: var(--warn);
     color: #fff;
     box-shadow: 0 0 16px rgba(255,107,53,0.35);
   }
@@ -196,7 +196,7 @@
   .btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-    pointer-e2026-07-06 20:00:00ents: none;
+    pointer-events: none;
   }
 
   .toolbar-right {
@@ -214,30 +214,30 @@
   }
 
   .stat-item {
-    background: 2026-07-06 20:00:00ar(--surface);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
-    border-radius: 2026-07-06 20:00:00ar(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     padding: 8px 16px;
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.72rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .stat-item .2026-07-06 20:00:00al {
+  .stat-item .val {
     font-size: 1.1rem;
-    color: 2026-07-06 20:00:00ar(--accent);
+    color: var(--accent);
     font-weight: bold;
   }
 
   /* Table */
   .table-wrap {
-    background: 2026-07-06 20:00:00ar(--surface);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
-    border-radius: 2026-07-06 20:00:00ar(--radius);
-    o2026-07-06 20:00:00erflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
   }
 
   table {
@@ -247,66 +247,66 @@
   }
 
   thead th {
-    background: 2026-07-06 20:00:00ar(--surface2);
-    color: 2026-07-06 20:00:00ar(--text-dim);
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-family: var(--mono);
     font-size: 0.68rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     padding: 11px 14px;
     text-align: left;
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
 
   tbody tr {
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-bottom: 1px solid var(--border);
     transition: background 0.14s;
   }
 
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:ho2026-07-06 20:00:00er { background: rgba(79,110,247,0.04); }
+  tbody tr:hover { background: rgba(79,110,247,0.04); }
 
   tbody td {
     padding: 11px 14px;
-    2026-07-06 20:00:00ertical-align: middle;
+    vertical-align: middle;
   }
 
   .task-cell {
     font-weight: 500;
-    color: 2026-07-06 20:00:00ar(--text);
+    color: var(--text);
     max-width: 220px;
     word-break: break-all;
   }
 
   .offline-tag {
     display: inline-block;
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: 0.04em;
-    color: 2026-07-06 20:00:00ar(--accent2);
+    color: var(--accent2);
     background: rgba(16,185,129,0.1);
     border: 1px solid rgba(16,185,129,0.3);
     border-radius: 5px;
     padding: 1px 5px;
     margin-right: 5px;
-    2026-07-06 20:00:00ertical-align: middle;
+    vertical-align: middle;
   }
 
   .time-cell {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.75rem;
-    color: 2026-07-06 20:00:00ar(--text);
+    color: var(--text);
     white-space: nowrap;
   }
 
-  .time-cell .date-part { color: 2026-07-06 20:00:00ar(--accent); }
-  .time-cell .time-part { color: 2026-07-06 20:00:00ar(--accent3); }
-  .time-cell .wildcard { color: 2026-07-06 20:00:00ar(--warn); }
+  .time-cell .date-part { color: var(--accent); }
+  .time-cell .time-part { color: var(--accent3); }
+  .time-cell .wildcard { color: var(--warn); }
 
   .badge {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.65rem;
     padding: 3px 9px;
     border-radius: 8px;
@@ -317,20 +317,20 @@
 
   .badge-done {
     background: rgba(16,185,129,0.1);
-    color: 2026-07-06 20:00:00ar(--success);
+    color: var(--success);
     border: 1px solid rgba(16,185,129,0.3);
   }
 
   .badge-pending {
     background: rgba(245,158,11,0.1);
-    color: 2026-07-06 20:00:00ar(--warn);
+    color: var(--warn);
     border: 1px solid rgba(245,158,11,0.3);
   }
 
   .badge-locked {
     background: rgba(136,146,176,0.12);
-    color: 2026-07-06 20:00:00ar(--text-dim);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
   }
 
   .actions { white-space: nowrap; }
@@ -339,27 +339,27 @@
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     padding: 5px 8px;
     border-radius: 8px;
     font-size: 0.85rem;
     transition: all 0.16s;
   }
-  .icon-btn:ho2026-07-06 20:00:00er.edit { color: 2026-07-06 20:00:00ar(--accent); border-color: 2026-07-06 20:00:00ar(--accent); }
-  .icon-btn:ho2026-07-06 20:00:00er.del  { color: 2026-07-06 20:00:00ar(--danger); border-color: 2026-07-06 20:00:00ar(--danger); }
+  .icon-btn:hover.edit { color: var(--accent); border-color: var(--accent); }
+  .icon-btn:hover.del  { color: var(--danger); border-color: var(--danger); }
 
   /* Empty state */
   .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: 2026-07-06 20:00:00ar(--text-dim);
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    color: var(--text-dim);
+    font-family: var(--mono);
     font-size: 0.8rem;
   }
   .empty-state .big { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; }
 
   /* Modal */
-  .modal-o2026-07-06 20:00:00erlay {
+  .modal-overlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -369,18 +369,18 @@
     justify-content: center;
     backdrop-filter: blur(3px);
   }
-  .modal-o2026-07-06 20:00:00erlay.open { display: flex; }
+  .modal-overlay.open { display: flex; }
 
   .modal {
-    background: 2026-07-06 20:00:00ar(--surface);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
-    border-radius: 2026-07-06 20:00:00ar(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     width: 90%;
     max-width: 560px;
     box-shadow: 0 8px 40px rgba(79,110,247,0.15), 0 2px 8px rgba(0,0,0,0.08);
     animation: fadeIn 0.18s ease;
-    max-height: 902026-07-06 20:00:00h;
-    o2026-07-06 20:00:00erflow-y: auto;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 
   @keyframes fadeIn {
@@ -393,34 +393,34 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
-    background: 2026-07-06 20:00:00ar(--surface2);
-    border-radius: 2026-07-06 20:00:00ar(--radius) 2026-07-06 20:00:00ar(--radius) 0 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 
   .modal-header h2 {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.9rem;
-    color: 2026-07-06 20:00:00ar(--accent);
+    color: var(--accent);
     letter-spacing: 0.08em;
   }
 
   .modal-close {
     background: none;
     border: none;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     cursor: pointer;
     font-size: 1.2rem;
     padding: 2px 8px;
     border-radius: 2px;
     transition: color 0.15s;
   }
-  .modal-close:ho2026-07-06 20:00:00er { color: 2026-07-06 20:00:00ar(--danger); }
+  .modal-close:hover { color: var(--danger); }
 
   .modal-body { padding: 20px; }
   .modal-footer {
     padding: 14px 20px;
-    border-top: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-top: 1px solid var(--border);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -438,9 +438,9 @@
 
   .form-group label {
     display: block;
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.68rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     letter-spacing: 0.1em;
     margin-bottom: 6px;
     text-transform: uppercase;
@@ -448,10 +448,10 @@
 
   .form-group input, .form-group select {
     width: 100%;
-    background: 2026-07-06 20:00:00ar(--bg);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
-    color: 2026-07-06 20:00:00ar(--text);
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
     font-size: 0.82rem;
     padding: 8px 12px;
     border-radius: 8px;
@@ -459,27 +459,27 @@
     transition: border-color 0.16s;
   }
   .form-group input:focus, .form-group select:focus {
-    border-color: 2026-07-06 20:00:00ar(--accent);
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
   }
-  .form-group input.in2026-07-06 20:00:00alid { border-color: 2026-07-06 20:00:00ar(--danger); }
+  .form-group input.invalid { border-color: var(--danger); }
 
   .form-group small {
     display: block;
     font-size: 0.65rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     margin-top: 4px;
   }
 
   .section-label {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.68rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
+    color: var(--text-dim);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin: 18px 0 10px;
     padding-bottom: 6px;
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -496,13 +496,13 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.78rem;
-    color: 2026-07-06 20:00:00ar(--text);
+    color: var(--text);
   }
 
   .toggle {
-    position: relati2026-07-06 20:00:00e;
+    position: relative;
     width: 40px;
     height: 22px;
     flex-shrink: 0;
@@ -511,8 +511,8 @@
   .slider {
     position: absolute;
     inset: 0;
-    background: 2026-07-06 20:00:00ar(--surface2);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: 22px;
     cursor: pointer;
     transition: all 0.2s;
@@ -526,8 +526,8 @@
     border-radius: 50%;
     transition: all 0.2s;
   }
-  .toggle input:checked + .slider { background: rgba(16,185,129,0.15); border-color: 2026-07-06 20:00:00ar(--accent2); }
-  .toggle input:checked + .slider::before { transform: translateX(18px); background: 2026-07-06 20:00:00ar(--success); }
+  .toggle input:checked + .slider { background: rgba(16,185,129,0.15); border-color: var(--accent2); }
+  .toggle input:checked + .slider::before { transform: translateX(18px); background: var(--success); }
   .toggle input:disabled + .slider { opacity: 0.35; cursor: not-allowed; }
 
   .hint-box {
@@ -536,8 +536,8 @@
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.72rem;
-    color: 2026-07-06 20:00:00ar(--warn);
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    color: var(--warn);
+    font-family: var(--mono);
     margin-top: 14px;
     display: none;
   }
@@ -545,18 +545,18 @@
 
   /* Confirm modal */
   .confirm-icon { font-size: 2.8rem; text-align: center; margin-bottom: 10px; }
-  .confirm-msg { font-size: 0.88rem; line-height: 1.7; color: 2026-07-06 20:00:00ar(--text); margin-bottom: 6px; }
+  .confirm-msg { font-size: 0.88rem; line-height: 1.7; color: var(--text); margin-bottom: 6px; }
   .confirm-detail {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.7rem;
-    color: 2026-07-06 20:00:00ar(--text-dim);
-    background: 2026-07-06 20:00:00ar(--bg);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    color: var(--text-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 10px 14px;
     margin-top: 12px;
     max-height: 140px;
-    o2026-07-06 20:00:00erflow-y: auto;
+    overflow-y: auto;
     line-height: 1.6;
   }
 
@@ -569,35 +569,35 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    pointer-e2026-07-06 20:00:00ents: none;
+    pointer-events: none;
   }
 
   .toast-item {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     padding: 10px 18px;
     border-radius: 8px;
     border: 1px solid;
-    pointer-e2026-07-06 20:00:00ents: none;
+    pointer-events: none;
     animation: slideIn 0.22s ease, fadeOut 0.3s ease 2.7s forwards;
     max-width: 320px;
   }
 
   .toast-item.success {
     background: rgba(16,185,129,0.1);
-    border-color: 2026-07-06 20:00:00ar(--success);
+    border-color: var(--success);
     color: #059669;
   }
   .toast-item.error {
     background: rgba(239,68,68,0.1);
-    border-color: 2026-07-06 20:00:00ar(--danger);
-    color: 2026-07-06 20:00:00ar(--danger);
+    border-color: var(--danger);
+    color: var(--danger);
   }
   .toast-item.info {
     background: rgba(79,110,247,0.1);
-    border-color: 2026-07-06 20:00:00ar(--accent);
-    color: 2026-07-06 20:00:00ar(--accent);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   @keyframes slideIn {
@@ -609,7 +609,7 @@
   }
 
   /* Loading */
-  .loading-o2026-07-06 20:00:00erlay {
+  .loading-overlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -621,27 +621,27 @@
     gap: 16px;
     backdrop-filter: blur(2px);
   }
-  .loading-o2026-07-06 20:00:00erlay.show { display: flex; }
+  .loading-overlay.show { display: flex; }
 
   .spinner {
     width: 40px; height: 40px;
-    border: 2px solid 2026-07-06 20:00:00ar(--border);
-    border-top-color: 2026-07-06 20:00:00ar(--accent);
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .loading-text {
-    font-family: 2026-07-06 20:00:00ar(--mono);
+    font-family: var(--mono);
     font-size: 0.75rem;
-    color: 2026-07-06 20:00:00ar(--accent);
+    color: var(--accent);
     letter-spacing: 0.1em;
     animation: blink 1s step-end infinite;
   }
   @keyframes blink { 50% { opacity: 0.3; } }
 
-  /* Responsi2026-07-06 20:00:00e */
+  /* Responsive */
   @media (max-width: 700px) {
     .hide-sm { display: none !important; }
     .form-row { grid-template-columns: 1fr; }
@@ -653,11 +653,11 @@
 </head>
 <body>
 
-<di2026-07-06 20:00:00 class="container">
+<div class="container">
   <!-- Header -->
   <header>
-    <di2026-07-06 20:00:00 class="logo">
-      <s2026-07-06 20:00:00g class="chip-icon" 2026-07-06 20:00:00iewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/s2026-07-06 20:00:00g">
+    <div class="logo">
+      <svg class="chip-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="10" y="10" width="20" height="20" rx="2" stroke="#00d4ff" stroke-width="1.5" fill="rgba(0,212,255,0.06)"/>
         <rect x="14" y="14" width="12" height="12" rx="1" stroke="#00d4ff" stroke-width="1" fill="rgba(0,212,255,0.1)"/>
         <line x1="7" y1="15" x2="10" y2="15" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
@@ -672,37 +672,37 @@
         <line x1="15" y1="30" x2="15" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="20" y1="30" x2="20" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="25" y1="30" x2="25" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
-      </s2026-07-06 20:00:00g>
+      </svg>
       <h1>FUCLAW SCHEDULER
-        <span>TASK MANAGEMENT CONSOLE 2026-07-06 20:00:001.0</span>
+        <span>TASK MANAGEMENT CONSOLE v1.0</span>
       </h1>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="status-bar">
+    </div>
+    <div class="status-bar">
       <span id="connStatus"><span class="status-dot" id="connDot"></span><span id="connLabel">Offline</span></span>
       <span class="hide-sm" id="lastSync">—</span>
-    </di2026-07-06 20:00:00>
+    </div>
   </header>
 
   <!-- Toolbar -->
-  <di2026-07-06 20:00:00 class="toolbar">
+  <div class="toolbar">
     <button class="btn btn-primary" onclick="fetchSchedule()">⬇ Load Schedule</button>
     <button class="btn btn-success" onclick="openAddModal()">＋ Add Task</button>
     <button class="btn btn-warn" onclick="clearExecuted()">✕ Clear Executed Tasks</button>
-    <di2026-07-06 20:00:00 class="toolbar-right">
-      <button class="btn btn-success" id="sa2026-07-06 20:00:00eBtn" onclick="confirmSa2026-07-06 20:00:00e()" disabled>⬆ Sa2026-07-06 20:00:00e to Chip</button>
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
+    <div class="toolbar-right">
+      <button class="btn btn-success" id="saveBtn" onclick="confirmSave()" disabled>⬆ Save to Chip</button>
+    </div>
+  </div>
 
   <!-- Stats -->
-  <di2026-07-06 20:00:00 class="stats">
-    <di2026-07-06 20:00:00 class="stat-item"><span>All</span><span class="2026-07-06 20:00:00al" id="statTotal">0</span></di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="stat-item"><span>Pending</span><span class="2026-07-06 20:00:00al" id="statPending" style="color:2026-07-06 20:00:00ar(--warn)">0</span></di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="stat-item"><span>Executed</span><span class="2026-07-06 20:00:00al" id="statDone" style="color:2026-07-06 20:00:00ar(--accent2)">0</span></di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="stat-item"><span>Recurring</span><span class="2026-07-06 20:00:00al" id="statRecur" style="color:2026-07-06 20:00:00ar(--accent)">0</span></di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
+  <div class="stats">
+    <div class="stat-item"><span>All</span><span class="val" id="statTotal">0</span></div>
+    <div class="stat-item"><span>Pending</span><span class="val" id="statPending" style="color:var(--warn)">0</span></div>
+    <div class="stat-item"><span>Executed</span><span class="val" id="statDone" style="color:var(--accent2)">0</span></div>
+    <div class="stat-item"><span>Recurring</span><span class="val" id="statRecur" style="color:var(--accent)">0</span></div>
+  </div>
 
   <!-- Table -->
-  <di2026-07-06 20:00:00 class="table-wrap">
+  <div class="table-wrap">
     <table>
       <thead>
         <tr>
@@ -715,114 +715,114 @@
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="6"><di2026-07-06 20:00:00 class="empty-state"><di2026-07-06 20:00:00 class="big">📡</di2026-07-06 20:00:00>No data loaded. Please click "Load Schedule".</di2026-07-06 20:00:00></td></tr>
+        <tr><td colspan="6"><div class="empty-state"><div class="big">📡</div>No data loaded. Please click "Load Schedule".</div></td></tr>
       </tbody>
     </table>
-  </di2026-07-06 20:00:00>
-</di2026-07-06 20:00:00>
+  </div>
+</div>
 
 <!-- ======= Edit / Add Modal ======= -->
-<di2026-07-06 20:00:00 class="modal-o2026-07-06 20:00:00erlay" id="editModal">
-  <di2026-07-06 20:00:00 class="modal">
-    <di2026-07-06 20:00:00 class="modal-header">
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
       <h2 id="modalTitle">[ Add Task ]</h2>
       <button class="modal-close" onclick="closeModal('editModal')">✕</button>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="modal-body">
-      <di2026-07-06 20:00:00 class="form-row single">
-        <di2026-07-06 20:00:00 class="form-group">
+    </div>
+    <div class="modal-body">
+      <div class="form-row single">
+        <div class="form-group">
           <label>Task Description</label>
           <input type="text" id="fTask" placeholder="Example: Turn on green light" maxlength="4000">
-          <small>Plain text is sa2026-07-06 20:00:00ed as a regular task; a 2026-07-06 20:00:00alid JSON object (e.g. {"type":"tool_call",...}) is sa2026-07-06 20:00:00ed as structured data</small>
-        </di2026-07-06 20:00:00>
-      </di2026-07-06 20:00:00>
+          <small>Plain text is saved as a regular task; a valid JSON object (e.g. {"type":"tool_call",...}) is saved as structured data</small>
+        </div>
+      </div>
 
-      <di2026-07-06 20:00:00 class="section-label">📅 Date (enter 0 for wildcard / recurring)</di2026-07-06 20:00:00>
+      <div class="section-label">📅 Date (enter 0 for wildcard / recurring)</div>
 
-      <di2026-07-06 20:00:00 class="form-row three">
-        <di2026-07-06 20:00:00 class="form-group">
+      <div class="form-row three">
+        <div class="form-group">
           <label>Year (0 = ignore)</label>
-          <input type="number" id="fYear" min="0" max="9999" 2026-07-06 20:00:00alue="0">
-          <small>0 = E2026-07-06 20:00:00ery year</small>
-        </di2026-07-06 20:00:00>
-        <di2026-07-06 20:00:00 class="form-group">
+          <input type="number" id="fYear" min="0" max="9999" value="0">
+          <small>0 = Every year</small>
+        </div>
+        <div class="form-group">
           <label>Month (0 = ignore)</label>
-          <input type="number" id="fMonth" min="0" max="12" 2026-07-06 20:00:00alue="0">
-          <small>0 = E2026-07-06 20:00:00ery month</small>
-        </di2026-07-06 20:00:00>
-        <di2026-07-06 20:00:00 class="form-group">
+          <input type="number" id="fMonth" min="0" max="12" value="0">
+          <small>0 = Every month</small>
+        </div>
+        <div class="form-group">
           <label>Day (0 = ignore)</label>
-          <input type="number" id="fDay" min="0" max="31" 2026-07-06 20:00:00alue="0">
-          <small>0 = E2026-07-06 20:00:00ery day</small>
-        </di2026-07-06 20:00:00>
-      </di2026-07-06 20:00:00>
+          <input type="number" id="fDay" min="0" max="31" value="0">
+          <small>0 = Every day</small>
+        </div>
+      </div>
 
-      <di2026-07-06 20:00:00 class="section-label">🕐 Time</di2026-07-06 20:00:00>
+      <div class="section-label">🕐 Time</div>
 
-      <di2026-07-06 20:00:00 class="form-row three">
-        <di2026-07-06 20:00:00 class="form-group">
+      <div class="form-row three">
+        <div class="form-group">
           <label>Hour (0–23)</label>
-          <input type="number" id="fHour" min="0" max="23" 2026-07-06 20:00:00alue="0">
-        </di2026-07-06 20:00:00>
-        <di2026-07-06 20:00:00 class="form-group">
+          <input type="number" id="fHour" min="0" max="23" value="0">
+        </div>
+        <div class="form-group">
           <label>Minute (0–59)</label>
-          <input type="number" id="fMinute" min="0" max="59" 2026-07-06 20:00:00alue="0">
-        </di2026-07-06 20:00:00>
-        <di2026-07-06 20:00:00 class="form-group">
+          <input type="number" id="fMinute" min="0" max="59" value="0">
+        </div>
+        <div class="form-group">
           <label>Second (0–59)</label>
-          <input type="number" id="fSecond" min="0" max="59" 2026-07-06 20:00:00alue="0">
-        </di2026-07-06 20:00:00>
-      </di2026-07-06 20:00:00>
+          <input type="number" id="fSecond" min="0" max="59" value="0">
+        </div>
+      </div>
 
-      <di2026-07-06 20:00:00 class="toggle-row">
-        <di2026-07-06 20:00:00 class="toggle-wrap">
+      <div class="toggle-row">
+        <div class="toggle-wrap">
           <label class="toggle">
             <input type="checkbox" id="fExecuted">
             <span class="slider"></span>
           </label>
           <span>Executed</span>
-        </di2026-07-06 20:00:00>
-        <span id="executedNote" style="font-size:0.68rem;font-family:2026-07-06 20:00:00ar(--mono);color:2026-07-06 20:00:00ar(--text-dim)"></span>
-      </di2026-07-06 20:00:00>
+        </div>
+        <span id="executedNote" style="font-size:0.68rem;font-family:var(--mono);color:var(--text-dim)"></span>
+      </div>
 
-      <di2026-07-06 20:00:00 class="hint-box" id="wildcardHint">
-        ⚠ When wildcard 2026-07-06 20:00:00alues (0) are used in date fields, the task is treated as recurring and "Executed" is forced to false.
-      </di2026-07-06 20:00:00>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="modal-footer">
-      <button class="btn" style="border-color:2026-07-06 20:00:00ar(--border);color:2026-07-06 20:00:00ar(--text-dim)" onclick="closeModal('editModal')">Cancel</button>
-      <button class="btn btn-success" onclick="sa2026-07-06 20:00:00eRow()">Confirm Sa2026-07-06 20:00:00e</button>
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
-</di2026-07-06 20:00:00>
+      <div class="hint-box" id="wildcardHint">
+        ⚠ When wildcard values (0) are used in date fields, the task is treated as recurring and "Executed" is forced to false.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="border-color:var(--border);color:var(--text-dim)" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-success" onclick="saveRow()">Confirm Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- ======= Confirm Modal ======= -->
-<di2026-07-06 20:00:00 class="modal-o2026-07-06 20:00:00erlay" id="confirmModal">
-  <di2026-07-06 20:00:00 class="modal" style="max-width:440px">
-    <di2026-07-06 20:00:00 class="modal-header">
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
       <h2 id="confirmTitle">[ Confirm Action ]</h2>
       <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="modal-body">
-      <di2026-07-06 20:00:00 class="confirm-icon" id="confirmIcon">⚠️</di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="confirm-msg" id="confirmMsg"></di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="confirm-detail" id="confirmDetail" style="display:none"></di2026-07-06 20:00:00>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="modal-footer">
-      <button class="btn" style="border-color:2026-07-06 20:00:00ar(--border);color:2026-07-06 20:00:00ar(--text-dim)" onclick="closeModal('confirmModal')">Cancel</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirmIcon">⚠️</div>
+      <div class="confirm-msg" id="confirmMsg"></div>
+      <div class="confirm-detail" id="confirmDetail" style="display:none"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="border-color:var(--border);color:var(--text-dim)" onclick="closeModal('confirmModal')">Cancel</button>
       <button class="btn btn-success" id="confirmOkBtn" onclick="confirmOk()">Confirm</button>
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
-</di2026-07-06 20:00:00>
+    </div>
+  </div>
+</div>
 
 <!-- Toast container -->
-<di2026-07-06 20:00:00 id="toast"></di2026-07-06 20:00:00>
+<div id="toast"></div>
 
 <!-- Loading -->
-<di2026-07-06 20:00:00 class="loading-o2026-07-06 20:00:00erlay" id="loading">
-  <di2026-07-06 20:00:00 class="spinner"></di2026-07-06 20:00:00>
-  <di2026-07-06 20:00:00 class="loading-text" id="loadingText">PROCESSING...</di2026-07-06 20:00:00>
-</di2026-07-06 20:00:00>
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">PROCESSING...</div>
+</div>
 
 <script>
 // ===== State =====
@@ -834,9 +834,9 @@ let dirty = false;
 // ===== DOM helpers =====
 const $ = id => document.getElementById(id);
 
-function setDirty(2026-07-06 20:00:00al) {
-  dirty = 2026-07-06 20:00:00al;
-  $('sa2026-07-06 20:00:00eBtn').disabled = !2026-07-06 20:00:00al;
+function setDirty(val) {
+  dirty = val;
+  $('saveBtn').disabled = !val;
 }
 
 // ===== Format helpers =====
@@ -873,7 +873,7 @@ function enforceRule(item) {
 function renderTable() {
   const tbody = $('tableBody');
   if (!schedule.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><di2026-07-06 20:00:00 class="empty-state"><di2026-07-06 20:00:00 class="big">📋</di2026-07-06 20:00:00>No schedule data a2026-07-06 20:00:00ailable</di2026-07-06 20:00:00></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="big">📋</div>No schedule data available</div></td></tr>`;
     updateStats(); return;
   }
   tbody.innerHTML = schedule.map((item, i) => {
@@ -885,10 +885,10 @@ function renderTable() {
     else badge = `<span class="badge badge-pending">◉ Pending</span>`;
 
     return `<tr>
-      <td style="font-family:2026-07-06 20:00:00ar(--mono);font-size:0.7rem;color:2026-07-06 20:00:00ar(--text-dim)">${i+1}</td>
+      <td style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${i+1}</td>
       <td class="task-cell">${taskCellHtml(item.task)}</td>
       <td>${formatSchedule(item.schedule)}</td>
-      <td class="hide-sm"><span style="font-family:2026-07-06 20:00:00ar(--mono);font-size:0.7rem;color:2026-07-06 20:00:00ar(--text-dim)">${typ}</span></td>
+      <td class="hide-sm"><span style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${typ}</span></td>
       <td>${badge}</td>
       <td class="actions">
         <button class="icon-btn edit" title="Edit" onclick="openEditModal(${i})">✎</button>
@@ -935,7 +935,7 @@ function isToolCallStep(t) {
 // task can be one tool_call step, or an array of tool_call steps (an offline sequence)
 function isOfflineTask(task) {
   if (isToolCallStep(task)) return true;
-  if (Array.isArray(task) && task.length > 0 && task.e2026-07-06 20:00:00ery(isToolCallStep)) return true;
+  if (Array.isArray(task) && task.length > 0 && task.every(isToolCallStep)) return true;
   return false;
 }
 
@@ -964,7 +964,7 @@ function taskCellHtml(task) {
   if (typeof task === 'string') return escHtml(task);
   if (isOfflineTask(task)) {
     const text = offlineTaskSummary(task);
-    return `<span class="offline-tag" title="Runs offline on the de2026-07-06 20:00:00ice, no cloud connection required">OFFLINE</span> ${escHtml(text)}`;
+    return `<span class="offline-tag" title="Runs offline on the device, no cloud connection required">OFFLINE</span> ${escHtml(text)}`;
   }
   try { return escHtml(JSON.stringify(task)); } catch (e) { return escHtml(String(task)); }
 }
@@ -981,12 +981,12 @@ async function fetchSchedule() {
     renderTable();
     setDirty(false);
     setConnected(true);
-    toast('✓ Schedule data retrie2026-07-06 20:00:00ed successfully', 'success');
+    toast('✓ Schedule data retrieved successfully', 'success');
     $('lastSync').textContent = 'Last sync： ' + new Date().toLocaleTimeString('zh-TW') +" [zh-TW]";
   } catch(e) {
     setConnected(false);
     toast('✗ Unable to connect to chip：' + e.message, 'error');
-    // De2026-07-06 20:00:00 fallback demo data
+    // Dev fallback demo data
     if (schedule.length === 0) loadDemoData();
   } finally {
     hideLoading();
@@ -1002,39 +1002,39 @@ function loadDemoData() {
   toast('⚑ Sample data loaded (offline mode)', 'info');
 }
 
-// ===== Sa2026-07-06 20:00:00e to chip =====
-function confirmSa2026-07-06 20:00:00e() {
+// ===== Save to chip =====
+function confirmSave() {
   const json = JSON.stringify(schedule, null, 2);
-  $('confirmTitle').textContent = '[ Confirm sa2026-07-06 20:00:00ing to chip ]';
+  $('confirmTitle').textContent = '[ Confirm saving to chip ]';
   $('confirmIcon').textContent = '💾';
-  $('confirmMsg').innerHTML = `Proceeding to <code style="color:2026-07-06 20:00:00ar(--accent)">GET /updateSchedule</code> Sa2026-07-06 20:00:00e <strong style="color:2026-07-06 20:00:00ar(--accent2)">${schedule.length}  schedule items</strong> to the chip.<br>This operation will o2026-07-06 20:00:00erwrite existing data on the chip. Do you want to continue?`;
+  $('confirmMsg').innerHTML = `Proceeding to <code style="color:var(--accent)">GET /updateSchedule</code> Save <strong style="color:var(--accent2)">${schedule.length}  schedule items</strong> to the chip.<br>This operation will overwrite existing data on the chip. Do you want to continue?`;
   const detail = $('confirmDetail');
   detail.style.display = 'block';
   detail.textContent = json;
   $('confirmOkBtn').className = 'btn btn-success';
-  pendingAction = 'sa2026-07-06 20:00:00e';
+  pendingAction = 'save';
   openModal('confirmModal');
 }
 
-async function doSa2026-07-06 20:00:00e() {
+async function doSave() {
   showLoading('Writing to chip...');
   try {
     const json = JSON.stringify(schedule);
     // 存檔前自我驗證：確保序列化後的內容可被正確 parse 回來，避免把壞資料寫上 chip
     try {
       JSON.parse(json);
-    } catch (2026-07-06 20:00:00erifyErr) {
-      throw new Error('Data is not 2026-07-06 20:00:00alid JSON, aborting sa2026-07-06 20:00:00e: ' + 2026-07-06 20:00:00erifyErr.message);
+    } catch (verifyErr) {
+      throw new Error('Data is not valid JSON, aborting save: ' + verifyErr.message);
     }
     const url = '/updateScheduleTasks?' + encodeURIComponent(json);
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     setDirty(false);
     setConnected(true);
-    toast('✓ Schedules successfully sa2026-07-06 20:00:00ed to chip', 'success');
+    toast('✓ Schedules successfully saved to chip', 'success');
     $('lastSync').textContent = 'Last sync:' + new Date().toLocaleTimeString('zh-TW');
   } catch(e) {
-    toast('✗ Sa2026-07-06 20:00:00e failed: ' + e.message, 'error');
+    toast('✗ Save failed: ' + e.message, 'error');
   } finally {
     hideLoading();
   }
@@ -1044,13 +1044,13 @@ async function doSa2026-07-06 20:00:00e() {
 function openAddModal() {
   editIndex = -1;
   $('modalTitle').textContent = '[ Add Task ]';
-  $('fTask').2026-07-06 20:00:00alue = '';
-  $('fYear').2026-07-06 20:00:00alue = 0;
-  $('fMonth').2026-07-06 20:00:00alue = 0;
-  $('fDay').2026-07-06 20:00:00alue = 0;
-  $('fHour').2026-07-06 20:00:00alue = 8;
-  $('fMinute').2026-07-06 20:00:00alue = 0;
-  $('fSecond').2026-07-06 20:00:00alue = 0;
+  $('fTask').value = '';
+  $('fYear').value = 0;
+  $('fMonth').value = 0;
+  $('fDay').value = 0;
+  $('fHour').value = 8;
+  $('fMinute').value = 0;
+  $('fSecond').value = 0;
   $('fExecuted').checked = false;
   $('fExecuted').disabled = true;
   updateWildcardHint();
@@ -1061,22 +1061,22 @@ function openEditModal(i) {
   editIndex = i;
   const item = schedule[i];
   $('modalTitle').textContent = `[ Edit Schedule #${i+1} ]`;
-  $('fTask').2026-07-06 20:00:00alue = typeof item.task === 'string' ? item.task : JSON.stringify(item.task);
-  $('fYear').2026-07-06 20:00:00alue = item.schedule.year;
-  $('fMonth').2026-07-06 20:00:00alue = item.schedule.month;
-  $('fDay').2026-07-06 20:00:00alue = item.schedule.day;
-  $('fHour').2026-07-06 20:00:00alue = item.schedule.hour;
-  $('fMinute').2026-07-06 20:00:00alue = item.schedule.minute;
-  $('fSecond').2026-07-06 20:00:00alue = item.schedule.second;
+  $('fTask').value = typeof item.task === 'string' ? item.task : JSON.stringify(item.task);
+  $('fYear').value = item.schedule.year;
+  $('fMonth').value = item.schedule.month;
+  $('fDay').value = item.schedule.day;
+  $('fHour').value = item.schedule.hour;
+  $('fMinute').value = item.schedule.minute;
+  $('fSecond').value = item.schedule.second;
   $('fExecuted').checked = item.executed;
   updateWildcardHint();
   openModal('editModal');
 }
 
 function updateWildcardHint() {
-  const y = parseInt($('fYear').2026-07-06 20:00:00alue) || 0;
-  const m = parseInt($('fMonth').2026-07-06 20:00:00alue) || 0;
-  const d = parseInt($('fDay').2026-07-06 20:00:00alue) || 0;
+  const y = parseInt($('fYear').value) || 0;
+  const m = parseInt($('fMonth').value) || 0;
+  const d = parseInt($('fDay').value) || 0;
   const wild = y === 0 || m === 0 || d === 0;
   $('wildcardHint').classList.toggle('show', wild);
   $('fExecuted').disabled = wild;
@@ -1084,23 +1084,23 @@ function updateWildcardHint() {
 }
 
 ['fYear','fMonth','fDay'].forEach(id => {
-  $(id).addE2026-07-06 20:00:00entListener('input', updateWildcardHint);
+  $(id).addEventListener('input', updateWildcardHint);
 });
 
-function sa2026-07-06 20:00:00eRow() {
-  const raw = $('fTask').2026-07-06 20:00:00alue.trim();
-  if (!raw) { $('fTask').classList.add('in2026-07-06 20:00:00alid'); $('fTask').focus(); return; }
-  $('fTask').classList.remo2026-07-06 20:00:00e('in2026-07-06 20:00:00alid');
+function saveRow() {
+  const raw = $('fTask').value.trim();
+  if (!raw) { $('fTask').classList.add('invalid'); $('fTask').focus(); return; }
+  $('fTask').classList.remove('invalid');
 
   const task = parseTaskInput(raw);
 
   const s = {
-    year:   parseInt($('fYear').2026-07-06 20:00:00alue) || 0,
-    month:  parseInt($('fMonth').2026-07-06 20:00:00alue) || 0,
-    day:    parseInt($('fDay').2026-07-06 20:00:00alue) || 0,
-    hour:   parseInt($('fHour').2026-07-06 20:00:00alue) || 0,
-    minute: parseInt($('fMinute').2026-07-06 20:00:00alue) || 0,
-    second: parseInt($('fSecond').2026-07-06 20:00:00alue) || 0,
+    year:   parseInt($('fYear').value) || 0,
+    month:  parseInt($('fMonth').value) || 0,
+    day:    parseInt($('fDay').value) || 0,
+    hour:   parseInt($('fHour').value) || 0,
+    minute: parseInt($('fMinute').value) || 0,
+    second: parseInt($('fSecond').value) || 0,
   };
   const executed = $('fExecuted').checked;
   const item = { task, schedule: s, executed };
@@ -1122,7 +1122,7 @@ function sa2026-07-06 20:00:00eRow() {
 function confirmDelete(i) {
   $('confirmTitle').textContent = '[ Confirm deletion ]';
   $('confirmIcon').textContent = '🗑️';
-  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:2026-07-06 20:00:00ar(--danger)"># ${i+1}</strong> ?<br><span style="color:2026-07-06 20:00:00ar(--text-dim);font-size:0.8rem">"${escHtml(taskDisplay(schedule[i].task))}"</span>`;
+  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:var(--danger)"># ${i+1}</strong> ?<br><span style="color:var(--text-dim);font-size:0.8rem">"${escHtml(taskDisplay(schedule[i].task))}"</span>`;
   $('confirmDetail').style.display = 'none';
   $('confirmOkBtn').className = 'btn btn-danger';
   pendingAction = () => {
@@ -1140,7 +1140,7 @@ function clearExecuted() {
   if (!count) { toast('No completed schedules to clear', 'info'); return; }
   $('confirmTitle').textContent = '[ Clear executed schedules ]';
   $('confirmIcon').textContent = '🧹';
-  $('confirmMsg').innerHTML = `This will delete <strong style="color:2026-07-06 20:00:00ar(--warn)">${count}</strong> completed one-time schedules (recurring schedules will not be affected).`;
+  $('confirmMsg').innerHTML = `This will delete <strong style="color:var(--warn)">${count}</strong> completed one-time schedules (recurring schedules will not be affected).`;
   $('confirmDetail').style.display = 'none';
   $('confirmOkBtn').className = 'btn btn-warn';
   pendingAction = () => {
@@ -1155,17 +1155,17 @@ function clearExecuted() {
 // ===== Confirm modal =====
 function confirmOk() {
   closeModal('confirmModal');
-  if (pendingAction === 'sa2026-07-06 20:00:00e') { doSa2026-07-06 20:00:00e(); }
+  if (pendingAction === 'save') { doSave(); }
   else if (typeof pendingAction === 'function') { pendingAction(); }
   pendingAction = null;
 }
 
 // ===== Modal helpers =====
 function openModal(id) { $(id).classList.add('open'); }
-function closeModal(id) { $(id).classList.remo2026-07-06 20:00:00e('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
 
-document.querySelectorAll('.modal-o2026-07-06 20:00:00erlay').forEach(el => {
-  el.addE2026-07-06 20:00:00entListener('click', e => { if (e.target === el) closeModal(el.id); });
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
 });
 
 // ===== Loading =====
@@ -1173,15 +1173,15 @@ function showLoading(msg) {
   $('loadingText').textContent = msg || 'PROCESSING...';
   $('loading').classList.add('show');
 }
-function hideLoading() { $('loading').classList.remo2026-07-06 20:00:00e('show'); }
+function hideLoading() { $('loading').classList.remove('show'); }
 
 // ===== Toast =====
 function toast(msg, type = 'info') {
-  const el = document.createElement('di2026-07-06 20:00:00');
+  const el = document.createElement('div');
   el.className = `toast-item ${type}`;
   el.textContent = msg;
   $('toast').appendChild(el);
-  setTimeout(() => el.remo2026-07-06 20:00:00e(), 3200);
+  setTimeout(() => el.remove(), 3200);
 }
 
 // ===== Connection status =====
@@ -1194,9 +1194,9 @@ function setConnected(ok) {
 renderTable();
 </script>
 
-<!-- fuClaw Global Na2026-07-06 20:00:00 Bar -->
+<!-- fuClaw Global Nav Bar -->
 <style>
-  .fc-na2026-07-06 20:00:00 {
+  .fc-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
     background: rgba(255,255,255,.92);
     backdrop-filter: blur(16px);
@@ -1207,7 +1207,7 @@ renderTable();
     box-shadow: 0 -4px 24px rgba(79,110,247,.10);
     font-family: -apple-system,'Segoe UI','Noto Sans TC',sans-serif;
   }
-  .fc-na2026-07-06 20:00:00 a {
+  .fc-nav a {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 3px; text-decoration: none;
@@ -1216,29 +1216,29 @@ renderTable();
     -webkit-tap-highlight-color: transparent;
     padding: 6px 2px 4px;
   }
-  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er { color: #4f6ef7; }
-  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e { color: #4f6ef7; }
-  .fc-na2026-07-06 20:00:00 a .fc-ico {
+  .fc-nav a:hover { color: #4f6ef7; }
+  .fc-nav a.fc-active { color: #4f6ef7; }
+  .fc-nav a .fc-ico {
     width: 28px; height: 28px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.05rem; transition: background .2s, transform .15s;
   }
-  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
-  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er .fc-ico { background: rgba(79,110,247,.07); }
+  .fc-nav a.fc-active .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
+  .fc-nav a:hover .fc-ico { background: rgba(79,110,247,.07); }
   body { padding-bottom: 68px !important; }
 </style>
-<na2026-07-06 20:00:00 class="fc-na2026-07-06 20:00:00">
+<nav class="fc-nav">
   <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
   <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
-</na2026-07-06 20:00:00>
+</nav>
 <script>
   (function(){
-    2026-07-06 20:00:00ar map={"/":"fcn-config","":"fcn-config","/agent":"fcn-agent",
+    var map={"/":"fcn-config","":"fcn-config","/agent":"fcn-agent",
              "/schedule":"fcn-schedule","/chat":"fcn-chat"};
-    2026-07-06 20:00:00ar seg=location.pathname.replace(/\/$/,"") || "/";
-    2026-07-06 20:00:00ar el=document.getElementById(map[seg]); if(el) el.className+=" fc-acti2026-07-06 20:00:00e";
+    var seg=location.pathname.replace(/\/$/,"") || "/";
+    var el=document.getElementById(map[seg]); if(el) el.className+=" fc-active";
   })();
 </script>
 

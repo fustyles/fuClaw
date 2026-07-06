@@ -6,11 +6,11 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="2026-07-06 20:00:00iewport" content="width=de2026-07-06 20:00:00ice-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>fuClaw — Gemini Chat</title>
 <style>
   :root {
-    --font-main: -apple-system, 'Segoe UI', 'Hel2026-07-06 20:00:00etica Neue', Arial, 'Noto Sans TC', sans-serif;
+    --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
     --font-mono: 'Courier New', Courier, monospace;
     --bg:        #f5f7ff;
     --surface:   #ffffff;
@@ -32,26 +32,26 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 
   html, body {
     height: 100%;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
-    background: 2026-07-06 20:00:00ar(--bg);
-    color: 2026-07-06 20:00:00ar(--text);
-    o2026-07-06 20:00:00erflow: hidden;
+    font-family: var(--font-main);
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
   }
 
   .shell {
     display: flex;
     flex-direction: column;
-    height: 100d2026-07-06 20:00:00h;
+    height: 100dvh;
     max-width: 780px;
     margin: 0 auto;
-    background: 2026-07-06 20:00:00ar(--bg);
+    background: var(--bg);
   }
 
   /* ── header ── */
   .header {
-    height: 2026-07-06 20:00:00ar(--header-h);
-    background: 2026-07-06 20:00:00ar(--surface);
-    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    height: var(--header-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     padding: 0 20px;
@@ -67,7 +67,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     box-shadow: 0 4px 12px rgba(79,110,247,.3);
-    position: relati2026-07-06 20:00:00e; o2026-07-06 20:00:00erflow: hidden;
+    position: relative; overflow: hidden;
   }
   .header-logo::before {
     content: '';
@@ -76,17 +76,17 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     animation: spin 4s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .header-logo s2026-07-06 20:00:00g { position: relati2026-07-06 20:00:00e; z-index: 1; }
+  .header-logo svg { position: relative; z-index: 1; }
 
   .header-title {
     font-size: 1.05rem;
     font-weight: 600;
     letter-spacing: -.01em;
-    color: 2026-07-06 20:00:00ar(--text);
+    color: var(--text);
   }
   .header-sub {
     font-size: .72rem;
-    color: 2026-07-06 20:00:00ar(--text3);
+    color: var(--text3);
     margin-top: 1px;
   }
 
@@ -96,12 +96,12 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     align-items: center;
     gap: 6px;
     font-size: .72rem;
-    color: 2026-07-06 20:00:00ar(--text3);
+    color: var(--text3);
   }
   .status-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: 2026-07-06 20:00:00ar(--success);
+    background: var(--success);
     animation: blink 2.5s ease-in-out infinite;
   }
   .status-dot.thinking {
@@ -114,16 +114,16 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   /* ── messages ── */
   .messages {
     flex: 1;
-    o2026-07-06 20:00:00erflow-y: auto;
+    overflow-y: auto;
     padding: 24px 20px 12px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    scroll-beha2026-07-06 20:00:00ior: smooth;
+    scroll-behavior: smooth;
   }
   .messages::-webkit-scrollbar { width: 4px; }
   .messages::-webkit-scrollbar-track { background: transparent; }
-  .messages::-webkit-scrollbar-thumb { background: 2026-07-06 20:00:00ar(--border); border-radius: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
   /* ── bubble ── */
   .msg {
@@ -144,19 +144,19 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     align-items: flex-end;
     gap: 8px;
   }
-  .msg.user .msg-row { flex-direction: row-re2026-07-06 20:00:00erse; }
+  .msg.user .msg-row { flex-direction: row-reverse; }
 
-  .a2026-07-06 20:00:00atar {
+  .avatar {
     width: 28px; height: 28px;
     border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     font-size: .75rem;
     flex-shrink: 0;
     margin-bottom: 2px;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
+    font-family: var(--font-main);
   }
-  .a2026-07-06 20:00:00atar.user-a2026-07-06 20:00:00 { background: linear-gradient(135deg, #4f6ef7, #7c3aed); color: white; }
-  .a2026-07-06 20:00:00atar.ai-a2026-07-06 20:00:00   { background: linear-gradient(135deg, #06b6d4, #4f6ef7); color: white; }
+  .avatar.user-av { background: linear-gradient(135deg, #4f6ef7, #7c3aed); color: white; }
+  .avatar.ai-av   { background: linear-gradient(135deg, #06b6d4, #4f6ef7); color: white; }
 
   .bubble {
     max-width: min(72%, 560px);
@@ -166,33 +166,33 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     line-height: 1.65;
     white-space: pre-wrap;
     word-break: break-word;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
+    font-family: var(--font-main);
   }
   .msg.user .bubble {
-    background: 2026-07-06 20:00:00ar(--user-bg);
+    background: var(--user-bg);
     color: white;
     border-bottom-right-radius: 4px;
     box-shadow: 0 4px 16px rgba(79,110,247,.3);
   }
   .msg.ai .bubble {
-    background: 2026-07-06 20:00:00ar(--ai-bg);
-    color: 2026-07-06 20:00:00ar(--text);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--ai-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-bottom-left-radius: 4px;
     box-shadow: 0 2px 8px rgba(0,0,0,.06);
   }
 
   .msg-time {
     font-size: .65rem;
-    color: 2026-07-06 20:00:00ar(--text3);
+    color: var(--text3);
     padding: 0 4px;
-    font-family: 2026-07-06 20:00:00ar(--font-mono);
+    font-family: var(--font-mono);
   }
 
   /* ── typing indicator ── */
   .typing-bubble {
-    background: 2026-07-06 20:00:00ar(--ai-bg);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--ai-bg);
+    border: 1px solid var(--border);
     border-radius: 16px;
     border-bottom-left-radius: 4px;
     padding: 13px 16px;
@@ -202,7 +202,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   .typing-bubble span {
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: 2026-07-06 20:00:00ar(--text3);
+    background: var(--text3);
     animation: bounce .9s ease-in-out infinite;
   }
   .typing-bubble span:nth-child(2) { animation-delay: .15s; }
@@ -220,26 +220,26 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     align-items: center;
     justify-content: center;
     gap: 12px;
-    color: 2026-07-06 20:00:00ar(--text3);
+    color: var(--text3);
     text-align: center;
     padding-bottom: 40px;
-    pointer-e2026-07-06 20:00:00ents: none;
+    pointer-events: none;
   }
   .empty-icon {
     width: 64px; height: 64px;
-    background: 2026-07-06 20:00:00ar(--surface2);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.8rem;
   }
-  .empty-title { font-size: .95rem; font-weight: 500; color: 2026-07-06 20:00:00ar(--text2); }
+  .empty-title { font-size: .95rem; font-weight: 500; color: var(--text2); }
   .empty-hint  { font-size: .78rem; line-height: 1.6; max-width: 240px; }
 
   /* ── input area ── */
   .input-area {
-    background: 2026-07-06 20:00:00ar(--surface);
-    border-top: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
     padding: 14px 16px 16px;
     flex-shrink: 0;
     box-shadow: 0 -4px 20px rgba(79,110,247,.05);
@@ -249,14 +249,14 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     display: flex;
     gap: 10px;
     align-items: flex-end;
-    background: 2026-07-06 20:00:00ar(--surface2);
-    border: 1.5px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
     border-radius: 14px;
     padding: 10px 10px 10px 14px;
     transition: border-color .2s, box-shadow .2s;
   }
   .input-wrap:focus-within {
-    border-color: 2026-07-06 20:00:00ar(--accent);
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(79,110,247,.1);
     background: white;
   }
@@ -267,22 +267,22 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     border: none;
     outline: none;
     resize: none;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
+    font-family: var(--font-main);
     font-size: .9rem;
-    color: 2026-07-06 20:00:00ar(--text);
+    color: var(--text);
     line-height: 1.55;
     min-height: 24px;
     max-height: 120px;
-    o2026-07-06 20:00:00erflow-y: auto;
+    overflow-y: auto;
     padding: 0;
   }
-  textarea::placeholder { color: 2026-07-06 20:00:00ar(--text3); }
+  textarea::placeholder { color: var(--text3); }
   textarea::-webkit-scrollbar { width: 3px; }
-  textarea::-webkit-scrollbar-thumb { background: 2026-07-06 20:00:00ar(--border); border-radius: 3px; }
+  textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .send-btn {
     width: 38px; height: 38px;
-    background: linear-gradient(135deg, 2026-07-06 20:00:00ar(--accent), 2026-07-06 20:00:00ar(--accent2));
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
     border: none; border-radius: 10px;
     color: white; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -290,26 +290,26 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     transition: transform .15s, box-shadow .15s, opacity .15s;
     box-shadow: 0 4px 12px rgba(79,110,247,.35);
   }
-  .send-btn:ho2026-07-06 20:00:00er   { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,110,247,.45); }
-  .send-btn:acti2026-07-06 20:00:00e  { transform: translateY(0); opacity: .85; }
+  .send-btn:hover   { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,110,247,.45); }
+  .send-btn:active  { transform: translateY(0); opacity: .85; }
   .send-btn:disabled{ opacity: .4; cursor: not-allowed; transform: none; }
 
   .input-hint {
     margin-top: 7px;
     font-size: .67rem;
-    color: 2026-07-06 20:00:00ar(--text3);
+    color: var(--text3);
     text-align: center;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
+    font-family: var(--font-main);
   }
   kbd {
     display: inline-block;
     padding: 1px 5px;
-    background: 2026-07-06 20:00:00ar(--surface2);
-    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: 4px;
-    font-family: 2026-07-06 20:00:00ar(--font-mono);
+    font-family: var(--font-mono);
     font-size: .65rem;
-    color: 2026-07-06 20:00:00ar(--text2);
+    color: var(--text2);
   }
 
   /* ── error toast ── */
@@ -324,7 +324,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     border-radius: 10px;
     padding: 9px 18px;
     font-size: .8rem;
-    font-family: 2026-07-06 20:00:00ar(--font-main);
+    font-family: var(--font-main);
     z-index: 100;
     white-space: nowrap;
     box-shadow: 0 4px 16px rgba(0,0,0,.1);
@@ -338,86 +338,86 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 </head>
 <body>
 
-<di2026-07-06 20:00:00 class="shell">
+<div class="shell">
 
-  <di2026-07-06 20:00:00 class="header">
-    <di2026-07-06 20:00:00 class="header-logo">
-      <s2026-07-06 20:00:00g width="20" height="20" 2026-07-06 20:00:00iewBox="0 0 28 28" fill="none">
+  <div class="header">
+    <div class="header-logo">
+      <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
         <circle cx="14" cy="9"  r="4" fill="white" opacity=".95"/>
         <circle cx="7"  cy="20" r="3" fill="white" opacity=".8"/>
         <circle cx="21" cy="20" r="3" fill="white" opacity=".8"/>
         <line x1="14" y1="13" x2="7"  y2="17" stroke="white" stroke-width="1.5" opacity=".7"/>
         <line x1="14" y1="13" x2="21" y2="17" stroke="white" stroke-width="1.5" opacity=".7"/>
         <line x1="7"  y1="20" x2="21" y2="20" stroke="white" stroke-width="1.5" opacity=".4"/>
-      </s2026-07-06 20:00:00g>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="header-title">fuClaw</di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="header-sub">Gemini AI Agent</di2026-07-06 20:00:00>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="header-status">
-      <di2026-07-06 20:00:00 class="status-dot" id="statusDot"></di2026-07-06 20:00:00>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">fuClaw</div>
+      <div class="header-sub">Gemini AI Agent</div>
+    </div>
+    <div class="header-status">
+      <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Ready</span>
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
+    </div>
+  </div>
 
-  <di2026-07-06 20:00:00 class="messages" id="messages">
-    <di2026-07-06 20:00:00 class="empty-state" id="emptyState">
-      <di2026-07-06 20:00:00 class="empty-icon">&#10022;</di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="empty-title">Start a con2026-07-06 20:00:00ersation with Gemini</di2026-07-06 20:00:00>
-      <di2026-07-06 20:00:00 class="empty-hint">Enter your message and click Send.<br>fuClaw will in2026-07-06 20:00:00oke Gemini AI.</di2026-07-06 20:00:00>
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
+  <div class="messages" id="messages">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">&#10022;</div>
+      <div class="empty-title">Start a conversation with Gemini</div>
+      <div class="empty-hint">Enter your message and click Send.<br>fuClaw will invoke Gemini AI.</div>
+    </div>
+  </div>
 
-  <di2026-07-06 20:00:00 class="input-area">
-    <di2026-07-06 20:00:00 class="input-wrap">
+  <div class="input-area">
+    <div class="input-wrap">
       <textarea
         id="msgInput"
         placeholder="Type a message... (Shift+Enter for a new line)"
         rows="1"
       ></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
-        <s2026-07-06 20:00:00g width="16" height="16" 2026-07-06 20:00:00iewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/>
           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-        </s2026-07-06 20:00:00g>
+        </svg>
       </button>
-    </di2026-07-06 20:00:00>
-    <di2026-07-06 20:00:00 class="input-hint">
+    </div>
+    <div class="input-hint">
       <kbd>Enter</kbd> Send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> New Line
-    </di2026-07-06 20:00:00>
-  </di2026-07-06 20:00:00>
+    </div>
+  </div>
 
-</di2026-07-06 20:00:00>
+</div>
 
-<di2026-07-06 20:00:00 class="err-toast" id="errToast"></di2026-07-06 20:00:00>
+<div class="err-toast" id="errToast"></div>
 
 <script>
-  2026-07-06 20:00:00ar messagesEl = document.getElementById('messages');
-  2026-07-06 20:00:00ar inputEl    = document.getElementById('msgInput');
-  2026-07-06 20:00:00ar sendBtn    = document.getElementById('sendBtn');
-  2026-07-06 20:00:00ar emptyState = document.getElementById('emptyState');
-  2026-07-06 20:00:00ar statusDot  = document.getElementById('statusDot');
-  2026-07-06 20:00:00ar statusText = document.getElementById('statusText');
-  2026-07-06 20:00:00ar isWaiting  = false;
+  var messagesEl = document.getElementById('messages');
+  var inputEl    = document.getElementById('msgInput');
+  var sendBtn    = document.getElementById('sendBtn');
+  var emptyState = document.getElementById('emptyState');
+  var statusDot  = document.getElementById('statusDot');
+  var statusText = document.getElementById('statusText');
+  var isWaiting  = false;
 
-  inputEl.addE2026-07-06 20:00:00entListener('input', function() {
+  inputEl.addEventListener('input', function() {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
   });
 
-  inputEl.addE2026-07-06 20:00:00entListener('keydown', function(e) {
+  inputEl.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.pre2026-07-06 20:00:00entDefault();
+      e.preventDefault();
       sendMessage();
     }
   });
 
   function nowStr() {
-    2026-07-06 20:00:00ar d  = new Date();
-    2026-07-06 20:00:00ar hh = ('0' + d.getHours()).slice(-2);
-    2026-07-06 20:00:00ar mm = ('0' + d.getMinutes()).slice(-2);
-    2026-07-06 20:00:00ar ss = ('0' + d.getSeconds()).slice(-2);
+    var d  = new Date();
+    var hh = ('0' + d.getHours()).slice(-2);
+    var mm = ('0' + d.getMinutes()).slice(-2);
+    var ss = ('0' + d.getSeconds()).slice(-2);
     return hh + ':' + mm + ':' + ss;
   }
 
@@ -432,43 +432,43 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   function appendMsg(role, text, time, isHtml) {
     if (emptyState) emptyState.style.display = 'none';
 
-    2026-07-06 20:00:00ar msg = document.createElement('di2026-07-06 20:00:00');
+    var msg = document.createElement('div');
     msg.className = 'msg ' + role;
 
-    2026-07-06 20:00:00ar a2026-07-06 20:00:00atarChar = role === 'user' ? 'U' : 'AI';
-    2026-07-06 20:00:00ar a2026-07-06 20:00:00atarCls  = role === 'user' ? 'user-a2026-07-06 20:00:00' : 'ai-a2026-07-06 20:00:00';
+    var avatarChar = role === 'user' ? 'U' : 'AI';
+    var avatarCls  = role === 'user' ? 'user-av' : 'ai-av';
 	
-	2026-07-06 20:00:00ar content = isHtml ? text : escHtml(text);
+	var content = isHtml ? text : escHtml(text);
 
     msg.innerHTML =
-      '<di2026-07-06 20:00:00 class="msg-row">' +
-        '<di2026-07-06 20:00:00 class="a2026-07-06 20:00:00atar ' + a2026-07-06 20:00:00atarCls + '">' + a2026-07-06 20:00:00atarChar + '</di2026-07-06 20:00:00>' +
-        '<di2026-07-06 20:00:00 class="bubble">' + content + '</di2026-07-06 20:00:00>' +
-      '</di2026-07-06 20:00:00>' +
-      '<di2026-07-06 20:00:00 class="msg-time">' + time + '</di2026-07-06 20:00:00>';
+      '<div class="msg-row">' +
+        '<div class="avatar ' + avatarCls + '">' + avatarChar + '</div>' +
+        '<div class="bubble">' + content + '</div>' +
+      '</div>' +
+      '<div class="msg-time">' + time + '</div>';
 
     messagesEl.appendChild(msg);
     scrollBottom();
   }
 
   function showTyping() {
-    2026-07-06 20:00:00ar wrap = document.createElement('di2026-07-06 20:00:00');
+    var wrap = document.createElement('div');
     wrap.className = 'msg ai';
     wrap.id = 'typingMsg';
     wrap.innerHTML =
-      '<di2026-07-06 20:00:00 class="msg-row">' +
-        '<di2026-07-06 20:00:00 class="a2026-07-06 20:00:00atar ai-a2026-07-06 20:00:00">AI</di2026-07-06 20:00:00>' +
-        '<di2026-07-06 20:00:00 class="typing-bubble">' +
+      '<div class="msg-row">' +
+        '<div class="avatar ai-av">AI</div>' +
+        '<div class="typing-bubble">' +
           '<span></span><span></span><span></span>' +
-        '</di2026-07-06 20:00:00>' +
-      '</di2026-07-06 20:00:00>';
+        '</div>' +
+      '</div>';
     messagesEl.appendChild(wrap);
     scrollBottom();
   }
 
   function hideTyping() {
-    2026-07-06 20:00:00ar el = document.getElementById('typingMsg');
-    if (el) el.remo2026-07-06 20:00:00e();
+    var el = document.getElementById('typingMsg');
+    if (el) el.remove();
   }
 
   function setStatus(state) {
@@ -484,32 +484,32 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   }
 
   function showError(msg) {
-    2026-07-06 20:00:00ar t = document.getElementById('errToast');
+    var t = document.getElementById('errToast');
     t.textContent = '⚠ ' + msg;
     t.style.display = 'block';
     setTimeout(function() { t.style.display = 'none'; }, 4000);
   }
 
   function scrollBottom() {
-    messagesEl.scrollTo({ top: messagesEl.scrollHeight, beha2026-07-06 20:00:00ior: 'smooth' });
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
   }
 
   function sendMessage() {
     if (isWaiting) return;
 
-    2026-07-06 20:00:00ar text = inputEl.2026-07-06 20:00:00alue.trim();
+    var text = inputEl.value.trim();
     if (!text) return;
 
     appendMsg('user', text, nowStr());
 
-    inputEl.2026-07-06 20:00:00alue = '';
+    inputEl.value = '';
     inputEl.style.height = 'auto';
 
     isWaiting = true;
     setStatus('thinking');
     showTyping();
 
-    2026-07-06 20:00:00ar url = '/message?' + encodeURIComponent(text);
+    var url = '/message?' + encodeURIComponent(text);
 
     fetch(url, { method: 'GET' })
       .then(function(res) {
@@ -525,7 +525,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       })
       .catch(function(err) {
         hideTyping();
-        showError('Cannot connect to the de2026-07-06 20:00:00ice. (' + err.message + ')');
+        showError('Cannot connect to the device. (' + err.message + ')');
       })
       .finally(function() {
         isWaiting = false;

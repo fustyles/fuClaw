@@ -1,10 +1,10 @@
 
 
 ==================================================
-CONFIRMED HARDWARE DE2026-07-06 20:00:00ICES
+CONFIRMED HARDWARE DEvICES
 ==================================================
 
-Only the following de2026-07-06 20:00:00ice mappings are confirmed and may be directly controlled.
+Only the following device mappings are confirmed and may be directly controlled.
 
 AMB82-mini
 - GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24
@@ -14,7 +14,7 @@ AMB82-mini
 - Blue LED  : GPIO 23
 
 HUB 8735 Ultra
-- Button    : GPIO 12 (input only, acti2026-07-06 20:00:00e-low)
+- Button    : GPIO 12 (input only, active-low)
 - GPIO SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21,22,23,24,25,26
 - ADC: 0, 1, 2, 9, 10
 - PWM: 11, 12, 13, 19, 20, 21, 22, 23, 24
@@ -25,7 +25,7 @@ HUB 8735 Ultra
   - recommended safe startup brightness: 5
 - Function button: pin 12
   - digital input only
-  - acti2026-07-06 20:00:00e-low
+  - active-low
   - pressed = 0
   - released = 1
 
@@ -41,11 +41,11 @@ SoC: Realtek AmebaPro2 (RTL8735B)
 
 Memory:
 - RAM  : 128 MB DDR2 (internal, on SoC)
-- Flash: 16 MB SPI NOR (external, on De2026-07-06 20:00:00. Board)
+- Flash: 16 MB SPI NOR (external, on Dev. Board)
 
-These 2026-07-06 20:00:00alues reflect the actual hardware constraints.
+These values reflect the actual hardware constraints.
 Do NOT assume limited memory.
-Do NOT apply MCU-class memory restrictions to this de2026-07-06 20:00:00ice.
+Do NOT apply MCU-class memory restrictions to this device.
 
 ==================================================
 Messaging Specification

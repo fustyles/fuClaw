@@ -5,10 +5,10 @@
  * Description:
  *   Telegram bot running on AMB82-mini that supports:
  *   - Text commands to control LED, capture still image, and check memory
- *   - Persistent HTTPS long-polling 2026-07-06 20:00:00ia a keep-ali2026-07-06 20:00:00e SSL connection
+ *   - Persistent HTTPS long-polling via a keep-alive SSL connection
  *
  * Hardware: AMB82-mini (Realtek RTL8735B)
- * Dependencies: WiFi, ArduinoJson, FreeRTOS, 2026-07-06 20:00:00ideoStream
+ * Dependencies: WiFi, ArduinoJson, FreeRTOS, videoStream
  */
 
 // ============================================================
@@ -25,26 +25,26 @@ String telegrambotChatId = "xxxxxxxxxx";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
-String geminiModel = "gemini-3-flash-pre2026-07-06 20:00:00iew";
+String geminiModel = "gemini-3-flash-preview";
 
 // ============================================================
-//  Constants & Global 2026-07-06 20:00:00ariables
+//  Constants & Global variables
 // ============================================================
 
-// Maximum download buffer size for Telegram 2026-07-06 20:00:00oice files (256 KB)
+// Maximum download buffer size for Telegram voice files (256 KB)
 #define MAX_FILE_SIZE 262144
 
 // Actual number of bytes downloaded from Telegram
 size_t downloadedFileSize = 0;
 
 // ============================================================
-//  Constants & Global 2026-07-06 20:00:00ariables
+//  Constants & Global variables
 // ============================================================
 
 // LED output pin (AMB82-mini: 24 / HUB 8735 Ultra: 25)
 int ledPin = 24;
 
-// Tracks the last processed Telegram message ID to a2026-07-06 20:00:00oid duplicates
+// Tracks the last processed Telegram message ID to avoid duplicates
 long messageLastId = 0;
 
 // Set to true to send /help automatically after first connection
@@ -63,16 +63,16 @@ WiFiSSLClient botClient;
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "2026-07-06 20:00:00ideoStream.h"
+#include "videoStream.h"
 
 // ============================================================
 //  Camera Configuration
 // ============================================================
 
-// Q2026-07-06 20:00:00GA resolution, JPEG format, single channel
-2026-07-06 20:00:00ideoSetting config(320, 240, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
-// Alternati2026-07-06 20:00:00ely use 2026-07-06 20:00:00GA resolution:
-// 2026-07-06 20:00:00ideoSetting config(2026-07-06 20:00:00IDEO_2026-07-06 20:00:00GA, CAM_FPS, 2026-07-06 20:00:00IDEO_JPEG, 1);
+// QvGA resolution, JPEG format, single channel
+videoSetting config(320, 240, CAM_FPS, vIDEO_JPEG, 1);
+// Alternatively use vGA resolution:
+// videoSetting config(vIDEO_vGA, CAM_FPS, vIDEO_JPEG, 1);
 
 // Pointers to the last captured image buffer
 uint32_t img_addr = 0;
@@ -95,7 +95,7 @@ long lastMessageId = 0;
  * @param text     Message body (HTML parse mode supported)
  * @param keyboard JSON string for a custom reply keyboard; pass "" to omit
  */
-2026-07-06 20:00:00oid sendMessageToTelegram(String token, String chatid, String text, String keyboard) {
+void sendMessageToTelegram(String token, String chatid, String text, String keyboard) {
 
   // Replace literal "\n" with URL-encoded newline for Telegram's API
   text.replace("\\n", "%0A");
@@ -120,15 +120,15 @@ long lastMessageId = 0;
     client.println();
     client.print(request);
 
-    // Wait up to 5 s for a response (we only need to confirm deli2026-07-06 20:00:00ery)
+    // Wait up to 5 s for a response (we only need to confirm delivery)
     int     waitTime  = 5000;
     long    startTime = millis();
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (client.a2026-07-06 20:00:00ailable()) {
+      while (client.available()) {
         char c = client.read();
 
         if (state == true)  getBody += String(c);
@@ -187,7 +187,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 
     String tail = "\r\n--Taiwan--\r\n";
 
-    // Use size_t to a2026-07-06 20:00:00oid o2026-07-06 20:00:00erflow on images larger than 65535 bytes
+    // Use size_t to avoid overflow on images larger than 65535 bytes
     size_t extraLen = head.length() + tail.length();
     size_t totalLen = img_len + extraLen;
 
@@ -199,7 +199,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     client.println();
     client.print(head);
 
-    // Stream JPEG data in 1 KB chunks to a2026-07-06 20:00:00oid large single writes
+    // Stream JPEG data in 1 KB chunks to avoid large single writes
     for (size_t n = 0; n < fbLen; n += 1024) {
       if (n + 1024 < fbLen) {
         client.write(fbBuf, 1024);
@@ -217,9 +217,9 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (client.a2026-07-06 20:00:00ailable()) {
+      while (client.available()) {
         char c = client.read();
 
         if (state == true)  getBody += String(c);
@@ -257,7 +257,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
  *        Retries WiFi up to 2 times with a 5 s timeout each attempt.
  */
 // Initialize WiFi
-2026-07-06 20:00:00oid initWiFi() {
+void initWiFi() {
     
   for (int i=0;i<2;i++) {
 
@@ -285,7 +285,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 
 
 // ============================================================
-//  Gemini: Speech-to-Text 2026-07-06 20:00:00ia Inline Audio
+//  Gemini: Speech-to-Text via Inline Audio
 // ============================================================
 
 /**
@@ -295,7 +295,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
  * so no separate file upload step is needed.
  *
  * @param fileinput  Pointer to raw audio bytes (OGG/Opus from Telegram)
- * @param fileSize   Number of 2026-07-06 20:00:00alid bytes in the buffer
+ * @param fileSize   Number of valid bytes in the buffer
  * @param mimeType   MIME type string, e.g. "audio/ogg; codecs=opus"
  * @param prompt     Instruction text sent alongside the audio
  * @return           Transcribed text, or an error message string
@@ -323,14 +323,14 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
   free(encodedData);
 
   WiFiSSLClient client;
-  if (!client.connect("generati2026-07-06 20:00:00elanguage.googleapis.com", 443)) {
+  if (!client.connect("generativelanguage.googleapis.com", 443)) {
     Serial.println("[STT] Connection to Gemini failed");
     return "Connected to Gemini failed.";
   }
 
-  client.println("POST /2026-07-06 20:00:001beta/models/" + geminiModel +
+  client.println("POST /v1beta/models/" + geminiModel +
                  ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
-  client.println("Host: generati2026-07-06 20:00:00elanguage.googleapis.com");
+  client.println("Host: generativelanguage.googleapis.com");
   client.println("Content-Type: application/json; charset=utf-8");
   client.println("Content-Length: " + String(request.length()));
   client.println("Connection: close");
@@ -345,8 +345,8 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
   bool headersEnded = false;
   String line = "";
 
-  while ((client.connected() || client.a2026-07-06 20:00:00ailable()) && millis() < timeout) {
-    while (client.a2026-07-06 20:00:00ailable()) {
+  while ((client.connected() || client.available()) && millis() < timeout) {
+    while (client.available()) {
       char c = client.read();
 
       if (!headersEnded) {
@@ -375,7 +375,7 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
 
   if (err) {
     Serial.println("[STT] JSON parse failed: " + String(err.c_str()));
-    Serial.println("[STT] Body pre2026-07-06 20:00:00iew: " + body.substring(0, 300));
+    Serial.println("[STT] Body preview: " + body.substring(0, 300));
     return "JSON Parsing Error: " + String(err.c_str());
   }
 
@@ -402,23 +402,23 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
 /**
  * @brief Download a file from Telegram's CDN into a heap-allocated buffer.
  *
- * Uses HTTP/1.0 to a2026-07-06 20:00:00oid chunked transfer encoding, then scans for the
+ * Uses HTTP/1.0 to avoid chunked transfer encoding, then scans for the
  * blank line that separates HTTP headers from the binary body.
  *
- * @param filePath  Relati2026-07-06 20:00:00e path returned by getTelegramFilePath()
+ * @param filePath  Relative path returned by getTelegramFilePath()
  * @return          Pointer to allocated buffer (caller must free()), or NULL
  */
 uint8_t* downloadTelegramFile(String filePath) {
 
-  uint8_t* 2026-07-06 20:00:00oiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
-  if (!2026-07-06 20:00:00oiceFile) return NULL;
+  uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
+  if (!voiceFile) return NULL;
 
   downloadedFileSize = 0;
   WiFiSSLClient client;
 
   if (client.connect("api.telegram.org", 443)) {
 
-    // HTTP/1.0 pre2026-07-06 20:00:00ents chunked transfer encoding so the body is pure binary
+    // HTTP/1.0 prevents chunked transfer encoding so the body is pure binary
     client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
     client.println("Host: api.telegram.org");
     client.println("Connection: close");
@@ -428,9 +428,9 @@ uint8_t* downloadTelegramFile(String filePath) {
     String header    = "";
     long   startTime = millis();
 
-    while (client.connected() || client.a2026-07-06 20:00:00ailable()) {
+    while (client.connected() || client.available()) {
       if (millis() - startTime > 10000) break;
-      if (client.a2026-07-06 20:00:00ailable()) {
+      if (client.available()) {
         char c = client.read();
         header += c;
         if (header.endsWith("\r\n\r\n")) break;   // Headers fully consumed
@@ -439,30 +439,30 @@ uint8_t* downloadTelegramFile(String filePath) {
 
     // Read binary body directly into the output buffer
     startTime = millis();
-    while ((client.connected() || client.a2026-07-06 20:00:00ailable()) &&
+    while ((client.connected() || client.available()) &&
            downloadedFileSize < MAX_FILE_SIZE) {
       if (millis() - startTime > 10000) break;
-      if (client.a2026-07-06 20:00:00ailable()) {
-        2026-07-06 20:00:00oiceFile[downloadedFileSize++] = client.read();
-        startTime = millis();   // Reset timeout on each recei2026-07-06 20:00:00ed byte
+      if (client.available()) {
+        voiceFile[downloadedFileSize++] = client.read();
+        startTime = millis();   // Reset timeout on each received byte
       }
     }
 
     client.stop();
   }
 
-  return 2026-07-06 20:00:00oiceFile;
+  return voiceFile;
 }
 
 // ============================================================
-//  Telegram: Resol2026-07-06 20:00:00e File ID → Download Path
+//  Telegram: Resolve File ID → Download Path
 // ============================================================
 
 /**
- * @brief Call Telegram's getFile API to con2026-07-06 20:00:00ert a file_id into a download path.
+ * @brief Call Telegram's getFile API to convert a file_id into a download path.
  *
- * @param fileId  Telegram file_id (e.g. from a 2026-07-06 20:00:00oice message object)
- * @return        Relati2026-07-06 20:00:00e file path string, e.g. "2026-07-06 20:00:00oice/file_123.oga"
+ * @param fileId  Telegram file_id (e.g. from a voice message object)
+ * @return        Relative file path string, e.g. "voice/file_123.oga"
  */
 String getTelegramFilePath(String fileId) {
 
@@ -485,7 +485,7 @@ String getTelegramFilePath(String fileId) {
     while ((startTime + waitTime) > millis()) {
       delay(100);
 
-      while (client.a2026-07-06 20:00:00ailable()) {
+      while (client.available()) {
         char c = client.read();
 
         if (c == '\n') {
@@ -521,11 +521,11 @@ String getTelegramFilePath(String fileId) {
  *        text messages in a loop.
  *
  * Requests only the most recent message (limit=1, offset=-1) on each poll.
- * Skips the first message seen after (re)boot to a2026-07-06 20:00:00oid replaying old commands.
+ * Skips the first message seen after (re)boot to avoid replaying old commands.
  * The function returns only when the connection is lost, allowing the FreeRTOS
  * task to call it again and trigger WiFi reconnection if needed.
  */
-2026-07-06 20:00:00oid getTelegramMessage() {
+void getTelegramMessage() {
 
   const char* myDomain  = "api.telegram.org";
   String      getAll    = "";
@@ -536,10 +536,10 @@ String getTelegramFilePath(String fileId) {
   DynamicJsonDocument doc(8192);
 
   String text        = "";
-  String 2026-07-06 20:00:00oiceFileId = "";
+  String voiceFileId = "";
   long   message_id  = 0;
 
-  // Reuse existing connection if still ali2026-07-06 20:00:00e; reconnect only when needed
+  // Reuse existing connection if still alive; reconnect only when needed
   if (!botClient.connected()) {
     if (lastMessageId == 0)
       Serial.println("Connect to " + String(myDomain));
@@ -563,19 +563,19 @@ String getTelegramFilePath(String fileId) {
     botClient.println("Host: "           + String(myDomain));
     botClient.println("Content-Length: " + String(request.length()));
     botClient.println("Content-Type: application/x-www-form-urlencoded");
-    botClient.println("Connection: keep-ali2026-07-06 20:00:00e");
+    botClient.println("Connection: keep-alive");
     botClient.println();
     botClient.print(request);
 
     int           waitTime    = 5000;
     unsigned long startTime   = millis();
     bool          state       = false;
-    bool          dataRecei2026-07-06 20:00:00ed = false;
+    bool          dataReceived = false;
 
     while ((startTime + waitTime) > millis()) {
-      2026-07-06 20:00:00TaskDelay(100 / portTICK_PERIOD_MS);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-      while (botClient.a2026-07-06 20:00:00ailable()) {
+      while (botClient.available()) {
         char c = botClient.read();
 
         if (c == '\n') {
@@ -600,16 +600,16 @@ String getTelegramFilePath(String fileId) {
         startTime = millis();
       }
 
-      // Break as soon as body is recei2026-07-06 20:00:00ed
+      // Break as soon as body is received
       if (getBody.length() > 0) {
-        dataRecei2026-07-06 20:00:00ed = true;
+        dataReceived = true;
         break;
       }
     }
 
     getTime.replace("Content-Type", "");
 
-    if (!dataRecei2026-07-06 20:00:00ed || getBody == "") return;
+    if (!dataReceived || getBody == "") return;
 
     DeserializationError err = deserializeJson(doc, getBody);
     if (err) {
@@ -638,31 +638,31 @@ String getTelegramFilePath(String fileId) {
 		if (obj["result"][0]["message"].containsKey("text")) {
 		  text = obj["result"][0]["message"]["text"].as<String>();
 
-		  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Recei2026-07-06 20:00:00e: " + text, "");
+		  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
 
 		}
 
-		// ---- 2026-07-06 20:00:00oice message ----
-		if (doc["result"][0]["message"].containsKey("2026-07-06 20:00:00oice")) {
+		// ---- voice message ----
+		if (doc["result"][0]["message"].containsKey("voice")) {
 
-			2026-07-06 20:00:00oiceFileId = doc["result"][0]["message"]["2026-07-06 20:00:00oice"]["file_id"].as<String>();
+			voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
 
-			// Resol2026-07-06 20:00:00e file_id → CDN path → download raw OGG bytes
-			String   filePath  = getTelegramFilePath(2026-07-06 20:00:00oiceFileId);
-			uint8_t* 2026-07-06 20:00:00oiceFile = downloadTelegramFile(filePath);
+			// Resolve file_id → CDN path → download raw OGG bytes
+			String   filePath  = getTelegramFilePath(voiceFileId);
+			uint8_t* voiceFile = downloadTelegramFile(filePath);
 
-			if (2026-07-06 20:00:00oiceFile && downloadedFileSize > 0) {
+			if (voiceFile && downloadedFileSize > 0) {
 
 			  // Transcribe with Gemini and treat result as a text command
 			  text = sendFileToGemini(
-				2026-07-06 20:00:00oiceFile, downloadedFileSize,
+				voiceFile, downloadedFileSize,
 				"audio/ogg; codecs=opus",
 				"Transcribe this audio to text exactly as spoken.");
 
-			  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Recei2026-07-06 20:00:00e: " + text, "");
+			  sendMessageToTelegram(telegrambotToken, telegrambotChatId, "Receive: " + text, "");
 			}
 
-			if (2026-07-06 20:00:00oiceFile) free(2026-07-06 20:00:00oiceFile);   // Always release the 2026-07-06 20:00:00oice buffer
+			if (voiceFile) free(voiceFile);   // Always release the voice buffer
 		}
 		  
       }
@@ -676,7 +676,7 @@ String getTelegramFilePath(String fileId) {
     unsigned long start = millis();
 
     while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
-      2026-07-06 20:00:00TaskDelay(500 / portTICK_PERIOD_MS);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
@@ -689,8 +689,8 @@ String getTelegramFilePath(String fileId) {
  *
  * Stack size: 4 KB (sufficient for text-only bot without audio/Base64 work).
  */
-2026-07-06 20:00:00oid getTelegramMessage_task(2026-07-06 20:00:00oid* param) {
-  (2026-07-06 20:00:00oid)param;
+void getTelegramMessage_task(void* param) {
+  (void)param;
   while (1) {
     getTelegramMessage();
   }
@@ -700,7 +700,7 @@ String getTelegramFilePath(String fileId) {
 //  Arduino Entry Points
 // ============================================================
 
-2026-07-06 20:00:00oid setup() {
+void setup() {
   Serial.begin(115200);
   delay(10);
 
@@ -710,8 +710,8 @@ String getTelegramFilePath(String fileId) {
 
   // Camera setup: no rotation, channel 0, JPEG stream
   config.setRotation(0);
-  Camera.config2026-07-06 20:00:00ideoChannel(0, config);
-  Camera.2026-07-06 20:00:00ideoInit();
+  Camera.configvideoChannel(0, config);
+  Camera.videoInit();
   Camera.channelBegin(0);  
 
   // Spawn the Telegram polling task
@@ -728,4 +728,4 @@ String getTelegramFilePath(String fileId) {
 }
 
 // All work is done in the FreeRTOS task; loop() is intentionally empty.
-2026-07-06 20:00:00oid loop() {}
+void loop() {}
