@@ -279,6 +279,21 @@
     word-break: break-all;
   }
 
+  .offline-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent2);
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 5px;
+    padding: 1px 5px;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
   .time-cell {
     font-family: var(--mono);
     font-size: 0.75rem;
@@ -717,7 +732,8 @@
       <div class="form-row single">
         <div class="form-group">
           <label>Task Description</label>
-          <input type="text" id="fTask" placeholder="Example: Turn on green light" maxlength="80">
+          <input type="text" id="fTask" placeholder="Example: Turn on green light" maxlength="4000">
+          <small>Plain text is saved as a regular task; a valid JSON object (e.g. {"type":"tool_call",...}) is saved as structured data</small>
         </div>
       </div>
 
@@ -870,7 +886,7 @@ function renderTable() {
 
     return `<tr>
       <td style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${i+1}</td>
-      <td class="task-cell">${escHtml(item.task)}</td>
+      <td class="task-cell">${taskCellHtml(item.task)}</td>
       <td>${formatSchedule(item.schedule)}</td>
       <td class="hide-sm"><span style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${typ}</span></td>
       <td>${badge}</td>
@@ -891,7 +907,66 @@ function updateStats() {
 }
 
 function escHtml(s) {
+  s = String(s == null ? '' : s);
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 判斷使用者輸入的 task 文字是否符合 JSON 物件格式，
+// 若是，存檔時保留為結構化物件（例如 tool_call）；否則存成一般字串。
+function parseTaskInput(raw) {
+  const trimmed = raw.trim();
+  // 快速篩選：只有看起來像物件或陣列的字串才嘗試解析，避免把單純數字字串（如 "123"）誤判
+  if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) return raw;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed !== null && typeof parsed === 'object') return parsed;
+    return raw;
+  } catch (e) {
+    return raw; // 不是合法 JSON，當作一般文字保留
+  }
+}
+
+// task 欄位可能是字串，也可能是像 {"type":"tool_call","method":"/digitalwrite","params":{...}} 這樣的物件
+// A single step: { "type": "tool_call", "method": "...", "params": {...} }
+function isToolCallStep(t) {
+  return t !== null && typeof t === 'object' && t.type === 'tool_call';
+}
+
+// task can be one tool_call step, or an array of tool_call steps (an offline sequence)
+function isOfflineTask(task) {
+  if (isToolCallStep(task)) return true;
+  if (Array.isArray(task) && task.length > 0 && task.every(isToolCallStep)) return true;
+  return false;
+}
+
+function toolCallSummary(t) {
+  const params = t.params ? JSON.stringify(t.params) : '';
+  return `${t.method || ''} ${params}`.trim();
+}
+
+// Human-readable summary of an offline task (single step or sequence)
+function offlineTaskSummary(task) {
+  if (isToolCallStep(task)) return toolCallSummary(task);
+  if (Array.isArray(task)) return `${task.length} steps: ` + task.map(toolCallSummary).join(' \u2192 ');
+  return '';
+}
+
+function taskDisplay(task) {
+  if (task == null) return '';
+  if (typeof task === 'string') return task;
+  if (isOfflineTask(task)) return `[OFFLINE] ${offlineTaskSummary(task)}`;
+  try { return JSON.stringify(task); } catch (e) { return String(task); }
+}
+
+// Table cell rendering: offline tasks (single tool_call or a tool_call sequence) get the OFFLINE badge
+function taskCellHtml(task) {
+  if (task == null) return '';
+  if (typeof task === 'string') return escHtml(task);
+  if (isOfflineTask(task)) {
+    const text = offlineTaskSummary(task);
+    return `<span class="offline-tag" title="Runs offline on the device, no cloud connection required">OFFLINE</span> ${escHtml(text)}`;
+  }
+  try { return escHtml(JSON.stringify(task)); } catch (e) { return escHtml(String(task)); }
 }
 
 // ===== Fetch from chip =====
@@ -945,6 +1020,12 @@ async function doSave() {
   showLoading('Writing to chip...');
   try {
     const json = JSON.stringify(schedule);
+    // 存檔前自我驗證：確保序列化後的內容可被正確 parse 回來，避免把壞資料寫上 chip
+    try {
+      JSON.parse(json);
+    } catch (verifyErr) {
+      throw new Error('Data is not valid JSON, aborting save: ' + verifyErr.message);
+    }
     const url = '/updateScheduleTasks?' + encodeURIComponent(json);
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -980,7 +1061,7 @@ function openEditModal(i) {
   editIndex = i;
   const item = schedule[i];
   $('modalTitle').textContent = `[ Edit Schedule #${i+1} ]`;
-  $('fTask').value = item.task;
+  $('fTask').value = typeof item.task === 'string' ? item.task : JSON.stringify(item.task);
   $('fYear').value = item.schedule.year;
   $('fMonth').value = item.schedule.month;
   $('fDay').value = item.schedule.day;
@@ -1007,9 +1088,11 @@ function updateWildcardHint() {
 });
 
 function saveRow() {
-  const task = $('fTask').value.trim();
-  if (!task) { $('fTask').classList.add('invalid'); $('fTask').focus(); return; }
+  const raw = $('fTask').value.trim();
+  if (!raw) { $('fTask').classList.add('invalid'); $('fTask').focus(); return; }
   $('fTask').classList.remove('invalid');
+
+  const task = parseTaskInput(raw);
 
   const s = {
     year:   parseInt($('fYear').value) || 0,
@@ -1039,7 +1122,7 @@ function saveRow() {
 function confirmDelete(i) {
   $('confirmTitle').textContent = '[ Confirm deletion ]';
   $('confirmIcon').textContent = '🗑️';
-  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:var(--danger)"># ${i+1}</strong> ?<br><span style="color:var(--text-dim);font-size:0.8rem">"${escHtml(schedule[i].task)}"</span>`;
+  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:var(--danger)"># ${i+1}</strong> ?<br><span style="color:var(--text-dim);font-size:0.8rem">"${escHtml(taskDisplay(schedule[i].task))}"</span>`;
   $('confirmDetail').style.display = 'none';
   $('confirmOkBtn').className = 'btn btn-danger';
   pendingAction = () => {

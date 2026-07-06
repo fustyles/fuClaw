@@ -8,7 +8,7 @@ Repository:
 ------------------------------------------------------------
 Version
 -----------------------------------------------------------
-Build Date: 2026-06-13 20:30
+Build Date: 2026-07-06 23:30:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -722,7 +722,8 @@ void task_getRequest(void *param) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
       
 
-      while (client.connected()) {
+      while (client.connected() || client.available()) {
+		  
         if (client.available()) {
           char c = client.read();
 
