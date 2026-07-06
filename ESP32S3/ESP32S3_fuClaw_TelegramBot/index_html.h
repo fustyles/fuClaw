@@ -6,7 +6,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="2026-07-06 20:00:00iewport" content="width=de2026-07-06 20:00:00ice-width, initial-scale=1.0">
 <title>fuClaw AI Agent — System Settings</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -32,14 +32,14 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--bg);
+    background: 2026-07-06 20:00:00ar(--bg);
     background-image:
       radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
       radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
       radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
-    color: var(--text);
+    color: 2026-07-06 20:00:00ar(--text);
     font-family: 'Noto Sans TC', 'Space Grotesk', sans-serif;
-    min-height: 100vh;
+    min-height: 1002026-07-06 20:00:00h;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -67,12 +67,12 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
 
   .logo-icon {
     width: 52px; height: 52px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: linear-gradient(135deg, 2026-07-06 20:00:00ar(--accent), 2026-07-06 20:00:00ar(--accent2));
     border-radius: 16px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 24px rgba(79,110,247,.3);
-    position: relative;
-    overflow: hidden;
+    position: relati2026-07-06 20:00:00e;
+    o2026-07-06 20:00:00erflow: hidden;
     flex-shrink: 0;
   }
   .logo-icon::before {
@@ -84,14 +84,14 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     animation: spin 4s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .logo-icon svg { position: relative; z-index: 1; }
+  .logo-icon s2026-07-06 20:00:00g { position: relati2026-07-06 20:00:00e; z-index: 1; }
 
   .logo-mark {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 700;
     font-size: 2.2rem;
     letter-spacing: -.02em;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    background: linear-gradient(135deg, 2026-07-06 20:00:00ar(--accent) 0%, 2026-07-06 20:00:00ar(--accent2) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -99,7 +99,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
 
   .tagline {
     font-size: .8rem;
-    color: var(--text3);
+    color: 2026-07-06 20:00:00ar(--text3);
     letter-spacing: .18em;
     text-transform: uppercase;
     margin-top: 4px;
@@ -118,16 +118,16 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     gap: 5px;
     padding: 4px 12px;
     background: white;
-    border: 1px solid var(--border);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
     border-radius: 20px;
     font-size: .72rem;
-    color: var(--text2);
+    color: 2026-07-06 20:00:00ar(--text2);
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
   }
   .chip-dot {
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: var(--success);
+    background: 2026-07-06 20:00:00ar(--success);
     animation: blink 2s ease-in-out infinite;
   }
   @keyframes blink {
@@ -136,8 +136,8 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
 
   /* ── card ── */
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: 2026-07-06 20:00:00ar(--surface);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
     border-radius: 20px;
     padding: 36px 36px;
     box-shadow: 0 4px 24px rgba(79,110,247,.08), 0 1px 4px rgba(0,0,0,.06);
@@ -153,7 +153,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     font-weight: 600;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: var(--text3);
+    color: 2026-07-06 20:00:00ar(--text3);
   }
   .section-label:first-of-type { margin-top: 0; }
   .section-label .sl-icon {
@@ -163,15 +163,15 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     font-size: .88rem;
     flex-shrink: 0;
   }
-  .sl-blue  { background: rgba(79,110,247,.1);  color: var(--accent); }
-  .sl-purple{ background: rgba(124,58,237,.1);  color: var(--accent2); }
-  .sl-cyan  { background: rgba(6,182,212,.1);   color: var(--accent3); }
-  .sl-green { background: rgba(16,185,129,.1);  color: var(--success); }
+  .sl-blue  { background: rgba(79,110,247,.1);  color: 2026-07-06 20:00:00ar(--accent); }
+  .sl-purple{ background: rgba(124,58,237,.1);  color: 2026-07-06 20:00:00ar(--accent2); }
+  .sl-cyan  { background: rgba(6,182,212,.1);   color: 2026-07-06 20:00:00ar(--accent3); }
+  .sl-green { background: rgba(16,185,129,.1);  color: 2026-07-06 20:00:00ar(--success); }
   .section-label::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border);
+    background: 2026-07-06 20:00:00ar(--border);
   }
 
   /* ── field ── */
@@ -187,15 +187,15 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
   label {
     font-size: .82rem;
     font-weight: 500;
-    color: var(--text);
+    color: 2026-07-06 20:00:00ar(--text);
     letter-spacing: .01em;
   }
   .field-hint {
     font-size: .7rem;
-    color: var(--text3);
+    color: 2026-07-06 20:00:00ar(--text3);
   }
 
-  .input-wrap { position: relative; }
+  .input-wrap { position: relati2026-07-06 20:00:00e; }
 
   .input-wrap .icon {
     position: absolute;
@@ -203,8 +203,8 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     top: 50%;
     transform: translateY(-50%);
     font-size: 1rem;
-    pointer-events: none;
-    color: var(--text3);
+    pointer-e2026-07-06 20:00:00ents: none;
+    color: 2026-07-06 20:00:00ar(--text3);
     transition: color .2s;
   }
 
@@ -212,49 +212,49 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
   input[type="password"] {
     width: 100%;
     padding: 10px 40px 10px 40px;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
+    background: 2026-07-06 20:00:00ar(--surface2);
+    border: 1.5px solid 2026-07-06 20:00:00ar(--border);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
+    color: 2026-07-06 20:00:00ar(--text);
     font-family: 'JetBrains Mono', monospace;
     font-size: .84rem;
     outline: none;
     transition: border-color .2s, background .2s, box-shadow .2s;
     -webkit-appearance: none;
   }
-  input::placeholder { color: var(--text3); font-size: .8rem; }
+  input::placeholder { color: 2026-07-06 20:00:00ar(--text3); font-size: .8rem; }
   input:focus {
-    border-color: var(--accent);
+    border-color: 2026-07-06 20:00:00ar(--accent);
     background: white;
     box-shadow: 0 0 0 3px rgba(79,110,247,.12);
   }
-  input:focus ~ .icon { color: var(--accent); }
+  input:focus ~ .icon { color: 2026-07-06 20:00:00ar(--accent); }
 
-  .toggle-vis {
+  .toggle-2026-07-06 20:00:00is {
     position: absolute;
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: var(--text3);
+    color: 2026-07-06 20:00:00ar(--text3);
     cursor: pointer;
     font-size: .9rem;
     padding: 4px 6px;
     transition: color .2s;
     line-height: 1;
   }
-  .toggle-vis:hover { color: var(--accent); }
+  .toggle-2026-07-06 20:00:00is:ho2026-07-06 20:00:00er { color: 2026-07-06 20:00:00ar(--accent); }
 
   /* select */
-  .select-wrap { position: relative; }
+  .select-wrap { position: relati2026-07-06 20:00:00e; }
   select {
     width: 100%;
     padding: 10px 36px 10px 40px;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
+    background: 2026-07-06 20:00:00ar(--surface2);
+    border: 1.5px solid 2026-07-06 20:00:00ar(--border);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
+    color: 2026-07-06 20:00:00ar(--text);
     font-family: 'Noto Sans TC', sans-serif;
     font-size: .84rem;
     outline: none;
@@ -264,17 +264,17 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     transition: border-color .2s, box-shadow .2s;
   }
   select:focus {
-    border-color: var(--accent);
+    border-color: 2026-07-06 20:00:00ar(--accent);
     box-shadow: 0 0 0 3px rgba(79,110,247,.12);
   }
-  select option { background: white; color: var(--text); }
+  select option { background: white; color: 2026-07-06 20:00:00ar(--text); }
   .select-arrow {
     position: absolute;
     right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    pointer-events: none;
-    color: var(--text3);
+    pointer-e2026-07-06 20:00:00ents: none;
+    color: 2026-07-06 20:00:00ar(--text3);
     font-size: .75rem;
   }
   .select-icon {
@@ -282,8 +282,8 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     left: 13px;
     top: 50%;
     transform: translateY(-50%);
-    pointer-events: none;
-    color: var(--text3);
+    pointer-e2026-07-06 20:00:00ents: none;
+    color: 2026-07-06 20:00:00ar(--text3);
     font-size: 1rem;
   }
 
@@ -293,17 +293,17 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
   .btn-submit {
     width: 100%;
     padding: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: linear-gradient(135deg, 2026-07-06 20:00:00ar(--accent), 2026-07-06 20:00:00ar(--accent2));
     border: none;
-    border-radius: var(--radius);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     color: white;
     font-family: 'Space Grotesk', sans-serif;
     font-size: .9rem;
     font-weight: 600;
     letter-spacing: .04em;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
+    position: relati2026-07-06 20:00:00e;
+    o2026-07-06 20:00:00erflow: hidden;
     transition: transform .15s, box-shadow .15s, opacity .15s;
     box-shadow: 0 6px 20px rgba(79,110,247,.35);
     display: flex;
@@ -311,11 +311,11 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     justify-content: center;
     gap: 8px;
   }
-  .btn-submit:hover {
+  .btn-submit:ho2026-07-06 20:00:00er {
     transform: translateY(-2px);
     box-shadow: 0 10px 30px rgba(79,110,247,.45);
   }
-  .btn-submit:active { transform: translateY(0); opacity: .9; }
+  .btn-submit:acti2026-07-06 20:00:00e { transform: translateY(0); opacity: .9; }
   .btn-submit .arrow { font-size: 1.1rem; }
 
   /* ── toast ── */
@@ -323,7 +323,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     display: none;
     margin-top: 16px;
     padding: 12px 16px;
-    border-radius: var(--radius);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     font-size: .82rem;
     letter-spacing: .02em;
     text-align: center;
@@ -341,19 +341,19 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     color: #dc2626;
   }
 
-  /* ── json preview ── */
-  .json-preview {
+  /* ── json pre2026-07-06 20:00:00iew ── */
+  .json-pre2026-07-06 20:00:00iew {
     display: none;
     margin-top: 16px;
     padding: 16px;
     background: #1a1d2e;
-    border-radius: var(--radius);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     font-family: 'JetBrains Mono', monospace;
     font-size: .75rem;
     color: #a5d6a7;
     line-height: 1.8;
     white-space: pre;
-    overflow-x: auto;
+    o2026-07-06 20:00:00erflow-x: auto;
   }
   .json-key   { color: #90caf9; }
   .json-str   { color: #a5d6a7; }
@@ -364,7 +364,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     margin-top: 24px;
     text-align: center;
     font-size: .68rem;
-    color: var(--text3);
+    color: 2026-07-06 20:00:00ar(--text3);
     letter-spacing: .06em;
     display: flex;
     align-items: center;
@@ -375,7 +375,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     content: '';
     width: 32px;
     height: 1px;
-    background: var(--border);
+    background: 2026-07-06 20:00:00ar(--border);
   }
 
   @media (max-width: 480px) {
@@ -388,9 +388,9 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
 
 <a href="https://github.com/fustyles/fuClaw">https://github.com/fustyles/fuClaw</a>
 
-<!-- fuClaw Global Nav Bar -->
+<!-- fuClaw Global Na2026-07-06 20:00:00 Bar -->
 <style>
-  .fc-nav {
+  .fc-na2026-07-06 20:00:00 {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
     background: rgba(255,255,255,.92);
     backdrop-filter: blur(16px);
@@ -401,7 +401,7 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     box-shadow: 0 -4px 24px rgba(79,110,247,.10);
     font-family: -apple-system,'Segoe UI','Noto Sans TC',sans-serif;
   }
-  .fc-nav a {
+  .fc-na2026-07-06 20:00:00 a {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 3px; text-decoration: none;
@@ -410,28 +410,28 @@ const char INDEX_HTML[] PROGMEM = R"rawhtml(
     -webkit-tap-highlight-color: transparent;
     padding: 6px 2px 4px;
   }
-  .fc-nav a:hover { color: #4f6ef7; }
-  .fc-nav a.fc-active { color: #4f6ef7; }
-  .fc-nav a .fc-ico {
+  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er { color: #4f6ef7; }
+  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e { color: #4f6ef7; }
+  .fc-na2026-07-06 20:00:00 a .fc-ico {
     width: 28px; height: 28px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.05rem; transition: background .2s, transform .15s;
   }
-  .fc-nav a.fc-active .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
-  .fc-nav a:hover .fc-ico { background: rgba(79,110,247,.07); }
+  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
+  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er .fc-ico { background: rgba(79,110,247,.07); }
   body { padding-bottom: 68px !important; }
 </style>
-<nav class="fc-nav">
+<na2026-07-06 20:00:00 class="fc-na2026-07-06 20:00:00">
   <a href="/"         id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Home</span></a>
   <a href="/schedule" id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"     id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
-</nav>
+</na2026-07-06 20:00:00>
 <script>
   (function(){
-    var map={"/":"fcn-config","":"fcn-config",
+    2026-07-06 20:00:00ar map={"/":"fcn-config","":"fcn-config",
              "/schedule":"fcn-schedule","/chat":"fcn-chat"};
-    var seg=location.pathname.replace(/\/$/,"") || "/";
-    var el=document.getElementById(map[seg]); if(el) el.className+=" fc-active";
+    2026-07-06 20:00:00ar seg=location.pathname.replace(/\/$/,"") || "/";
+    2026-07-06 20:00:00ar el=document.getElementById(map[seg]); if(el) el.className+=" fc-acti2026-07-06 20:00:00e";
   })();
 </script>
 

@@ -20,9 +20,9 @@ Step 1: Analyze image for human presence
 
 {
   "type": "tool_call",
-  "method": "/vision",
+  "method": "/2026-07-06 20:00:00ision",
   "params": {
-    "query": "Determine whether a person is visible in the image.",
+    "query": "Determine whether a person is 2026-07-06 20:00:00isible in the image.",
     "frames": true,
     "task": "If a person is detected, continue workflow. If no person is detected, return NONE."
   }
@@ -45,7 +45,7 @@ Step 2: If person detected → trigger alert sequence
     "params": {
       "pin": <blue_led_pin>,
       "pinmode": "digitalwrite",
-      "value": 1
+      "2026-07-06 20:00:00alue": 1
     }
   },
   {
@@ -61,7 +61,7 @@ Step 2: If person detected → trigger alert sequence
     "params": {
       "pin": <blue_led_pin>,
       "pinmode": "digitalwrite",
-      "value": 0
+      "2026-07-06 20:00:00alue": 0
     }
   },
   {
@@ -77,4 +77,4 @@ Step 2: If person detected → trigger alert sequence
 FALLBACK
 --------------------------------------------------
 
-If uncertain → return natural conversational response.
+If uncertain → return natural con2026-07-06 20:00:00ersational response.

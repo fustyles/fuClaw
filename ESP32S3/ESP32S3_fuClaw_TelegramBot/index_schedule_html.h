@@ -6,7 +6,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="2026-07-06 20:00:00iewport" content="width=de2026-07-06 20:00:00ice-width, initial-scale=1.0">
 <title>fuClaw Task Scheduler</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -34,11 +34,11 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
+    background: 2026-07-06 20:00:00ar(--bg);
+    color: 2026-07-06 20:00:00ar(--text);
+    font-family: 2026-07-06 20:00:00ar(--sans);
+    min-height: 1002026-07-06 20:00:00h;
+    o2026-07-06 20:00:00erflow-x: hidden;
   }
 
   body::before {
@@ -49,7 +49,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
       radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
       radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
       radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
-    pointer-events: none;
+    pointer-e2026-07-06 20:00:00ents: none;
     z-index: 0;
   }
 
@@ -59,7 +59,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     max-width: 1100px;
     margin: 0 auto;
     padding: 24px 16px 60px;
-    position: relative;
+    position: relati2026-07-06 20:00:00e;
     z-index: 1;
   }
 
@@ -72,7 +72,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     gap: 12px;
     margin-bottom: 28px;
     padding-bottom: 18px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
   }
 
   .logo {
@@ -88,9 +88,9 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .logo h1 {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 1.1rem;
-    color: var(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
     letter-spacing: 0.08em;
     line-height: 1.2;
   }
@@ -98,7 +98,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .logo h1 span {
     display: block;
     font-size: 0.65rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     letter-spacing: 0.12em;
     margin-top: 2px;
   }
@@ -107,23 +107,23 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     display: flex;
     align-items: center;
     gap: 16px;
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.72rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
   }
 
   .status-dot {
     width: 8px; height: 8px;
     border-radius: 50%;
-    background: var(--text-dim);
+    background: 2026-07-06 20:00:00ar(--text-dim);
     display: inline-block;
     margin-right: 6px;
-    position: relative;
+    position: relati2026-07-06 20:00:00e;
   }
 
   .status-dot.online {
-    background: var(--success);
-    box-shadow: 0 0 8px var(--success);
+    background: 2026-07-06 20:00:00ar(--success);
+    box-shadow: 0 0 8px 2026-07-06 20:00:00ar(--success);
     animation: pulse 2s infinite;
   }
 
@@ -142,12 +142,12 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .btn {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.78rem;
     letter-spacing: 0.06em;
     padding: 8px 18px;
     border: 1px solid;
-    border-radius: var(--radius);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     cursor: pointer;
     background: transparent;
     transition: all 0.18s;
@@ -158,41 +158,41 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .btn-primary {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: 2026-07-06 20:00:00ar(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
   }
-  .btn-primary:hover {
-    background: var(--accent);
+  .btn-primary:ho2026-07-06 20:00:00er {
+    background: 2026-07-06 20:00:00ar(--accent);
     color: #fff;
     box-shadow: 0 4px 16px rgba(79,110,247,0.35);
   }
 
   .btn-success {
-    border-color: var(--accent2);
-    color: var(--accent2);
+    border-color: 2026-07-06 20:00:00ar(--accent2);
+    color: 2026-07-06 20:00:00ar(--accent2);
   }
-  .btn-success:hover {
-    background: var(--accent2);
+  .btn-success:ho2026-07-06 20:00:00er {
+    background: 2026-07-06 20:00:00ar(--accent2);
     color: #fff;
     box-shadow: 0 4px 16px rgba(16,185,129,0.35);
   }
 
   .btn-danger {
-    border-color: var(--danger);
-    color: var(--danger);
+    border-color: 2026-07-06 20:00:00ar(--danger);
+    color: 2026-07-06 20:00:00ar(--danger);
   }
-  .btn-danger:hover {
-    background: var(--danger);
+  .btn-danger:ho2026-07-06 20:00:00er {
+    background: 2026-07-06 20:00:00ar(--danger);
     color: #fff;
     box-shadow: 0 0 16px rgba(255,51,102,0.35);
   }
 
   .btn-warn {
-    border-color: var(--warn);
-    color: var(--warn);
+    border-color: 2026-07-06 20:00:00ar(--warn);
+    color: 2026-07-06 20:00:00ar(--warn);
   }
-  .btn-warn:hover {
-    background: var(--warn);
+  .btn-warn:ho2026-07-06 20:00:00er {
+    background: 2026-07-06 20:00:00ar(--warn);
     color: #fff;
     box-shadow: 0 0 16px rgba(255,107,53,0.35);
   }
@@ -200,7 +200,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .btn:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-    pointer-events: none;
+    pointer-e2026-07-06 20:00:00ents: none;
   }
 
   .toolbar-right {
@@ -218,30 +218,30 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   .stat-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    background: 2026-07-06 20:00:00ar(--surface);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     padding: 8px 16px;
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.72rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .stat-item .val {
+  .stat-item .2026-07-06 20:00:00al {
     font-size: 1.1rem;
-    color: var(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
     font-weight: bold;
   }
 
   /* Table */
   .table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    background: 2026-07-06 20:00:00ar(--surface);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
+    o2026-07-06 20:00:00erflow: hidden;
   }
 
   table {
@@ -251,51 +251,51 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   thead th {
-    background: var(--surface2);
-    color: var(--text-dim);
-    font-family: var(--mono);
+    background: 2026-07-06 20:00:00ar(--surface2);
+    color: 2026-07-06 20:00:00ar(--text-dim);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.68rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     padding: 11px 14px;
     text-align: left;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
     white-space: nowrap;
   }
 
   tbody tr {
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
     transition: background 0.14s;
   }
 
   tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: rgba(79,110,247,0.04); }
+  tbody tr:ho2026-07-06 20:00:00er { background: rgba(79,110,247,0.04); }
 
   tbody td {
     padding: 11px 14px;
-    vertical-align: middle;
+    2026-07-06 20:00:00ertical-align: middle;
   }
 
   .task-cell {
     font-weight: 500;
-    color: var(--text);
+    color: 2026-07-06 20:00:00ar(--text);
     max-width: 220px;
     word-break: break-all;
   }
 
   .time-cell {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.75rem;
-    color: var(--text);
+    color: 2026-07-06 20:00:00ar(--text);
     white-space: nowrap;
   }
 
-  .time-cell .date-part { color: var(--accent); }
-  .time-cell .time-part { color: var(--accent3); }
-  .time-cell .wildcard { color: var(--warn); }
+  .time-cell .date-part { color: 2026-07-06 20:00:00ar(--accent); }
+  .time-cell .time-part { color: 2026-07-06 20:00:00ar(--accent3); }
+  .time-cell .wildcard { color: 2026-07-06 20:00:00ar(--warn); }
 
   .badge {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.65rem;
     padding: 3px 9px;
     border-radius: 8px;
@@ -306,20 +306,20 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 
   .badge-done {
     background: rgba(16,185,129,0.1);
-    color: var(--success);
+    color: 2026-07-06 20:00:00ar(--success);
     border: 1px solid rgba(16,185,129,0.3);
   }
 
   .badge-pending {
     background: rgba(245,158,11,0.1);
-    color: var(--warn);
+    color: 2026-07-06 20:00:00ar(--warn);
     border: 1px solid rgba(245,158,11,0.3);
   }
 
   .badge-locked {
     background: rgba(136,146,176,0.12);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
+    color: 2026-07-06 20:00:00ar(--text-dim);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
   }
 
   .actions { white-space: nowrap; }
@@ -328,27 +328,27 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     padding: 5px 8px;
     border-radius: 8px;
     font-size: 0.85rem;
     transition: all 0.16s;
   }
-  .icon-btn:hover.edit { color: var(--accent); border-color: var(--accent); }
-  .icon-btn:hover.del  { color: var(--danger); border-color: var(--danger); }
+  .icon-btn:ho2026-07-06 20:00:00er.edit { color: 2026-07-06 20:00:00ar(--accent); border-color: 2026-07-06 20:00:00ar(--accent); }
+  .icon-btn:ho2026-07-06 20:00:00er.del  { color: 2026-07-06 20:00:00ar(--danger); border-color: 2026-07-06 20:00:00ar(--danger); }
 
   /* Empty state */
   .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: var(--text-dim);
-    font-family: var(--mono);
+    color: 2026-07-06 20:00:00ar(--text-dim);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.8rem;
   }
   .empty-state .big { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.3; }
 
   /* Modal */
-  .modal-overlay {
+  .modal-o2026-07-06 20:00:00erlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -358,18 +358,18 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     justify-content: center;
     backdrop-filter: blur(3px);
   }
-  .modal-overlay.open { display: flex; }
+  .modal-o2026-07-06 20:00:00erlay.open { display: flex; }
 
   .modal {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    background: 2026-07-06 20:00:00ar(--surface);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    border-radius: 2026-07-06 20:00:00ar(--radius);
     width: 90%;
     max-width: 560px;
     box-shadow: 0 8px 40px rgba(79,110,247,0.15), 0 2px 8px rgba(0,0,0,0.08);
     animation: fadeIn 0.18s ease;
-    max-height: 90vh;
-    overflow-y: auto;
+    max-height: 902026-07-06 20:00:00h;
+    o2026-07-06 20:00:00erflow-y: auto;
   }
 
   @keyframes fadeIn {
@@ -382,34 +382,34 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface2);
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
+    background: 2026-07-06 20:00:00ar(--surface2);
+    border-radius: 2026-07-06 20:00:00ar(--radius) 2026-07-06 20:00:00ar(--radius) 0 0;
   }
 
   .modal-header h2 {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.9rem;
-    color: var(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
     letter-spacing: 0.08em;
   }
 
   .modal-close {
     background: none;
     border: none;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     cursor: pointer;
     font-size: 1.2rem;
     padding: 2px 8px;
     border-radius: 2px;
     transition: color 0.15s;
   }
-  .modal-close:hover { color: var(--danger); }
+  .modal-close:ho2026-07-06 20:00:00er { color: 2026-07-06 20:00:00ar(--danger); }
 
   .modal-body { padding: 20px; }
   .modal-footer {
     padding: 14px 20px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid 2026-07-06 20:00:00ar(--border);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -427,9 +427,9 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 
   .form-group label {
     display: block;
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.68rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     letter-spacing: 0.1em;
     margin-bottom: 6px;
     text-transform: uppercase;
@@ -437,10 +437,10 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 
   .form-group input, .form-group select {
     width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
+    background: 2026-07-06 20:00:00ar(--bg);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
+    color: 2026-07-06 20:00:00ar(--text);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.82rem;
     padding: 8px 12px;
     border-radius: 8px;
@@ -448,27 +448,27 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     transition: border-color 0.16s;
   }
   .form-group input:focus, .form-group select:focus {
-    border-color: var(--accent);
+    border-color: 2026-07-06 20:00:00ar(--accent);
     box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
   }
-  .form-group input.invalid { border-color: var(--danger); }
+  .form-group input.in2026-07-06 20:00:00alid { border-color: 2026-07-06 20:00:00ar(--danger); }
 
   .form-group small {
     display: block;
     font-size: 0.65rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     margin-top: 4px;
   }
 
   .section-label {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.68rem;
-    color: var(--text-dim);
+    color: 2026-07-06 20:00:00ar(--text-dim);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin: 18px 0 10px;
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid 2026-07-06 20:00:00ar(--border);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -485,13 +485,13 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     display: flex;
     align-items: center;
     gap: 10px;
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.78rem;
-    color: var(--text);
+    color: 2026-07-06 20:00:00ar(--text);
   }
 
   .toggle {
-    position: relative;
+    position: relati2026-07-06 20:00:00e;
     width: 40px;
     height: 22px;
     flex-shrink: 0;
@@ -500,8 +500,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   .slider {
     position: absolute;
     inset: 0;
-    background: var(--surface2);
-    border: 1px solid var(--border);
+    background: 2026-07-06 20:00:00ar(--surface2);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
     border-radius: 22px;
     cursor: pointer;
     transition: all 0.2s;
@@ -515,8 +515,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     border-radius: 50%;
     transition: all 0.2s;
   }
-  .toggle input:checked + .slider { background: rgba(16,185,129,0.15); border-color: var(--accent2); }
-  .toggle input:checked + .slider::before { transform: translateX(18px); background: var(--success); }
+  .toggle input:checked + .slider { background: rgba(16,185,129,0.15); border-color: 2026-07-06 20:00:00ar(--accent2); }
+  .toggle input:checked + .slider::before { transform: translateX(18px); background: 2026-07-06 20:00:00ar(--success); }
   .toggle input:disabled + .slider { opacity: 0.35; cursor: not-allowed; }
 
   .hint-box {
@@ -525,8 +525,8 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.72rem;
-    color: var(--warn);
-    font-family: var(--mono);
+    color: 2026-07-06 20:00:00ar(--warn);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     margin-top: 14px;
     display: none;
   }
@@ -534,18 +534,18 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 
   /* Confirm modal */
   .confirm-icon { font-size: 2.8rem; text-align: center; margin-bottom: 10px; }
-  .confirm-msg { font-size: 0.88rem; line-height: 1.7; color: var(--text); margin-bottom: 6px; }
+  .confirm-msg { font-size: 0.88rem; line-height: 1.7; color: 2026-07-06 20:00:00ar(--text); margin-bottom: 6px; }
   .confirm-detail {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.7rem;
-    color: var(--text-dim);
-    background: var(--bg);
-    border: 1px solid var(--border);
+    color: 2026-07-06 20:00:00ar(--text-dim);
+    background: 2026-07-06 20:00:00ar(--bg);
+    border: 1px solid 2026-07-06 20:00:00ar(--border);
     border-radius: 8px;
     padding: 10px 14px;
     margin-top: 12px;
     max-height: 140px;
-    overflow-y: auto;
+    o2026-07-06 20:00:00erflow-y: auto;
     line-height: 1.6;
   }
 
@@ -558,35 +558,35 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     display: flex;
     flex-direction: column;
     gap: 8px;
-    pointer-events: none;
+    pointer-e2026-07-06 20:00:00ents: none;
   }
 
   .toast-item {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     padding: 10px 18px;
     border-radius: 8px;
     border: 1px solid;
-    pointer-events: none;
+    pointer-e2026-07-06 20:00:00ents: none;
     animation: slideIn 0.22s ease, fadeOut 0.3s ease 2.7s forwards;
     max-width: 320px;
   }
 
   .toast-item.success {
     background: rgba(16,185,129,0.1);
-    border-color: var(--success);
+    border-color: 2026-07-06 20:00:00ar(--success);
     color: #059669;
   }
   .toast-item.error {
     background: rgba(239,68,68,0.1);
-    border-color: var(--danger);
-    color: var(--danger);
+    border-color: 2026-07-06 20:00:00ar(--danger);
+    color: 2026-07-06 20:00:00ar(--danger);
   }
   .toast-item.info {
     background: rgba(79,110,247,0.1);
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: 2026-07-06 20:00:00ar(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
   }
 
   @keyframes slideIn {
@@ -598,7 +598,7 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
   }
 
   /* Loading */
-  .loading-overlay {
+  .loading-o2026-07-06 20:00:00erlay {
     display: none;
     position: fixed;
     inset: 0;
@@ -610,27 +610,27 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
     gap: 16px;
     backdrop-filter: blur(2px);
   }
-  .loading-overlay.show { display: flex; }
+  .loading-o2026-07-06 20:00:00erlay.show { display: flex; }
 
   .spinner {
     width: 40px; height: 40px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
+    border: 2px solid 2026-07-06 20:00:00ar(--border);
+    border-top-color: 2026-07-06 20:00:00ar(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .loading-text {
-    font-family: var(--mono);
+    font-family: 2026-07-06 20:00:00ar(--mono);
     font-size: 0.75rem;
-    color: var(--accent);
+    color: 2026-07-06 20:00:00ar(--accent);
     letter-spacing: 0.1em;
     animation: blink 1s step-end infinite;
   }
   @keyframes blink { 50% { opacity: 0.3; } }
 
-  /* Responsive */
+  /* Responsi2026-07-06 20:00:00e */
   @media (max-width: 700px) {
     .hide-sm { display: none !important; }
     .form-row { grid-template-columns: 1fr; }
@@ -642,11 +642,11 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
 </head>
 <body>
 
-<div class="container">
+<di2026-07-06 20:00:00 class="container">
   <!-- Header -->
   <header>
-    <div class="logo">
-      <svg class="chip-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <di2026-07-06 20:00:00 class="logo">
+      <s2026-07-06 20:00:00g class="chip-icon" 2026-07-06 20:00:00iewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/s2026-07-06 20:00:00g">
         <rect x="10" y="10" width="20" height="20" rx="2" stroke="#00d4ff" stroke-width="1.5" fill="rgba(0,212,255,0.06)"/>
         <rect x="14" y="14" width="12" height="12" rx="1" stroke="#00d4ff" stroke-width="1" fill="rgba(0,212,255,0.1)"/>
         <line x1="7" y1="15" x2="10" y2="15" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
@@ -661,37 +661,37 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
         <line x1="15" y1="30" x2="15" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="20" y1="30" x2="20" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="25" y1="30" x2="25" y2="33" stroke="#00ff9d" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
+      </s2026-07-06 20:00:00g>
       <h1>FUCLAW SCHEDULER
-        <span>TASK MANAGEMENT CONSOLE v1.0</span>
+        <span>TASK MANAGEMENT CONSOLE 2026-07-06 20:00:001.0</span>
       </h1>
-    </div>
-    <div class="status-bar">
+    </di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="status-bar">
       <span id="connStatus"><span class="status-dot" id="connDot"></span><span id="connLabel">Offline</span></span>
       <span class="hide-sm" id="lastSync">—</span>
-    </div>
+    </di2026-07-06 20:00:00>
   </header>
 
   <!-- Toolbar -->
-  <div class="toolbar">
+  <di2026-07-06 20:00:00 class="toolbar">
     <button class="btn btn-primary" onclick="fetchSchedule()">⬇ Load Schedule</button>
     <button class="btn btn-success" onclick="openAddModal()">＋ Add Task</button>
     <button class="btn btn-warn" onclick="clearExecuted()">✕ Clear Executed Tasks</button>
-    <div class="toolbar-right">
-      <button class="btn btn-success" id="saveBtn" onclick="confirmSave()" disabled>⬆ Save to Chip</button>
-    </div>
-  </div>
+    <di2026-07-06 20:00:00 class="toolbar-right">
+      <button class="btn btn-success" id="sa2026-07-06 20:00:00eBtn" onclick="confirmSa2026-07-06 20:00:00e()" disabled>⬆ Sa2026-07-06 20:00:00e to Chip</button>
+    </di2026-07-06 20:00:00>
+  </di2026-07-06 20:00:00>
 
   <!-- Stats -->
-  <div class="stats">
-    <div class="stat-item"><span>All</span><span class="val" id="statTotal">0</span></div>
-    <div class="stat-item"><span>Pending</span><span class="val" id="statPending" style="color:var(--warn)">0</span></div>
-    <div class="stat-item"><span>Executed</span><span class="val" id="statDone" style="color:var(--accent2)">0</span></div>
-    <div class="stat-item"><span>Recurring</span><span class="val" id="statRecur" style="color:var(--accent)">0</span></div>
-  </div>
+  <di2026-07-06 20:00:00 class="stats">
+    <di2026-07-06 20:00:00 class="stat-item"><span>All</span><span class="2026-07-06 20:00:00al" id="statTotal">0</span></di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="stat-item"><span>Pending</span><span class="2026-07-06 20:00:00al" id="statPending" style="color:2026-07-06 20:00:00ar(--warn)">0</span></di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="stat-item"><span>Executed</span><span class="2026-07-06 20:00:00al" id="statDone" style="color:2026-07-06 20:00:00ar(--accent2)">0</span></di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="stat-item"><span>Recurring</span><span class="2026-07-06 20:00:00al" id="statRecur" style="color:2026-07-06 20:00:00ar(--accent)">0</span></di2026-07-06 20:00:00>
+  </di2026-07-06 20:00:00>
 
   <!-- Table -->
-  <div class="table-wrap">
+  <di2026-07-06 20:00:00 class="table-wrap">
     <table>
       <thead>
         <tr>
@@ -704,113 +704,113 @@ const char INDEX_SCHEDULE_HTML[] PROGMEM = R"rawhtml(
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="6"><div class="empty-state"><div class="big">📡</div>No data loaded. Please click "Load Schedule".</div></td></tr>
+        <tr><td colspan="6"><di2026-07-06 20:00:00 class="empty-state"><di2026-07-06 20:00:00 class="big">📡</di2026-07-06 20:00:00>No data loaded. Please click "Load Schedule".</di2026-07-06 20:00:00></td></tr>
       </tbody>
     </table>
-  </div>
-</div>
+  </di2026-07-06 20:00:00>
+</di2026-07-06 20:00:00>
 
 <!-- ======= Edit / Add Modal ======= -->
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <div class="modal-header">
+<di2026-07-06 20:00:00 class="modal-o2026-07-06 20:00:00erlay" id="editModal">
+  <di2026-07-06 20:00:00 class="modal">
+    <di2026-07-06 20:00:00 class="modal-header">
       <h2 id="modalTitle">[ Add Task ]</h2>
       <button class="modal-close" onclick="closeModal('editModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row single">
-        <div class="form-group">
+    </di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="modal-body">
+      <di2026-07-06 20:00:00 class="form-row single">
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Task Description</label>
           <input type="text" id="fTask" placeholder="Example: Turn on green light" maxlength="80">
-        </div>
-      </div>
+        </di2026-07-06 20:00:00>
+      </di2026-07-06 20:00:00>
 
-      <div class="section-label">📅 Date (enter 0 for wildcard / recurring)</div>
+      <di2026-07-06 20:00:00 class="section-label">📅 Date (enter 0 for wildcard / recurring)</di2026-07-06 20:00:00>
 
-      <div class="form-row three">
-        <div class="form-group">
+      <di2026-07-06 20:00:00 class="form-row three">
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Year (0 = ignore)</label>
-          <input type="number" id="fYear" min="0" max="9999" value="0">
-          <small>0 = Every year</small>
-        </div>
-        <div class="form-group">
+          <input type="number" id="fYear" min="0" max="9999" 2026-07-06 20:00:00alue="0">
+          <small>0 = E2026-07-06 20:00:00ery year</small>
+        </di2026-07-06 20:00:00>
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Month (0 = ignore)</label>
-          <input type="number" id="fMonth" min="0" max="12" value="0">
-          <small>0 = Every month</small>
-        </div>
-        <div class="form-group">
+          <input type="number" id="fMonth" min="0" max="12" 2026-07-06 20:00:00alue="0">
+          <small>0 = E2026-07-06 20:00:00ery month</small>
+        </di2026-07-06 20:00:00>
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Day (0 = ignore)</label>
-          <input type="number" id="fDay" min="0" max="31" value="0">
-          <small>0 = Every day</small>
-        </div>
-      </div>
+          <input type="number" id="fDay" min="0" max="31" 2026-07-06 20:00:00alue="0">
+          <small>0 = E2026-07-06 20:00:00ery day</small>
+        </di2026-07-06 20:00:00>
+      </di2026-07-06 20:00:00>
 
-      <div class="section-label">🕐 Time</div>
+      <di2026-07-06 20:00:00 class="section-label">🕐 Time</di2026-07-06 20:00:00>
 
-      <div class="form-row three">
-        <div class="form-group">
+      <di2026-07-06 20:00:00 class="form-row three">
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Hour (0–23)</label>
-          <input type="number" id="fHour" min="0" max="23" value="0">
-        </div>
-        <div class="form-group">
+          <input type="number" id="fHour" min="0" max="23" 2026-07-06 20:00:00alue="0">
+        </di2026-07-06 20:00:00>
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Minute (0–59)</label>
-          <input type="number" id="fMinute" min="0" max="59" value="0">
-        </div>
-        <div class="form-group">
+          <input type="number" id="fMinute" min="0" max="59" 2026-07-06 20:00:00alue="0">
+        </di2026-07-06 20:00:00>
+        <di2026-07-06 20:00:00 class="form-group">
           <label>Second (0–59)</label>
-          <input type="number" id="fSecond" min="0" max="59" value="0">
-        </div>
-      </div>
+          <input type="number" id="fSecond" min="0" max="59" 2026-07-06 20:00:00alue="0">
+        </di2026-07-06 20:00:00>
+      </di2026-07-06 20:00:00>
 
-      <div class="toggle-row">
-        <div class="toggle-wrap">
+      <di2026-07-06 20:00:00 class="toggle-row">
+        <di2026-07-06 20:00:00 class="toggle-wrap">
           <label class="toggle">
             <input type="checkbox" id="fExecuted">
             <span class="slider"></span>
           </label>
           <span>Executed</span>
-        </div>
-        <span id="executedNote" style="font-size:0.68rem;font-family:var(--mono);color:var(--text-dim)"></span>
-      </div>
+        </di2026-07-06 20:00:00>
+        <span id="executedNote" style="font-size:0.68rem;font-family:2026-07-06 20:00:00ar(--mono);color:2026-07-06 20:00:00ar(--text-dim)"></span>
+      </di2026-07-06 20:00:00>
 
-      <div class="hint-box" id="wildcardHint">
-        ⚠ When wildcard values (0) are used in date fields, the task is treated as recurring and "Executed" is forced to false.
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" style="border-color:var(--border);color:var(--text-dim)" onclick="closeModal('editModal')">Cancel</button>
-      <button class="btn btn-success" onclick="saveRow()">Confirm Save</button>
-    </div>
-  </div>
-</div>
+      <di2026-07-06 20:00:00 class="hint-box" id="wildcardHint">
+        ⚠ When wildcard 2026-07-06 20:00:00alues (0) are used in date fields, the task is treated as recurring and "Executed" is forced to false.
+      </di2026-07-06 20:00:00>
+    </di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="modal-footer">
+      <button class="btn" style="border-color:2026-07-06 20:00:00ar(--border);color:2026-07-06 20:00:00ar(--text-dim)" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-success" onclick="sa2026-07-06 20:00:00eRow()">Confirm Sa2026-07-06 20:00:00e</button>
+    </di2026-07-06 20:00:00>
+  </di2026-07-06 20:00:00>
+</di2026-07-06 20:00:00>
 
 <!-- ======= Confirm Modal ======= -->
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-header">
+<di2026-07-06 20:00:00 class="modal-o2026-07-06 20:00:00erlay" id="confirmModal">
+  <di2026-07-06 20:00:00 class="modal" style="max-width:440px">
+    <di2026-07-06 20:00:00 class="modal-header">
       <h2 id="confirmTitle">[ Confirm Action ]</h2>
       <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="confirm-icon" id="confirmIcon">⚠️</div>
-      <div class="confirm-msg" id="confirmMsg"></div>
-      <div class="confirm-detail" id="confirmDetail" style="display:none"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" style="border-color:var(--border);color:var(--text-dim)" onclick="closeModal('confirmModal')">Cancel</button>
+    </di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="modal-body">
+      <di2026-07-06 20:00:00 class="confirm-icon" id="confirmIcon">⚠️</di2026-07-06 20:00:00>
+      <di2026-07-06 20:00:00 class="confirm-msg" id="confirmMsg"></di2026-07-06 20:00:00>
+      <di2026-07-06 20:00:00 class="confirm-detail" id="confirmDetail" style="display:none"></di2026-07-06 20:00:00>
+    </di2026-07-06 20:00:00>
+    <di2026-07-06 20:00:00 class="modal-footer">
+      <button class="btn" style="border-color:2026-07-06 20:00:00ar(--border);color:2026-07-06 20:00:00ar(--text-dim)" onclick="closeModal('confirmModal')">Cancel</button>
       <button class="btn btn-success" id="confirmOkBtn" onclick="confirmOk()">Confirm</button>
-    </div>
-  </div>
-</div>
+    </di2026-07-06 20:00:00>
+  </di2026-07-06 20:00:00>
+</di2026-07-06 20:00:00>
 
 <!-- Toast container -->
-<div id="toast"></div>
+<di2026-07-06 20:00:00 id="toast"></di2026-07-06 20:00:00>
 
 <!-- Loading -->
-<div class="loading-overlay" id="loading">
-  <div class="spinner"></div>
-  <div class="loading-text" id="loadingText">PROCESSING...</div>
-</div>
+<di2026-07-06 20:00:00 class="loading-o2026-07-06 20:00:00erlay" id="loading">
+  <di2026-07-06 20:00:00 class="spinner"></di2026-07-06 20:00:00>
+  <di2026-07-06 20:00:00 class="loading-text" id="loadingText">PROCESSING...</di2026-07-06 20:00:00>
+</di2026-07-06 20:00:00>
 
 <script>
 // ===== State =====
@@ -822,9 +822,9 @@ let dirty = false;
 // ===== DOM helpers =====
 const $ = id => document.getElementById(id);
 
-function setDirty(val) {
-  dirty = val;
-  $('saveBtn').disabled = !val;
+function setDirty(2026-07-06 20:00:00al) {
+  dirty = 2026-07-06 20:00:00al;
+  $('sa2026-07-06 20:00:00eBtn').disabled = !2026-07-06 20:00:00al;
 }
 
 // ===== Format helpers =====
@@ -861,7 +861,7 @@ function enforceRule(item) {
 function renderTable() {
   const tbody = $('tableBody');
   if (!schedule.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="big">📋</div>No schedule data available</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><di2026-07-06 20:00:00 class="empty-state"><di2026-07-06 20:00:00 class="big">📋</di2026-07-06 20:00:00>No schedule data a2026-07-06 20:00:00ailable</di2026-07-06 20:00:00></td></tr>`;
     updateStats(); return;
   }
   tbody.innerHTML = schedule.map((item, i) => {
@@ -873,10 +873,10 @@ function renderTable() {
     else badge = `<span class="badge badge-pending">◉ Pending</span>`;
 
     return `<tr>
-      <td style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${i+1}</td>
+      <td style="font-family:2026-07-06 20:00:00ar(--mono);font-size:0.7rem;color:2026-07-06 20:00:00ar(--text-dim)">${i+1}</td>
       <td class="task-cell">${escHtml(item.task)}</td>
       <td>${formatSchedule(item.schedule)}</td>
-      <td class="hide-sm"><span style="font-family:var(--mono);font-size:0.7rem;color:var(--text-dim)">${typ}</span></td>
+      <td class="hide-sm"><span style="font-family:2026-07-06 20:00:00ar(--mono);font-size:0.7rem;color:2026-07-06 20:00:00ar(--text-dim)">${typ}</span></td>
       <td>${badge}</td>
       <td class="actions">
         <button class="icon-btn edit" title="Edit" onclick="openEditModal(${i})">✎</button>
@@ -910,12 +910,12 @@ async function fetchSchedule() {
     renderTable();
     setDirty(false);
     setConnected(true);
-    toast('✓ Schedule data retrieved successfully', 'success');
+    toast('✓ Schedule data retrie2026-07-06 20:00:00ed successfully', 'success');
     $('lastSync').textContent = 'Last sync： ' + new Date().toLocaleTimeString('zh-TW') +" [zh-TW]";
   } catch(e) {
     setConnected(false);
     toast('✗ Unable to connect to chip：' + e.message, 'error');
-    // Dev fallback demo data
+    // De2026-07-06 20:00:00 fallback demo data
     if (schedule.length === 0) loadDemoData();
   } finally {
     hideLoading();
@@ -931,21 +931,21 @@ function loadDemoData() {
   toast('⚑ Sample data loaded (offline mode)', 'info');
 }
 
-// ===== Save to chip =====
-function confirmSave() {
+// ===== Sa2026-07-06 20:00:00e to chip =====
+function confirmSa2026-07-06 20:00:00e() {
   const json = JSON.stringify(schedule, null, 2);
-  $('confirmTitle').textContent = '[ Confirm saving to chip ]';
+  $('confirmTitle').textContent = '[ Confirm sa2026-07-06 20:00:00ing to chip ]';
   $('confirmIcon').textContent = '💾';
-  $('confirmMsg').innerHTML = `Proceeding to <code style="color:var(--accent)">GET /updateSchedule</code> Save <strong style="color:var(--accent2)">${schedule.length}  schedule items</strong> to the chip.<br>This operation will overwrite existing data on the chip. Do you want to continue?`;
+  $('confirmMsg').innerHTML = `Proceeding to <code style="color:2026-07-06 20:00:00ar(--accent)">GET /updateSchedule</code> Sa2026-07-06 20:00:00e <strong style="color:2026-07-06 20:00:00ar(--accent2)">${schedule.length}  schedule items</strong> to the chip.<br>This operation will o2026-07-06 20:00:00erwrite existing data on the chip. Do you want to continue?`;
   const detail = $('confirmDetail');
   detail.style.display = 'block';
   detail.textContent = json;
   $('confirmOkBtn').className = 'btn btn-success';
-  pendingAction = 'save';
+  pendingAction = 'sa2026-07-06 20:00:00e';
   openModal('confirmModal');
 }
 
-async function doSave() {
+async function doSa2026-07-06 20:00:00e() {
   showLoading('Writing to chip...');
   try {
     const json = JSON.stringify(schedule);
@@ -954,10 +954,10 @@ async function doSave() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     setDirty(false);
     setConnected(true);
-    toast('✓ Schedules successfully saved to chip', 'success');
+    toast('✓ Schedules successfully sa2026-07-06 20:00:00ed to chip', 'success');
     $('lastSync').textContent = 'Last sync:' + new Date().toLocaleTimeString('zh-TW');
   } catch(e) {
-    toast('✗ Save failed: ' + e.message, 'error');
+    toast('✗ Sa2026-07-06 20:00:00e failed: ' + e.message, 'error');
   } finally {
     hideLoading();
   }
@@ -967,13 +967,13 @@ async function doSave() {
 function openAddModal() {
   editIndex = -1;
   $('modalTitle').textContent = '[ Add Task ]';
-  $('fTask').value = '';
-  $('fYear').value = 0;
-  $('fMonth').value = 0;
-  $('fDay').value = 0;
-  $('fHour').value = 8;
-  $('fMinute').value = 0;
-  $('fSecond').value = 0;
+  $('fTask').2026-07-06 20:00:00alue = '';
+  $('fYear').2026-07-06 20:00:00alue = 0;
+  $('fMonth').2026-07-06 20:00:00alue = 0;
+  $('fDay').2026-07-06 20:00:00alue = 0;
+  $('fHour').2026-07-06 20:00:00alue = 8;
+  $('fMinute').2026-07-06 20:00:00alue = 0;
+  $('fSecond').2026-07-06 20:00:00alue = 0;
   $('fExecuted').checked = false;
   $('fExecuted').disabled = true;
   updateWildcardHint();
@@ -984,22 +984,22 @@ function openEditModal(i) {
   editIndex = i;
   const item = schedule[i];
   $('modalTitle').textContent = `[ Edit Schedule #${i+1} ]`;
-  $('fTask').value = item.task;
-  $('fYear').value = item.schedule.year;
-  $('fMonth').value = item.schedule.month;
-  $('fDay').value = item.schedule.day;
-  $('fHour').value = item.schedule.hour;
-  $('fMinute').value = item.schedule.minute;
-  $('fSecond').value = item.schedule.second;
+  $('fTask').2026-07-06 20:00:00alue = item.task;
+  $('fYear').2026-07-06 20:00:00alue = item.schedule.year;
+  $('fMonth').2026-07-06 20:00:00alue = item.schedule.month;
+  $('fDay').2026-07-06 20:00:00alue = item.schedule.day;
+  $('fHour').2026-07-06 20:00:00alue = item.schedule.hour;
+  $('fMinute').2026-07-06 20:00:00alue = item.schedule.minute;
+  $('fSecond').2026-07-06 20:00:00alue = item.schedule.second;
   $('fExecuted').checked = item.executed;
   updateWildcardHint();
   openModal('editModal');
 }
 
 function updateWildcardHint() {
-  const y = parseInt($('fYear').value) || 0;
-  const m = parseInt($('fMonth').value) || 0;
-  const d = parseInt($('fDay').value) || 0;
+  const y = parseInt($('fYear').2026-07-06 20:00:00alue) || 0;
+  const m = parseInt($('fMonth').2026-07-06 20:00:00alue) || 0;
+  const d = parseInt($('fDay').2026-07-06 20:00:00alue) || 0;
   const wild = y === 0 || m === 0 || d === 0;
   $('wildcardHint').classList.toggle('show', wild);
   $('fExecuted').disabled = wild;
@@ -1007,21 +1007,21 @@ function updateWildcardHint() {
 }
 
 ['fYear','fMonth','fDay'].forEach(id => {
-  $(id).addEventListener('input', updateWildcardHint);
+  $(id).addE2026-07-06 20:00:00entListener('input', updateWildcardHint);
 });
 
-function saveRow() {
-  const task = $('fTask').value.trim();
-  if (!task) { $('fTask').classList.add('invalid'); $('fTask').focus(); return; }
-  $('fTask').classList.remove('invalid');
+function sa2026-07-06 20:00:00eRow() {
+  const task = $('fTask').2026-07-06 20:00:00alue.trim();
+  if (!task) { $('fTask').classList.add('in2026-07-06 20:00:00alid'); $('fTask').focus(); return; }
+  $('fTask').classList.remo2026-07-06 20:00:00e('in2026-07-06 20:00:00alid');
 
   const s = {
-    year:   parseInt($('fYear').value) || 0,
-    month:  parseInt($('fMonth').value) || 0,
-    day:    parseInt($('fDay').value) || 0,
-    hour:   parseInt($('fHour').value) || 0,
-    minute: parseInt($('fMinute').value) || 0,
-    second: parseInt($('fSecond').value) || 0,
+    year:   parseInt($('fYear').2026-07-06 20:00:00alue) || 0,
+    month:  parseInt($('fMonth').2026-07-06 20:00:00alue) || 0,
+    day:    parseInt($('fDay').2026-07-06 20:00:00alue) || 0,
+    hour:   parseInt($('fHour').2026-07-06 20:00:00alue) || 0,
+    minute: parseInt($('fMinute').2026-07-06 20:00:00alue) || 0,
+    second: parseInt($('fSecond').2026-07-06 20:00:00alue) || 0,
   };
   const executed = $('fExecuted').checked;
   const item = { task, schedule: s, executed };
@@ -1043,7 +1043,7 @@ function saveRow() {
 function confirmDelete(i) {
   $('confirmTitle').textContent = '[ Confirm deletion ]';
   $('confirmIcon').textContent = '🗑️';
-  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:var(--danger)"># ${i+1}</strong> ?<br><span style="color:var(--text-dim);font-size:0.8rem">"${escHtml(schedule[i].task)}"</span>`;
+  $('confirmMsg').innerHTML = `This will delete schedule <strong style="color:2026-07-06 20:00:00ar(--danger)"># ${i+1}</strong> ?<br><span style="color:2026-07-06 20:00:00ar(--text-dim);font-size:0.8rem">"${escHtml(schedule[i].task)}"</span>`;
   $('confirmDetail').style.display = 'none';
   $('confirmOkBtn').className = 'btn btn-danger';
   pendingAction = () => {
@@ -1061,7 +1061,7 @@ function clearExecuted() {
   if (!count) { toast('No completed schedules to clear', 'info'); return; }
   $('confirmTitle').textContent = '[ Clear executed schedules ]';
   $('confirmIcon').textContent = '🧹';
-  $('confirmMsg').innerHTML = `This will delete <strong style="color:var(--warn)">${count}</strong> completed one-time schedules (recurring schedules will not be affected).`;
+  $('confirmMsg').innerHTML = `This will delete <strong style="color:2026-07-06 20:00:00ar(--warn)">${count}</strong> completed one-time schedules (recurring schedules will not be affected).`;
   $('confirmDetail').style.display = 'none';
   $('confirmOkBtn').className = 'btn btn-warn';
   pendingAction = () => {
@@ -1076,17 +1076,17 @@ function clearExecuted() {
 // ===== Confirm modal =====
 function confirmOk() {
   closeModal('confirmModal');
-  if (pendingAction === 'save') { doSave(); }
+  if (pendingAction === 'sa2026-07-06 20:00:00e') { doSa2026-07-06 20:00:00e(); }
   else if (typeof pendingAction === 'function') { pendingAction(); }
   pendingAction = null;
 }
 
 // ===== Modal helpers =====
 function openModal(id) { $(id).classList.add('open'); }
-function closeModal(id) { $(id).classList.remove('open'); }
+function closeModal(id) { $(id).classList.remo2026-07-06 20:00:00e('open'); }
 
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+document.querySelectorAll('.modal-o2026-07-06 20:00:00erlay').forEach(el => {
+  el.addE2026-07-06 20:00:00entListener('click', e => { if (e.target === el) closeModal(el.id); });
 });
 
 // ===== Loading =====
@@ -1094,15 +1094,15 @@ function showLoading(msg) {
   $('loadingText').textContent = msg || 'PROCESSING...';
   $('loading').classList.add('show');
 }
-function hideLoading() { $('loading').classList.remove('show'); }
+function hideLoading() { $('loading').classList.remo2026-07-06 20:00:00e('show'); }
 
 // ===== Toast =====
 function toast(msg, type = 'info') {
-  const el = document.createElement('div');
+  const el = document.createElement('di2026-07-06 20:00:00');
   el.className = `toast-item ${type}`;
   el.textContent = msg;
   $('toast').appendChild(el);
-  setTimeout(() => el.remove(), 3200);
+  setTimeout(() => el.remo2026-07-06 20:00:00e(), 3200);
 }
 
 // ===== Connection status =====
@@ -1115,9 +1115,9 @@ function setConnected(ok) {
 renderTable();
 </script>
 
-<!-- fuClaw Global Nav Bar -->
+<!-- fuClaw Global Na2026-07-06 20:00:00 Bar -->
 <style>
-  .fc-nav {
+  .fc-na2026-07-06 20:00:00 {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
     background: rgba(255,255,255,.92);
     backdrop-filter: blur(16px);
@@ -1128,7 +1128,7 @@ renderTable();
     box-shadow: 0 -4px 24px rgba(79,110,247,.10);
     font-family: -apple-system,'Segoe UI','Noto Sans TC',sans-serif;
   }
-  .fc-nav a {
+  .fc-na2026-07-06 20:00:00 a {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     gap: 3px; text-decoration: none;
@@ -1137,28 +1137,28 @@ renderTable();
     -webkit-tap-highlight-color: transparent;
     padding: 6px 2px 4px;
   }
-  .fc-nav a:hover { color: #4f6ef7; }
-  .fc-nav a.fc-active { color: #4f6ef7; }
-  .fc-nav a .fc-ico {
+  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er { color: #4f6ef7; }
+  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e { color: #4f6ef7; }
+  .fc-na2026-07-06 20:00:00 a .fc-ico {
     width: 28px; height: 28px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     font-size: 1.05rem; transition: background .2s, transform .15s;
   }
-  .fc-nav a.fc-active .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
-  .fc-nav a:hover .fc-ico { background: rgba(79,110,247,.07); }
+  .fc-na2026-07-06 20:00:00 a.fc-acti2026-07-06 20:00:00e .fc-ico { background: rgba(79,110,247,.12); transform: scale(1.08); }
+  .fc-na2026-07-06 20:00:00 a:ho2026-07-06 20:00:00er .fc-ico { background: rgba(79,110,247,.07); }
   body { padding-bottom: 68px !important; }
 </style>
-<nav class="fc-nav">
+<na2026-07-06 20:00:00 class="fc-na2026-07-06 20:00:00">
   <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Home</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
-</nav>
+</na2026-07-06 20:00:00>
 <script>
   (function(){
-    var map={"/":"fcn-config","":"fcn-config",
+    2026-07-06 20:00:00ar map={"/":"fcn-config","":"fcn-config",
              "/schedule":"fcn-schedule","/chat":"fcn-chat"};
-    var seg=location.pathname.replace(/\/$/,"") || "/";
-    var el=document.getElementById(map[seg]); if(el) el.className+=" fc-active";
+    2026-07-06 20:00:00ar seg=location.pathname.replace(/\/$/,"") || "/";
+    2026-07-06 20:00:00ar el=document.getElementById(map[seg]); if(el) el.className+=" fc-acti2026-07-06 20:00:00e";
   })();
 </script>
 
