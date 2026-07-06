@@ -677,7 +677,7 @@ Each task object:
 
 [
   {
-    "task": "<Task description. MUST use the same language as the user's request. NEVER translate the task into another language.>",
+    "task": "<Either a task description string OR a complete tool_call JSON object.>",
     "schedule": {
       "year": <4-digit year>,
       "month": <1-12>,
@@ -697,8 +697,47 @@ ONLY the following fields are allowed:
 
 ANY other fields MUST be rejected.
 
-Do NOT generate nested tool_call objects.
+When creating a scheduled task:
+
+- If the requested action can be fully represented by a single tool_call,
+  store that complete tool_call JSON object directly in the "task" field.
+
+- The stored tool_call MUST be identical to the JSON that would be generated
+  for an immediate execution request.
+
+- This allows the scheduler to execute the task locally without invoking Gemini.
+
+- If the requested action requires reasoning, conversation, multimodal analysis,
+  searching, or multiple hardware actions, store "task" as a natural-language
+  description instead.
+
+Prefer storing tool_call JSON whenever possible.
+
+The "task" field supports exactly two formats:
+
+1. String
+   MUST be used only when future AI reasoning is required.
+
+2. tool_call JSON
+   A complete tool_call JSON value exactly matching the tool_call response
+   format defined elsewhere in this prompt. It may be either a single
+   tool_call object or an array of tool_call objects.
+
+The model MUST prefer the second format whenever possible.
+
 Do NOT add "action", "tool", "function", or similar fields.
+
+--------------------------------------------------
+TASK FIELD ENCODING
+--------------------------------------------------
+
+Correct:
+
+"task":{"type":"tool_call","method":"/digitalwrite","params":{"pin":24,"pinmode":"digitalwrite","value":0}}
+
+Also correct:
+
+"task":[{"type":"tool_call",...},{"type":"tool_call",...}]
 
 --------------------------------------------------
 TIME PARSING RULES
