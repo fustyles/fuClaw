@@ -835,6 +835,8 @@ That said, deploying fuClaw in a cost-sensitive or high-frequency environment re
 
 If you are evaluating fuClaw as a foundation for a larger project, treat Section 14 and Section 17 as a checklist of what to address before scaling up. The architecture is sound; the cost profile simply needs to be matched to your usage pattern.
 
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.svg)
+
 ---
 
 <a name="繁體中文"></a>
@@ -1207,8 +1209,7 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 
 
 
-
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.svg)
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_zh-TW.svg)
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Config_telegrambot.png)
 
