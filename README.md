@@ -545,11 +545,23 @@ fuClaw introduces a highly flexible and intuitive dual-mode interaction mechanis
 
 * **AI Natural Language Parsing Mode:**
   Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based Gemini engine automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard storage's `schedule.json`.
+
+  At this creation step, the `SCHEDULE TASK CREATION RULES` embedded in the system prompt make one further decision on Gemini's side: if the requested action can be fully represented as one or more `tool_call` objects — no reasoning, conversation, multimodal analysis, or search needed to carry it out — Gemini stores that complete `tool_call` JSON (a single object or an array representing a multi-step sequence) directly in the `task` field, and is explicitly instructed to **prefer this format whenever possible**. Only when the request genuinely requires reasoning at trigger time does Gemini fall back to storing a natural-language description string instead. This single upstream decision is what determines, later, whether the scheduled entry can fire fully offline (see below) or still needs a live Gemini call when it comes due.
 * **Manual Graphical Web UI Mode:**
   To ensure rock-solid reliability and pixel-perfect control when offline or in quiet environments, the system features a built-in dedicated schedule management web interface (`index_schedule.html`). Users can utilize the standard graphical interface to **manually add, edit, modify, or delete** any scheduled task with deterministic precision.
 
 **✨ Core Architectural Advantage:**
 Both distinct control paths **read and write to the exact same core `schedule.json` file in real-time**. This design achieves a perfect harmony between "highly flexible natural language input" and "highly deterministic graphical management," ensuring a seamless, robust user experience across all deployment conditions.
+
+### Fully Offline Execution via Structured `tool_call` Storage
+Not every scheduled task needs a live Gemini call at the moment it fires. The `task` field of each entry in `schedule.json` can hold either of two fundamentally different payload types, and `task_time_scheduling` treats them differently:
+
+* **Plain-text description** (e.g. `"Turn off the green light"`) — at trigger time, the firmware sends this text to `geminiChatRequest()` so the cloud model can interpret intent and produce the corresponding `tool_call` JSON. This mode requires a working network connection and a reachable Gemini endpoint at the exact moment the task is due.
+* **Pre-authored `tool_call` JSON** — a single tool_call object (`{"type":"tool_call","method":"/digitalwrite","params":{...}}`) or an array of tool_call objects representing a multi-step sequence (e.g. turn a pin on, delay, turn it off, delay, repeat). The scheduler detects this case with a simple boundary check — the stored string starts with `{`/ends with `}`, or starts with `[`/ends with `]` — and when matched, calls `handleAgentResponse()` **directly**, completely bypassing any Gemini API call.
+
+Because the reasoning has already happened once, at authoring time, a pre-authored `tool_call` schedule fires purely from local firmware logic, with **zero cloud dependency at execution time** — it continues to run correctly even if Wi-Fi, the Gemini API, or the MQTT broker is unreachable at the exact trigger moment. This makes fuClaw suitable for latency-critical or connectivity-fragile automations (relay pulses, servo sequences, sensor polling loops) that must fire on schedule regardless of network conditions.
+
+`index_schedule.html` surfaces this distinction directly in the UI: any task stored as a `tool_call` object or `tool_call` sequence is flagged with an **OFFLINE** badge in the schedule table, so users can tell at a glance which entries will run without any cloud round-trip, versus which ones still depend on a live Gemini call to be interpreted.
 
 ---
 
@@ -984,9 +996,21 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 **雙模式排程管理:智慧與精準兼具**:fuClaw 為邊緣端排程管理引入高度靈活且直覺的雙模式互動機制:
 
 * **AI 自然語言解析模式**:使用者無需理解複雜的 Cron 表達式或程式語法,只要透過 Telegram 或聊天介面輸入日常語言(例如:「週一到週五早上 8:30 設定防盜偵測」),雲端的 Gemini 引擎便會自動解析使用者意圖與時間參數,轉換為結構化的 JSON 任務格式送至韌體。經過本地邊界安全驗證後,韌體會即時寫入儲存裝置上的 `schedule.json`。
+
+  在這個新增排程的步驟中,system prompt 內嵌的 `SCHEDULE TASK CREATION RULES` 會讓 Gemini 端多做一項判斷:若使用者要求的動作可以完整表達成一個或多個 `tool_call` 物件——也就是不需要在執行當下額外推理、對話、多模態分析或搜尋——Gemini 便會直接將完整的 `tool_call` JSON(可以是單一物件,或代表多步驟序列的物件陣列)存入 `task` 欄位,且 prompt 明確要求 **只要可行就優先採用此格式**。只有在該請求確實需要在觸發當下進行推理時,Gemini 才會退而求其次,改存成純文字描述字串。這個發生在「上游」的單一決策,決定了該筆排程日後觸發時究竟能完全離線執行(見下方說明),還是仍需即時呼叫 Gemini。
 * **手動圖形化 Web UI 模式**:為確保離線或安靜環境下的高度可靠與精準控制,系統內建專屬的排程管理 Web 介面(`index_schedule.html`),使用者可透過標準圖形介面以確定性的方式**手動新增、編輯、修改或刪除**任一排程任務。
 
 **✨ 核心架構優勢**:兩條獨立的控制路徑**即時讀寫同一份核心 `schedule.json` 檔案**。此設計在「高度靈活的自然語言輸入」與「高度確定的圖形化管理」之間取得完美平衡,確保在各種部署條件下都有無縫且穩健的使用體驗。
+
+### 透過結構化 `tool_call` 儲存實現完全離線執行
+並非每一筆排程任務在觸發當下都需要即時呼叫 Gemini。`schedule.json` 中每筆任務的 `task` 欄位可以儲存兩種本質不同的內容,`task_time_scheduling` 會分別以不同方式處理:
+
+* **純文字描述**(例如 `"關閉綠燈"`)——觸發時,韌體會將這段文字送至 `geminiChatRequest()`,由雲端模型即時解讀意圖並產生對應的 `tool_call` JSON。此模式要求在任務到期的當下,必須有可用的網路連線與可連通的 Gemini 端點。
+* **預先寫好的 `tool_call` JSON**——可以是單一 tool_call 物件(`{"type":"tool_call","method":"/digitalwrite","params":{...}}`),或是代表多步驟序列的 tool_call 物件陣列(例如:開啟腳位、延遲、關閉腳位、延遲、重複)。排程器僅以簡單的邊界字元判斷此情形——儲存字串以 `{` 開頭且以 `}` 結尾,或以 `[` 開頭且以 `]` 結尾——一旦符合,便**直接**呼叫 `handleAgentResponse()`,完全略過任何 Gemini API 呼叫。
+
+由於「推理」這件事已經在撰寫排程當下完成過一次,預先寫好 `tool_call` 的排程任務,執行時完全依靠本地韌體邏輯運作,在**執行當下零雲端依賴**——即使在觸發那一刻 Wi-Fi、Gemini API 或 MQTT Broker 恰好無法連線,任務仍會正常執行。這讓 fuClaw 也適用於對延遲敏感、或網路可能不穩的自動化情境(繼電器脈衝控制、伺服馬達動作序列、感測器輪詢迴圈等),確保這些動作無論網路狀態如何都能準時觸發。
+
+`index_schedule.html` 在介面上直接呈現這項區別:任何以 tool_call 物件或 tool_call 序列儲存的任務,都會在排程表格中標示 **OFFLINE** 徽章,讓使用者一眼就能分辨哪些項目完全不需雲端往返即可執行,哪些項目仍需即時呼叫 Gemini 才能被解讀執行。
 
 ---
 
