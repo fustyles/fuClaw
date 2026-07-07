@@ -75,8 +75,8 @@ void handleRequest(WiFiClient &client, const String &getHead, String getBody) {
 
   getBody = urldecode(getBody);  // Decode any URL-encoded characters in the body/path
 
-  Serial.println("getHead = " + getHead); 
-  Serial.println("getBody = " + getBody);
+  Serial.println("Head = " + getHead); 
+  Serial.println("Body = " + getBody);
 
   String mainPageHTML = "";   // Local buffer holding the actual response body for this request
 
