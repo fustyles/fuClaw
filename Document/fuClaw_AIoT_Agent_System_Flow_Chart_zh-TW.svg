@@ -1,0 +1,491 @@
+<svg width="1100" height="6293" viewBox="0 0 1100 6293" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>fuClaw AIoT Agent 系統流程圖（更新版）</title>
+<desc>fuClaw 嵌入式 AI Agent 的更新版架構流程圖，涵蓋雙通訊模式、可離線執行的排程器、擴充的工具集、Web 介面與持久化層。</desc>
+<rect x="0" y="0" width="1100" height="6293" fill="#ffffff"/>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M1 1L8 5L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="550.0" y="58" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">fuClaw AIoT Agent 系統 — 流程圖（更新版）</text>
+<text x="550.0" y="70" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" fill="#64748b" text-anchor="middle">Telegram Bot / MQTT 版本 — AmebaPro2、ESP32-S3-CAM、ESP32-S3（無相機）</text>
+<rect x="40" y="100" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="125.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">1. 系統開機與初始化（setup）</text>
+<rect x="40" y="162" width="1020.0" height="46" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="189.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">開機 / 重置</text>
+<rect x="40" y="236" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="258" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">載入設定檔（SD 卡）</text>
+<text x="550.0" y="275" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">env.json, soul.md, device.md, skill.md, memory.md, schedule.json</text>
+<path d="M550.0,208 L550.0,236" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="318" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="340" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">設定環境變數</text>
+<text x="550.0" y="357" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">WiFi / Telegram / MQTT / Gemini 憑證、模型、時區、排程容錯時間</text>
+<path d="M550.0,290 L550.0,318" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="400" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="422" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">初始化硬體</text>
+<text x="550.0" y="439" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">LED 指示燈（GPIO）、相機（CAM 版本）、SG90 伺服馬達、DHT11 感測器</text>
+<path d="M550.0,372 L550.0,400" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="482" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="504" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">建立背景任務（FreeRTOS）</text>
+<text x="550.0" y="521" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">getTelegramMessage_task / getMqttMessage_task, task_time_scheduling, periodicCheck_task</text>
+<path d="M550.0,454 L550.0,482" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="564" width="1020.0" height="46" rx="10" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.3"/>
+<text x="550.0" y="591.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#92400e" text-anchor="middle">系統就緒 — 進入主迴圈（閒置）</text>
+<path d="M550.0,536 L550.0,564" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="644" x2="1060" y2="644" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="674" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="699.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">2. 通訊任務</text>
+<text x="1042" y="698.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">雙傳輸模式：Telegram 或 MQTT</text>
+<rect x="40" y="736" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="758" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Telegram 長輪詢</text>
+<text x="290.5" y="775" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">HTTPS getUpdates</text>
+<rect x="559.0" y="736" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="758" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">MQTT 訂閱</text>
+<text x="809.5" y="775" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">xxx/subscribe topic</text>
+<rect x="40" y="818" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="845.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">有新訊息嗎？</text>
+<path d="M550.0,790 L550.0,818" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,864 L550.0,884.0 L420.0,884.0 L420.0,904" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="448.6" y="867.0" width="72.8" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="485.0" y="878.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">否：等待並再次輪詢</text>
+<rect x="40" y="892" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="914" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">解析訊息</text>
+<text x="550.0" y="931" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">擷取訊息 id / 文字</text>
+<path d="M550.0,864 L550.0,892" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="542.4" y="861.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="872.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">是</text>
+<rect x="40" y="974" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="1001.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">是新訊息嗎？</text>
+<path d="M550.0,946 L550.0,974" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1020 L550.0,1040.0 L420.0,1040.0 L420.0,1060" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="448.6" y="1023.0" width="72.8" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="485.0" y="1034.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">否：忽略，繼續迴圈</text>
+<rect x="40" y="1048" width="1020.0" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1075.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">判斷訊息類型</text>
+<path d="M550.0,1020 L550.0,1048" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="542.4" y="1017.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="1028.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">是</text>
+<rect x="40" y="1122" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="134.8" y="1160.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/help /start</text>
+<rect x="247.6" y="1122" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="342.4" y="1144" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">內建指令</text>
+<text x="342.4" y="1161" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">/still /memory /log</text>
+<text x="342.4" y="1175" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">/reset /reboot ...</text>
+<rect x="455.2" y="1122" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="1160.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">自然語言</text>
+<rect x="662.8" y="1122" width="189.6" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="757.5999999999999" y="1160.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">null</text>
+<rect x="870.4" y="1122" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="965.1999999999999" y="1160.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">其他斜線指令</text>
+<path d="M550.0,1094 L550.0,1108.0 L134.8,1108.0 L134.8,1122" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1094 L550.0,1108.0 L342.4,1108.0 L342.4,1122" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1094 L550.0,1122" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1094 L550.0,1108.0 L757.5999999999999,1108.0 L757.5999999999999,1122" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1094 L550.0,1108.0 L965.1999999999999,1108.0 L965.1999999999999,1122" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="134.8" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">傳送說明文字與狀態</text>
+<rect x="247.6" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="342.4" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">直接執行工具</text>
+<rect x="455.2" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1240" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 Gemini</text>
+<text x="550.0" y="1257" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">geminiChatRequest() 呼叫</text>
+<text x="550.0" y="1271" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">handleAgentResponse()</text>
+<rect x="662.8" y="1218" width="189.6" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="757.5999999999999" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">停止 / 重新連線</text>
+<rect x="870.4" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="965.1999999999999" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">視為工具呼叫並執行</text>
+<path d="M134.8,1190 L134.8,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M342.4,1190 L342.4,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1190 L550.0,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M757.5999999999999,1190 L757.5999999999999,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M965.1999999999999,1190 L965.1999999999999,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="1320" x2="1060" y2="1320" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="1350" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="1375.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">3. Gemini 回應處理（handleAgentResponse）</text>
+<rect x="40" y="1412" width="1020.0" height="46" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="1439.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Gemini 回應文字</text>
+<rect x="40" y="1486" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="204.0" y="1517.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">JSON 物件 { ... }</text>
+<rect x="386.0" y="1486" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1517.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">JSON 陣列 [ ... ]</text>
+<rect x="732.0" y="1486" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="896.0" y="1508" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">自然語言 / NONE</text>
+<text x="896.0" y="1525" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">非 JSON</text>
+<path d="M550.0,1458 L550.0,1472.0 L204.0,1472.0 L204.0,1486" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1458 L550.0,1486" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1458 L550.0,1472.0 L896.0,1472.0 L896.0,1486" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1568" width="600" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="340.0" y="1595.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">ArduinoJson 解析與驗證</text>
+<path d="M204.0,1540 L204.0,1554.0 L340.0,1554.0 L340.0,1568" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1540 L550.0,1554.0 L340.0,1554.0 L340.0,1568" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1640" width="290.0" height="46" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="185.0" y="1667.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">JSON 無效</text>
+<rect x="350.0" y="1640" width="290.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="495.0" y="1667.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">有效的工具呼叫</text>
+<path d="M340.0,1614 L340.0,1627.0 L185.0,1627.0 L185.0,1640" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M340.0,1614 L340.0,1627.0 L495.0,1627.0 L495.0,1640" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1640" width="400" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1667.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">自然語言回覆</text>
+<path d="M896.0,1540 L896.0,1590.0 L860.0,1590.0 L860.0,1640" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1712" width="290.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="185.0" y="1734" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">僅記錄序列埠</text>
+<text x="185.0" y="1751" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">不執行</text>
+<rect x="350.0" y="1712" width="290.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="495.0" y="1734" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">執行工具</text>
+<text x="495.0" y="1751" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">executeTool()</text>
+<path d="M185.0,1686 L185.0,1712" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M495.0,1686 L495.0,1712" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1712" width="400" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1734" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">格式化與清理</text>
+<text x="860.0" y="1751" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">HTML 轉義／移除 Markdown</text>
+<path d="M860.0,1686 L860.0,1712" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1792" width="400" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1814" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">傳送回覆</text>
+<text x="860.0" y="1831" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Telegram sendMessage 或 MQTT publish</text>
+<path d="M860.0,1766 L860.0,1792" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1792" width="600" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="340.0" y="1814" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">將工具結果加入記憶</text>
+<text x="340.0" y="1831" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">buildGeminiMessage()</text>
+<path d="M495.0,1766 L495.0,1779.0 L340.0,1779.0 L340.0,1792" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1872" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="1894" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">儲存至 SD 卡</text>
+<text x="550.0" y="1911" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">memory.md</text>
+<path d="M340.0,1846 L340.0,1859.0 L550.0,1859.0 L550.0,1872" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1954" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="1976" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">重新檢查工作流程是否繼續</text>
+<text x="550.0" y="1993" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">evaluateWorkflowContinuation()</text>
+<path d="M550.0,1926 L550.0,1954" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="2042" x2="1060" y2="2042" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="2072" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="2097.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">4. 工具（Tools）</text>
+<text x="1042" y="2096.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">25 個方法，分為 6 組</text>
+<text x="40" y="2134" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">硬體與感測器</text>
+<rect x="40" y="2150" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/digitalwrite</text>
+<text x="204.0" y="2189" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO 數位輸出</text>
+<rect x="386.0" y="2150" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/analogwrite</text>
+<text x="550.0" y="2189" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO 類比輸出</text>
+<rect x="732.0" y="2150" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/digitalread</text>
+<text x="896.0" y="2189" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO 數位輸入</text>
+<rect x="40" y="2232" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2254" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/analogread</text>
+<text x="204.0" y="2271" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO 類比輸入</text>
+<rect x="386.0" y="2232" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2254" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/servo</text>
+<text x="550.0" y="2271" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">SG90 角度控制</text>
+<rect x="732.0" y="2232" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2254" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/dht11</text>
+<text x="896.0" y="2271" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">溫度與濕度</text>
+<text x="40" y="2320" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">時間與視覺</text>
+<rect x="40" y="2336" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2358" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/syncrtc</text>
+<text x="204.0" y="2375" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">更新硬體 RTC</text>
+<rect x="386.0" y="2336" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2358" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/getrtc</text>
+<text x="550.0" y="2375" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">取得目前 RTC 時間</text>
+<rect x="732.0" y="2336" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2358" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/still</text>
+<text x="896.0" y="2375" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">擷取影像</text>
+<rect x="40" y="2418" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2440" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/vision</text>
+<text x="204.0" y="2457" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">擷取影像並進行視覺分析</text>
+<rect x="386.0" y="2418" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2440" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/search</text>
+<text x="550.0" y="2457" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">有依據的網路搜尋</text>
+<rect x="732.0" y="2418" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2440" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/delay</text>
+<text x="896.0" y="2457" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">暫停執行（毫秒）</text>
+<text x="40" y="2506" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">診斷與聊天</text>
+<rect x="40" y="2522" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="204.0" y="2544" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/getMemory</text>
+<text x="204.0" y="2561" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">執行期記憶體狀態</text>
+<rect x="386.0" y="2522" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="2544" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/getLog</text>
+<text x="550.0" y="2561" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">工具執行紀錄</text>
+<rect x="732.0" y="2522" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="896.0" y="2544" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/reset</text>
+<text x="896.0" y="2561" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">重置對話</text>
+<rect x="40" y="2604" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="2626" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/chat</text>
+<text x="290.5" y="2643" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">自然語言回覆</text>
+<rect x="559.0" y="2604" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="2626" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/reboot</text>
+<text x="809.5" y="2643" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">重新啟動裝置</text>
+<text x="40" y="2692" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">排程（可離線執行）</text>
+<rect x="40" y="2708" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2730" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/schedule</text>
+<text x="204.0" y="2747" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">新增排程任務</text>
+<rect x="386.0" y="2708" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2730" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/getSchedule</text>
+<text x="550.0" y="2747" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">取得所有排程任務</text>
+<rect x="732.0" y="2708" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2730" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/getUnfinishedSchedule</text>
+<text x="896.0" y="2747" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">取得未完成任務</text>
+<rect x="40" y="2790" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2812" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/updateScheduleStatus</text>
+<text x="204.0" y="2829" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">標記任務為已執行</text>
+<rect x="386.0" y="2790" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2812" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/modifySchedule</text>
+<text x="550.0" y="2829" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">修改或刪除任務</text>
+<rect x="732.0" y="2790" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2812" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/clearSchedule</text>
+<text x="896.0" y="2829" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">清除所有任務</text>
+<text x="40" y="2878" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Agent 對 Agent 與通知</text>
+<rect x="40" y="2894" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2916" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/tcpSendMessage</text>
+<text x="204.0" y="2933" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">傳送 P2P 訊息給另一節點</text>
+<rect x="386.0" y="2894" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2916" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/mqttSendMessage</text>
+<text x="550.0" y="2933" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">發布文字至 MQTT 主題</text>
+<rect x="732.0" y="2894" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2916" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/mqttSendImage</text>
+<text x="896.0" y="2933" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">發布 JPEG 至 MQTT 主題</text>
+<rect x="40" y="2976" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/telegramSendMessage</text>
+<text x="204.0" y="3015" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">推送文字至 Telegram</text>
+<rect x="386.0" y="2976" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/telegramSendImage</text>
+<text x="550.0" y="3015" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">推送照片至 Telegram</text>
+<rect x="732.0" y="2976" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/lineSendMessage</text>
+<text x="896.0" y="3015" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">推送文字至 Line</text>
+<line x1="40" y1="3070" x2="1060" y2="3070" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="3100" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="3125.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">5. 工具執行流程（executeTool）</text>
+<rect x="40" y="3162" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3184" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">驗證參數</text>
+<text x="550.0" y="3201" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">安全規則</text>
+<rect x="40" y="3244" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3271.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">執行硬體 / 服務</text>
+<path d="M550.0,3216 L550.0,3244" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3318" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3345.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">取得結果（JSON）</text>
+<path d="M550.0,3290 L550.0,3318" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3392" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3414" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">加入記憶</text>
+<text x="550.0" y="3431" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">historicalMessages</text>
+<path d="M550.0,3364 L550.0,3392" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3474" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3496" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">儲存至 SD 卡</text>
+<text x="550.0" y="3513" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">memory.md</text>
+<path d="M550.0,3446 L550.0,3474" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3556" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="3578" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">重新評估下一步</text>
+<text x="550.0" y="3595" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">evaluateWorkflowContinuation()</text>
+<path d="M550.0,3528 L550.0,3556" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="3644" x2="1060" y2="3644" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="3674" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="3699.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">6. 排程任務執行（task_time_scheduling）</text>
+<text x="1042" y="3698.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">新功能 — 讓排程可完全離線執行</text>
+<rect x="40" y="3736" width="1020.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="3758" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">每 1 分鐘執行一次</text>
+<text x="550.0" y="3775" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">WDT 安全的 6x10 秒分段等待</text>
+<rect x="40" y="3818" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="3845.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">RTC 已初始化？</text>
+<path d="M550.0,3790 L550.0,3818" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3892" width="501.0" height="54" rx="10" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.3"/>
+<text x="290.5" y="3923.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#92400e" text-anchor="middle">透過 /syncrtc 自我修復</text>
+<rect x="559.0" y="3892" width="501.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="3914" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">載入 schedule.json</text>
+<text x="809.5" y="3931" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">篩選未完成且符合條件的任務</text>
+<path d="M550.0,3864 L550.0,3878.0 L290.5,3878.0 L290.5,3892" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="412.65" y="3861.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="420.25" y="3872.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">否</text>
+<path d="M550.0,3864 L550.0,3878.0 L809.5,3878.0 L809.5,3892" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="672.15" y="3861.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="679.75" y="3872.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">是</text>
+<path d="M290.5,3946 L290.5,3966.0 L140.5,3966.0 L140.5,3986" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="171.9" y="3949.0" width="87.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="215.5" y="3960.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">仍為 0：跳過本次週期</text>
+<rect x="40" y="3974" width="1020.0" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4001.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">對每筆符合條件的任務 — 檢查 task 欄位</text>
+<path d="M809.5,3946 L809.5,3960.0 L550.0,3960.0 L550.0,3974" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4048" width="501.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="290.5" y="4070" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">task 為 JSON({...} 或 [...])</text>
+<text x="290.5" y="4087" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">預先寫好的 tool_call，單一步驟或序列</text>
+<rect x="559.0" y="4048" width="501.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="4070" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">task 為純文字</text>
+<text x="809.5" y="4087" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">需在觸發當下解讀</text>
+<path d="M550.0,4020 L550.0,4034.0 L290.5,4034.0 L290.5,4048" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,4020 L550.0,4034.0 L809.5,4034.0 L809.5,4048" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4130" width="501.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="290.5" y="4152" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">直接呼叫 handleAgentResponse()</text>
+<text x="290.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">離線 — 完全略過 Gemini</text>
+<rect x="559.0" y="4130" width="501.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="4152" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">建立確定性 prompt</text>
+<text x="809.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">geminiChatRequest() 之後呼叫 handleAgentResponse()</text>
+<path d="M290.5,4102 L290.5,4130" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M809.5,4102 L809.5,4130" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4212" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4234" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">標記為今日已執行</text>
+<text x="550.0" y="4251" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">markExecutedToday()</text>
+<path d="M550.0,4184 L550.0,4212" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4294" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="4316" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/updateScheduleStatus</text>
+<text x="550.0" y="4333" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">將 executed=true 寫回 schedule.json</text>
+<path d="M550.0,4266 L550.0,4294" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4376" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="4403.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">儲存 memory.md 與 scheduleTodayExecuted.md</text>
+<path d="M550.0,4348 L550.0,4376" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="4456" x2="1060" y2="4456" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="4486" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="4511.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">7. 工作流程延續（evaluateWorkflowContinuation）</text>
+<rect x="40" y="4548" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="4575.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">需要重新檢查嗎？</text>
+<path d="M550.0,4594 L550.0,4614.0 L400.0,4614.0 L400.0,4634" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="456.6" y="4597.0" width="36.8" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="475.0" y="4608.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">否：結束</text>
+<rect x="40" y="4622" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4644" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">建立評估用 prompt</text>
+<text x="550.0" y="4661" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">包含任務上下文</text>
+<path d="M550.0,4594 L550.0,4622" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="542.4" y="4591.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="4602.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">是</text>
+<rect x="40" y="4704" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4726" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 Gemini 對話</text>
+<text x="550.0" y="4743" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">tools = true，geminiChatRequest()</text>
+<path d="M550.0,4676 L550.0,4704" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4786" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="4808" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">handleAgentResponse(result)</text>
+<text x="550.0" y="4825" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">可能產生新的工具呼叫</text>
+<path d="M550.0,4758 L550.0,4786" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="40" y="4862" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8" font-style="italic">&#8635; 回到第 3 塊（Gemini 回應處理）</text>
+<line x1="40" y1="4888" x2="1060" y2="4888" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="4918" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="4943.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">8. Gemini API 請求類型</text>
+<rect x="40" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="202.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">對話 Chat</text>
+<text x="202.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiChatRequest()</text>
+<rect x="40" y="5034" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5058.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">POST generateContent</text>
+<rect x="40" y="5092" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5114" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">文字內容</text>
+<text x="202.0" y="5131" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">system prompt + 歷史紀錄</text>
+<path d="M202.0,5074 L202.0,5092" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="5163" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5187.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<path d="M202.0,5145 L202.0,5163" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="5221" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5243" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">更新歷史紀錄</text>
+<text x="202.0" y="5260" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">儲存至 SD 卡</text>
+<path d="M202.0,5203 L202.0,5221" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="550.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">搜尋 Search</text>
+<text x="550.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiSearchRequest()</text>
+<rect x="388.0" y="5034" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5058.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">+ tools: google_search</text>
+<rect x="388.0" y="5092" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5116.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">有依據的搜尋結果</text>
+<path d="M550.0,5074 L550.0,5092" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="5150" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<text x="550.0" y="5189" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">含引用來源</text>
+<path d="M550.0,5132 L550.0,5150" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="5221" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5243" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">更新歷史紀錄</text>
+<text x="550.0" y="5260" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">儲存至 SD 卡</text>
+<path d="M550.0,5203 L550.0,5221" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="898.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">視覺 Vision</text>
+<text x="898.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiVisionRequest() — 僅限 CAM 版本</text>
+<rect x="736.0" y="5034" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5056" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">內嵌影像（base64 JPEG）</text>
+<text x="898.0" y="5073" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">+ 使用者查詢</text>
+<rect x="736.0" y="5105" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5127" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 視覺分析</text>
+<text x="898.0" y="5144" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">多模態</text>
+<path d="M898.0,5087 L898.0,5105" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="5176" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5200.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<path d="M898.0,5158 L898.0,5176" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="5234" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5256" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">更新歷史紀錄</text>
+<text x="898.0" y="5273" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">儲存至 SD 卡</text>
+<path d="M898.0,5216 L898.0,5234" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="5321" x2="1060" y2="5321" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5351" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5376.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">9. 硬體 I/O</text>
+<rect x="40" y="5413" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="160.75" y="5435" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">GPIO 輸出</text>
+<text x="160.75" y="5452" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">digitalWrite(0/1)、</text>
+<text x="160.75" y="5466" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">analogWrite(0-255)</text>
+<rect x="299.5" y="5413" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="420.25" y="5435" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">GPIO 輸入</text>
+<text x="420.25" y="5452" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">digitalRead、analogRead</text>
+<rect x="559.0" y="5413" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="679.75" y="5435" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">SG90 伺服馬達</text>
+<text x="679.75" y="5452" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">窗戶 / 致動器角度控制</text>
+<rect x="818.5" y="5413" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="939.25" y="5435" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">DHT11 感測器</text>
+<text x="939.25" y="5452" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">溫度與濕度</text>
+<rect x="40" y="5509" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="5531" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">相機模組</text>
+<text x="290.5" y="5548" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">VideoStream / esp_camera — 僅限 CAM 版本</text>
+<rect x="559.0" y="5509" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="5531" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">網路連線</text>
+<text x="809.5" y="5548" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">WiFi / HTTPS(SSL) / MQTT(TCP)</text>
+<line x1="40" y1="5597" x2="1060" y2="5597" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5627" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5652.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">10. Web 介面</text>
+<text x="1042" y="5651.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">新功能 — HTTP 伺服器，port 81</text>
+<rect x="40" y="5689" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="5711" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index.html</text>
+<text x="204.0" y="5728" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">設定管理介面</text>
+<rect x="386.0" y="5689" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="5711" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_agent.html</text>
+<text x="550.0" y="5728" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">soul / device / skill 管理介面</text>
+<rect x="732.0" y="5689" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="5711" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_schedule.html</text>
+<text x="896.0" y="5728" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">排程管理介面，含 OFFLINE 徽章</text>
+<rect x="40" y="5771" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_chat.html</text>
+<text x="204.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Gemini 網頁聊天（HTTP）</text>
+<rect x="386.0" y="5771" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_mqtt_chat.html</text>
+<text x="550.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">透過 MQTT WebSocket 的 Gemini 網頁聊天</text>
+<rect x="732.0" y="5771" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="896.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">MJPEG 串流</text>
+<text x="896.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">port 82，僅限 CAM 版本</text>
+<line x1="40" y1="5859" x2="1060" y2="5859" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5889" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5914.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">11. 持久化儲存（SD 卡）</text>
+<rect x="40" y="5951" width="241.5" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="160.75" y="5973" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">env.json</text>
+<text x="160.75" y="5990" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">環境設定</text>
+<rect x="299.5" y="5951" width="241.5" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="420.25" y="5973" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">soul.md</text>
+<text x="420.25" y="5990" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">助理人格設定</text>
+<rect x="559.0" y="5951" width="241.5" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="679.75" y="5973" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">device.md</text>
+<text x="679.75" y="5990" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">裝置定義</text>
+<rect x="818.5" y="5951" width="241.5" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="939.25" y="5973" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">skill.md</text>
+<text x="939.25" y="5990" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">技能定義</text>
+<rect x="40" y="6033" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="204.0" y="6055" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">memory.md</text>
+<text x="204.0" y="6072" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">對話歷史（JSON）</text>
+<rect x="386.0" y="6033" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="6055" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">schedule.json</text>
+<text x="550.0" y="6072" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">排程任務</text>
+<rect x="732.0" y="6033" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="6055" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">scheduleTodayExecuted.md</text>
+<text x="896.0" y="6072" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">今日已執行任務</text>
+<rect x="40" y="6125" width="1020" height="118" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+<text x="56" y="6147" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">圖例</text>
+<rect x="56" y="6159" width="20" height="16" rx="4" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="84" y="6171" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">外部服務 / I/O</text>
+<rect x="386" y="6159" width="20" height="16" rx="4" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.2"/>
+<text x="414" y="6171" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">判斷 / 檢查</text>
+<rect x="716" y="6159" width="20" height="16" rx="4" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="744" y="6171" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">處理 / 指令</text>
+<rect x="56" y="6187" width="20" height="16" rx="4" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.2"/>
+<text x="84" y="6199" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">內部處理 / 持久化</text>
+<rect x="386" y="6187" width="20" height="16" rx="4" fill="#fde8ea" stroke="#ef4444" stroke-width="1.2"/>
+<text x="414" y="6199" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">錯誤 / 評估</text>
+<rect x="716" y="6187" width="20" height="16" rx="4" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.2"/>
+<text x="744" y="6199" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">本次更新新增（可離線執行）</text>
+<rect x="56" y="6215" width="20" height="16" rx="4" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.2"/>
+<text x="84" y="6227" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">里程碑 / 狀態</text>
+</svg>

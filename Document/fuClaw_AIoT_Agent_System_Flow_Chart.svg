@@ -1,0 +1,514 @@
+<svg width="1100" height="6545" viewBox="0 0 1100 6545" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>fuClaw AIoT Agent System Flow Chart (Updated)</title>
+<desc>Updated architecture flow chart of the fuClaw embedded AI agent, including dual communication modes, the offline-capable scheduler, expanded tool set, web interfaces, and persistence layer.</desc>
+<rect x="0" y="0" width="1100" height="6545" fill="#ffffff"/>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+<path d="M1 1L8 5L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<text x="550.0" y="58" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">fuClaw AIoT Agent System — Flow Chart (Updated)</text>
+<text x="550.0" y="70" font-family="Helvetica, Arial, sans-serif" font-size="12.5" fill="#64748b" text-anchor="middle">Telegram Bot / MQTT variants — AmebaPro2, ESP32-S3-CAM, ESP32-S3 (no camera)</text>
+<rect x="40" y="100" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="125.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">1. System Boot &amp; Initialization (setup)</text>
+<rect x="40" y="162" width="1020.0" height="46" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="189.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Power on / reset</text>
+<rect x="40" y="236" width="1020.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="258" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Load configuration files (SD card)</text>
+<text x="550.0" y="275" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">env.json, soul.md, device.md, skill.md, memory.md,</text>
+<text x="550.0" y="289" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">schedule.json</text>
+<path d="M550.0,208 L550.0,236" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="332" width="1020.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="354" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Set environment variables</text>
+<text x="550.0" y="371" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">WiFi / Telegram / MQTT / Gemini credentials, model,</text>
+<text x="550.0" y="385" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">timezone, schedule timeout</text>
+<path d="M550.0,304 L550.0,332" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="428" width="1020.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="450" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Initialize hardware</text>
+<text x="550.0" y="467" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">LED indicator (GPIO), camera (CAM variants), SG90 servo,</text>
+<text x="550.0" y="481" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">DHT11 sensor</text>
+<path d="M550.0,400 L550.0,428" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="524" width="1020.0" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="546" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Create background tasks (FreeRTOS)</text>
+<text x="550.0" y="563" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">getTelegramMessage_task / getMqttMessage_task,</text>
+<text x="550.0" y="577" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">task_time_scheduling, periodicCheck_task</text>
+<path d="M550.0,496 L550.0,524" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="620" width="1020.0" height="46" rx="10" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.3"/>
+<text x="550.0" y="647.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#92400e" text-anchor="middle">System ready — enter main loop (idle)</text>
+<path d="M550.0,592 L550.0,620" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="700" x2="1060" y2="700" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="730" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="755.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">2. Communication Task</text>
+<text x="1042" y="754.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">dual transport: Telegram or MQTT</text>
+<rect x="40" y="792" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="814" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Telegram long polling</text>
+<text x="290.5" y="831" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">HTTPS getUpdates</text>
+<rect x="559.0" y="792" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="814" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">MQTT subscribe</text>
+<text x="809.5" y="831" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">xxx/subscribe topic</text>
+<rect x="40" y="874" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="901.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">Any new message?</text>
+<path d="M550.0,846 L550.0,874" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,920 L550.0,940.0 L420.0,940.0 L420.0,960" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="405.4" y="923.0" width="159.20000000000002" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="485.0" y="934.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">No: wait &amp; poll again</text>
+<rect x="40" y="948" width="1020.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="970" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Parse message</text>
+<text x="550.0" y="987" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">extract message id /</text>
+<text x="550.0" y="1001" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">text</text>
+<path d="M550.0,920 L550.0,948" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="535.2" y="917.0" width="29.6" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="928.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Yes</text>
+<rect x="40" y="1044" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="1071.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">Is it a new message?</text>
+<path d="M550.0,1016 L550.0,1044" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1090 L550.0,1110.0 L420.0,1110.0 L420.0,1130" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="423.4" y="1093.0" width="123.2" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="485.0" y="1104.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">No: ignore, loop</text>
+<rect x="40" y="1118" width="1020.0" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1145.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Determine message type</text>
+<path d="M550.0,1090 L550.0,1118" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="535.2" y="1087.0" width="29.6" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="1098.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Yes</text>
+<rect x="40" y="1192" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="134.8" y="1230.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/help /start</text>
+<rect x="247.6" y="1192" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="342.4" y="1214" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Built-in commands</text>
+<text x="342.4" y="1231" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">/still /memory /log</text>
+<text x="342.4" y="1245" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">/reset /reboot ...</text>
+<rect x="455.2" y="1192" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="1230.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Natural language</text>
+<rect x="662.8" y="1192" width="189.6" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="757.5999999999999" y="1230.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">null</text>
+<rect x="870.4" y="1192" width="189.6" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="965.1999999999999" y="1230.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Other slash commands</text>
+<path d="M550.0,1164 L550.0,1178.0 L134.8,1178.0 L134.8,1192" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1164 L550.0,1178.0 L342.4,1178.0 L342.4,1192" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1164 L550.0,1192" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1164 L550.0,1178.0 L757.5999999999999,1178.0 L757.5999999999999,1192" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1164 L550.0,1178.0 L965.1999999999999,1178.0 L965.1999999999999,1192" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1288" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="134.8" y="1326.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Send help text &amp; status</text>
+<rect x="247.6" y="1288" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="342.4" y="1326.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Execute tool directly</text>
+<rect x="455.2" y="1288" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1310" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Send to Gemini</text>
+<text x="550.0" y="1327" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">geminiChatRequest() to</text>
+<text x="550.0" y="1341" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">handleAgentResponse()</text>
+<rect x="662.8" y="1288" width="189.6" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="757.5999999999999" y="1326.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Stop / reconnect</text>
+<rect x="870.4" y="1288" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="965.1999999999999" y="1326.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Treated as tool call &amp; executed</text>
+<path d="M134.8,1260 L134.8,1288" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M342.4,1260 L342.4,1288" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1260 L550.0,1288" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M757.5999999999999,1260 L757.5999999999999,1288" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M965.1999999999999,1260 L965.1999999999999,1288" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="1390" x2="1060" y2="1390" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="1420" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="1445.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">3. Gemini Response Handling (handleAgentResponse)</text>
+<rect x="40" y="1482" width="1020.0" height="46" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="1509.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Gemini response text</text>
+<rect x="40" y="1556" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="204.0" y="1587.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">JSON object { ... }</text>
+<rect x="386.0" y="1556" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="1587.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">JSON array [ ... ]</text>
+<rect x="732.0" y="1556" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="896.0" y="1578" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Natural language / NONE</text>
+<text x="896.0" y="1595" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">not JSON</text>
+<path d="M550.0,1528 L550.0,1542.0 L204.0,1542.0 L204.0,1556" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1528 L550.0,1556" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1528 L550.0,1542.0 L896.0,1542.0 L896.0,1556" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1638" width="600" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="340.0" y="1665.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">ArduinoJson parsing &amp; validation</text>
+<path d="M204.0,1610 L204.0,1624.0 L340.0,1624.0 L340.0,1638" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,1610 L550.0,1624.0 L340.0,1624.0 L340.0,1638" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1710" width="290.0" height="46" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="185.0" y="1737.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">JSON invalid</text>
+<rect x="350.0" y="1710" width="290.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="495.0" y="1737.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">Valid tool call(s)</text>
+<path d="M340.0,1684 L340.0,1697.0 L185.0,1697.0 L185.0,1710" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M340.0,1684 L340.0,1697.0 L495.0,1697.0 L495.0,1710" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1710" width="400" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1737.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Natural language reply</text>
+<path d="M896.0,1610 L896.0,1660.0 L860.0,1660.0 L860.0,1710" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1782" width="290.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="185.0" y="1804" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">Serial log only</text>
+<text x="185.0" y="1821" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">do not execute</text>
+<rect x="350.0" y="1782" width="290.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="495.0" y="1804" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Execute tool(s)</text>
+<text x="495.0" y="1821" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">executeTool()</text>
+<path d="M185.0,1756 L185.0,1782" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M495.0,1756 L495.0,1782" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1782" width="400" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1804" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Format &amp; clean</text>
+<text x="860.0" y="1821" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">HTML escape / strip Markdown</text>
+<path d="M860.0,1756 L860.0,1782" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="660" y="1862" width="400" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="860.0" y="1884" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Send reply</text>
+<text x="860.0" y="1901" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Telegram sendMessage or MQTT publish</text>
+<path d="M860.0,1836 L860.0,1862" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1862" width="600" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="340.0" y="1884" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Add tool result to memory</text>
+<text x="340.0" y="1901" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">buildGeminiMessage()</text>
+<path d="M495.0,1836 L495.0,1849.0 L340.0,1849.0 L340.0,1862" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="1942" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="1964" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Save to SD card</text>
+<text x="550.0" y="1981" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">memory.md</text>
+<path d="M340.0,1916 L340.0,1929.0 L550.0,1929.0 L550.0,1942" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="2024" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="2046" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">Re-check workflow continuation</text>
+<text x="550.0" y="2063" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">evaluateWorkflowContinuation()</text>
+<path d="M550.0,1996 L550.0,2024" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="2112" x2="1060" y2="2112" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="2142" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="2167.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">4. Tools (Tools)</text>
+<text x="1042" y="2166.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">25 methods across 6 groups</text>
+<text x="40" y="2204" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Hardware &amp; sensors</text>
+<rect x="40" y="2220" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2242" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/digitalwrite</text>
+<text x="204.0" y="2259" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO digital output</text>
+<rect x="386.0" y="2220" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2242" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/analogwrite</text>
+<text x="550.0" y="2259" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO analog output</text>
+<rect x="732.0" y="2220" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2242" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/digitalread</text>
+<text x="896.0" y="2259" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO digital input</text>
+<rect x="40" y="2302" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2324" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/analogread</text>
+<text x="204.0" y="2341" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">GPIO analog input</text>
+<rect x="386.0" y="2302" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2324" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/servo</text>
+<text x="550.0" y="2341" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">SG90 angle control</text>
+<rect x="732.0" y="2302" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2324" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/dht11</text>
+<text x="896.0" y="2341" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Temperature &amp; humidity</text>
+<text x="40" y="2390" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Time &amp; vision</text>
+<rect x="40" y="2406" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2428" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/syncrtc</text>
+<text x="204.0" y="2445" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Update hardware RTC</text>
+<rect x="386.0" y="2406" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2428" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/getrtc</text>
+<text x="550.0" y="2445" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Get current RTC time</text>
+<rect x="732.0" y="2406" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2428" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/still</text>
+<text x="896.0" y="2445" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Capture image</text>
+<rect x="40" y="2488" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="204.0" y="2510" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/vision</text>
+<text x="204.0" y="2527" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Capture + vision analysis</text>
+<rect x="386.0" y="2488" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="2510" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/search</text>
+<text x="550.0" y="2527" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Grounded web search</text>
+<rect x="732.0" y="2488" width="328.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="896.0" y="2510" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/delay</text>
+<text x="896.0" y="2527" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">Pause execution (ms)</text>
+<text x="40" y="2576" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Diagnostics &amp; chat</text>
+<rect x="40" y="2592" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="204.0" y="2614" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/getMemory</text>
+<text x="204.0" y="2631" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">Runtime memory status</text>
+<rect x="386.0" y="2592" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="2614" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/getLog</text>
+<text x="550.0" y="2631" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">Tool execution history</text>
+<rect x="732.0" y="2592" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="896.0" y="2614" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/reset</text>
+<text x="896.0" y="2631" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">Reset conversation</text>
+<rect x="40" y="2674" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="2696" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/chat</text>
+<text x="290.5" y="2713" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">Natural language reply</text>
+<rect x="559.0" y="2674" width="501.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="2696" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">/reboot</text>
+<text x="809.5" y="2713" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">Reboot device</text>
+<text x="40" y="2762" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Schedule (offline-capable)</text>
+<rect x="40" y="2778" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2800" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/schedule</text>
+<text x="204.0" y="2817" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Add scheduled tasks</text>
+<rect x="386.0" y="2778" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2800" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/getSchedule</text>
+<text x="550.0" y="2817" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Get all scheduled tasks</text>
+<rect x="732.0" y="2778" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2800" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/getUnfinishedSchedule</text>
+<text x="896.0" y="2817" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Get unfinished tasks</text>
+<rect x="40" y="2860" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2882" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/updateScheduleStatus</text>
+<text x="204.0" y="2899" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Mark tasks executed</text>
+<rect x="386.0" y="2860" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2882" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/modifySchedule</text>
+<text x="550.0" y="2899" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Modify or delete tasks</text>
+<rect x="732.0" y="2860" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2882" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/clearSchedule</text>
+<text x="896.0" y="2899" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Clear all tasks</text>
+<text x="40" y="2948" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Agent-to-agent &amp; notification</text>
+<rect x="40" y="2964" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="2986" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/tcpSendMessage</text>
+<text x="204.0" y="3003" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">P2P message to another</text>
+<text x="204.0" y="3017" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">node</text>
+<rect x="386.0" y="2964" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="2986" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/mqttSendMessage</text>
+<text x="550.0" y="3003" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Publish text to MQTT topic</text>
+<rect x="732.0" y="2964" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="2986" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/mqttSendImage</text>
+<text x="896.0" y="3003" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Publish JPEG to MQTT topic</text>
+<rect x="40" y="3060" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="3082" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/telegramSendMessage</text>
+<text x="204.0" y="3099" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Push text to Telegram</text>
+<rect x="386.0" y="3060" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="3082" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/telegramSendImage</text>
+<text x="550.0" y="3099" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Push photo to Telegram</text>
+<rect x="732.0" y="3060" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="3082" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">/lineSendMessage</text>
+<text x="896.0" y="3099" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Push text to Line</text>
+<line x1="40" y1="3154" x2="1060" y2="3154" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="3184" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="3209.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">5. Tool Execution Flow (executeTool)</text>
+<rect x="40" y="3246" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3268" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Validate parameters</text>
+<text x="550.0" y="3285" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">safety rules</text>
+<rect x="40" y="3328" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3355.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Execute hardware / service</text>
+<path d="M550.0,3300 L550.0,3328" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3402" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3429.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Get result (JSON)</text>
+<path d="M550.0,3374 L550.0,3402" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3476" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3498" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Add to memory</text>
+<text x="550.0" y="3515" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">historicalMessages</text>
+<path d="M550.0,3448 L550.0,3476" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3558" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="3580" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Save to SD card</text>
+<text x="550.0" y="3597" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">memory.md</text>
+<path d="M550.0,3530 L550.0,3558" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3640" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="3662" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">Re-evaluate next step</text>
+<text x="550.0" y="3679" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">evaluateWorkflowContinuation()</text>
+<path d="M550.0,3612 L550.0,3640" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="3728" x2="1060" y2="3728" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="3758" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="3783.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">6. Scheduled Task Execution (task_time_scheduling)</text>
+<text x="1042" y="3782.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">NEW — enables fully offline schedules</text>
+<rect x="40" y="3820" width="1020.0" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="550.0" y="3842" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Every 1-minute tick</text>
+<text x="550.0" y="3859" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">WDT-safe 6x10s</text>
+<text x="550.0" y="3873" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">segmented wait</text>
+<rect x="40" y="3916" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="3943.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">RTC initialized?</text>
+<path d="M550.0,3888 L550.0,3916" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="3990" width="501.0" height="68" rx="10" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.3"/>
+<text x="290.5" y="4028.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#92400e" text-anchor="middle">Self-repair via /syncrtc</text>
+<rect x="559.0" y="3990" width="501.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="4012" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Load schedule.json</text>
+<text x="809.5" y="4029" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">filter unfinished &amp;</text>
+<text x="809.5" y="4043" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">eligible tasks</text>
+<path d="M550.0,3962 L550.0,3976.0 L290.5,3976.0 L290.5,3990" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="409.05" y="3959.0" width="22.4" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="420.25" y="3970.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">No</text>
+<path d="M550.0,3962 L550.0,3976.0 L809.5,3976.0 L809.5,3990" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="664.95" y="3959.0" width="29.6" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="679.75" y="3970.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Yes</text>
+<path d="M290.5,4058 L290.5,4078.0 L140.5,4078.0 L140.5,4098" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="143.1" y="4061.0" width="144.8" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="215.5" y="4072.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">still 0: skip cycle</text>
+<rect x="40" y="4086" width="1020.0" height="46" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4113.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">For each eligible task — check task field</text>
+<path d="M809.5,4058 L809.5,4072.0 L550.0,4072.0 L550.0,4086" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4160" width="501.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="290.5" y="4182" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">task is JSON ({...} or [...])</text>
+<text x="290.5" y="4199" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">pre-authored tool_call, single</text>
+<text x="290.5" y="4213" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">step or sequence</text>
+<rect x="559.0" y="4160" width="501.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="4182" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">task is plain text</text>
+<text x="809.5" y="4199" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">needs interpretation at</text>
+<text x="809.5" y="4213" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">trigger time</text>
+<path d="M550.0,4132 L550.0,4146.0 L290.5,4146.0 L290.5,4160" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M550.0,4132 L550.0,4146.0 L809.5,4146.0 L809.5,4160" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4256" width="501.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="290.5" y="4278" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">handleAgentResponse() directly</text>
+<text x="290.5" y="4295" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">OFFLINE — bypasses Gemini</text>
+<text x="290.5" y="4309" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">entirely</text>
+<rect x="559.0" y="4256" width="501.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="809.5" y="4278" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Build deterministic prompt</text>
+<text x="809.5" y="4295" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">geminiChatRequest() then</text>
+<text x="809.5" y="4309" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">handleAgentResponse()</text>
+<path d="M290.5,4228 L290.5,4256" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M809.5,4228 L809.5,4256" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4352" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4374" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Mark executed today</text>
+<text x="550.0" y="4391" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">markExecutedToday()</text>
+<path d="M550.0,4324 L550.0,4352" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4434" width="1020.0" height="68" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="4456" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">/updateScheduleStatus</text>
+<text x="550.0" y="4473" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">write executed=true</text>
+<text x="550.0" y="4487" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">back to schedule.json</text>
+<path d="M550.0,4406 L550.0,4434" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4530" width="1020.0" height="46" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="4557.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">Save memory.md &amp; scheduleTodayExecuted.md</text>
+<path d="M550.0,4502 L550.0,4530" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="4610" x2="1060" y2="4610" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="4640" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="4665.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">7. Workflow Continuation (evaluateWorkflowContinuation)</text>
+<rect x="40" y="4702" width="1020.0" height="46" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="550.0" y="4729.55" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">Need re-check?</text>
+<path d="M550.0,4748 L550.0,4768.0 L400.0,4768.0 L400.0,4788" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="442.2" y="4751.0" width="65.6" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="475.0" y="4762.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">No: done</text>
+<rect x="40" y="4776" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4798" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Build evaluation prompt</text>
+<text x="550.0" y="4815" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">with task context</text>
+<path d="M550.0,4748 L550.0,4776" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="535.2" y="4745.0" width="29.6" height="15" fill="#ffffff" opacity="0.9"/>
+<text x="550.0" y="4756.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">Yes</text>
+<rect x="40" y="4858" width="1020.0" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="550.0" y="4880" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">Send to Gemini chat</text>
+<text x="550.0" y="4897" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">tools = true,</text>
+<text x="550.0" y="4911" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">geminiChatRequest()</text>
+<path d="M550.0,4830 L550.0,4858" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="4954" width="1020.0" height="68" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
+<text x="550.0" y="4976" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">handleAgentResponse(result)</text>
+<text x="550.0" y="4993" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">may produce a new tool</text>
+<text x="550.0" y="5007" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">call</text>
+<path d="M550.0,4926 L550.0,4954" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="40" y="5044" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8" font-style="italic">&#8635; loops back into panel 3 (Gemini Response Handling)</text>
+<line x1="40" y1="5070" x2="1060" y2="5070" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5100" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5125.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">8. Gemini API Request Types</text>
+<rect x="40" y="5162" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="202.0" y="5180" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">Chat</text>
+<text x="202.0" y="5203" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiChatRequest()</text>
+<rect x="40" y="5216" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5240.025" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">POST generateContent</text>
+<rect x="40" y="5274" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5296" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Text contents</text>
+<text x="202.0" y="5313" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">system prompt + history</text>
+<path d="M202.0,5256 L202.0,5274" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="5345" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5369.025" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini text response</text>
+<path d="M202.0,5327 L202.0,5345" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="5403" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="202.0" y="5425" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Update history</text>
+<text x="202.0" y="5442" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">save to SD card</text>
+<path d="M202.0,5385 L202.0,5403" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="5162" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="550.0" y="5180" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">Search</text>
+<text x="550.0" y="5203" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiSearchRequest()</text>
+<rect x="388.0" y="5216" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5240.025" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">+ tools: google_search</text>
+<rect x="388.0" y="5274" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5298.025" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Grounded search results</text>
+<path d="M550.0,5256 L550.0,5274" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="5332" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5354" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini text response</text>
+<text x="550.0" y="5371" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">with citations</text>
+<path d="M550.0,5314 L550.0,5332" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="388.0" y="5403" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="550.0" y="5425" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Update history</text>
+<text x="550.0" y="5442" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">save to SD card</text>
+<path d="M550.0,5385 L550.0,5403" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="5162" width="324.0" height="26" rx="6" fill="#1e293b"/>
+<text x="898.0" y="5180" font-family="Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">Vision</text>
+<text x="898.0" y="5203" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiVisionRequest() — CAM variants only</text>
+<rect x="736.0" y="5216" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5238" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Inline image (base64 JPEG)</text>
+<text x="898.0" y="5255" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">+ user query</text>
+<rect x="736.0" y="5287" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5309" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini vision analysis</text>
+<text x="898.0" y="5326" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">multimodal</text>
+<path d="M898.0,5269 L898.0,5287" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="5358" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5382.025" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini text response</text>
+<path d="M898.0,5340 L898.0,5358" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="736.0" y="5416" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
+<text x="898.0" y="5438" font-family="Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Update history</text>
+<text x="898.0" y="5455" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">save to SD card</text>
+<path d="M898.0,5398 L898.0,5416" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="40" y1="5503" x2="1060" y2="5503" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5533" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5558.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">9. Hardware I/O</text>
+<rect x="40" y="5595" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="160.75" y="5617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">GPIO output</text>
+<text x="160.75" y="5634" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">digitalWrite(0/1),</text>
+<text x="160.75" y="5648" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">analogWrite(0-255)</text>
+<rect x="299.5" y="5595" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="420.25" y="5617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">GPIO input</text>
+<text x="420.25" y="5634" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">digitalRead, analogRead</text>
+<rect x="559.0" y="5595" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="679.75" y="5617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">SG90 servo</text>
+<text x="679.75" y="5634" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">window / actuator angle</text>
+<text x="679.75" y="5648" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">control</text>
+<rect x="818.5" y="5595" width="241.5" height="68" rx="10" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.3"/>
+<text x="939.25" y="5617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#166534" text-anchor="middle">DHT11 sensor</text>
+<text x="939.25" y="5634" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#166534" text-anchor="middle" opacity="0.85">temperature &amp; humidity</text>
+<rect x="40" y="5691" width="501.0" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="290.5" y="5713" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Camera module</text>
+<text x="290.5" y="5730" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">VideoStream / esp_camera — CAM</text>
+<text x="290.5" y="5744" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">variants only</text>
+<rect x="559.0" y="5691" width="501.0" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="809.5" y="5713" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Network connection</text>
+<text x="809.5" y="5730" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">WiFi / HTTPS(SSL) / MQTT(TCP)</text>
+<line x1="40" y1="5793" x2="1060" y2="5793" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="5823" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="5848.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">10. Web Interfaces</text>
+<text x="1042" y="5847.0" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#93c5fd" text-anchor="end">NEW — HTTP server, port 81</text>
+<rect x="40" y="5885" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="5907" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index.html</text>
+<text x="204.0" y="5924" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">configuration manager</text>
+<rect x="386.0" y="5885" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="5907" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_agent.html</text>
+<text x="550.0" y="5924" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">soul / device / skill</text>
+<text x="550.0" y="5938" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">manager</text>
+<rect x="732.0" y="5885" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="5907" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_schedule.html</text>
+<text x="896.0" y="5924" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">schedule manager,</text>
+<text x="896.0" y="5938" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">OFFLINE badge</text>
+<rect x="40" y="5981" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="204.0" y="6003" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_chat.html</text>
+<text x="204.0" y="6020" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Gemini web chat (HTTP)</text>
+<rect x="386.0" y="5981" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="6003" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_mqtt_chat.html</text>
+<text x="550.0" y="6020" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Gemini web chat via MQTT</text>
+<text x="550.0" y="6034" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">WebSocket</text>
+<rect x="732.0" y="5981" width="328.0" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="896.0" y="6003" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">MJPEG stream</text>
+<text x="896.0" y="6020" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">port 82, CAM variants</text>
+<text x="896.0" y="6034" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">only</text>
+<line x1="40" y1="6083" x2="1060" y2="6083" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="40" y="6113" width="1020" height="40" rx="8" fill="#1e293b"/>
+<text x="58" y="6138.0" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">11. Persistence (SD Card)</text>
+<rect x="40" y="6175" width="241.5" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="160.75" y="6197" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">env.json</text>
+<text x="160.75" y="6214" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">environment settings</text>
+<rect x="299.5" y="6175" width="241.5" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="420.25" y="6197" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">soul.md</text>
+<text x="420.25" y="6214" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">assistant</text>
+<text x="420.25" y="6228" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">personality</text>
+<rect x="559.0" y="6175" width="241.5" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="679.75" y="6197" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">device.md</text>
+<text x="679.75" y="6214" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">device definitions</text>
+<rect x="818.5" y="6175" width="241.5" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="939.25" y="6197" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">skill.md</text>
+<text x="939.25" y="6214" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">skill definitions</text>
+<rect x="40" y="6271" width="328.0" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
+<text x="204.0" y="6293" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">memory.md</text>
+<text x="204.0" y="6310" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">conversation history</text>
+<text x="204.0" y="6324" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">(JSON)</text>
+<rect x="386.0" y="6271" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="550.0" y="6293" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">schedule.json</text>
+<text x="550.0" y="6310" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">schedule tasks</text>
+<rect x="732.0" y="6271" width="328.0" height="68" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
+<text x="896.0" y="6293" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">scheduleTodayExecuted.md</text>
+<text x="896.0" y="6310" font-family="Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">tasks executed today</text>
+<rect x="40" y="6377" width="1020" height="118" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+<text x="56" y="6399" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155">Legend</text>
+<rect x="56" y="6411" width="20" height="16" rx="4" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="84" y="6423" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">External service / I/O</text>
+<rect x="386" y="6411" width="20" height="16" rx="4" fill="#e3f6e8" stroke="#22a55a" stroke-width="1.2"/>
+<text x="414" y="6423" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">Decision / check</text>
+<rect x="716" y="6411" width="20" height="16" rx="4" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.2"/>
+<text x="744" y="6423" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">Processing / command</text>
+<rect x="56" y="6439" width="20" height="16" rx="4" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.2"/>
+<text x="84" y="6451" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">Internal / persistence</text>
+<rect x="386" y="6439" width="20" height="16" rx="4" fill="#fde8ea" stroke="#ef4444" stroke-width="1.2"/>
+<text x="414" y="6451" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">Error / evaluation</text>
+<rect x="716" y="6439" width="20" height="16" rx="4" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.2"/>
+<text x="744" y="6451" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">New in this update (offline-capable)</text>
+<rect x="56" y="6467" width="20" height="16" rx="4" fill="#fdf1da" stroke="#f59e0b" stroke-width="1.2"/>
+<text x="84" y="6479" font-family="Helvetica, Arial, sans-serif" font-size="11.5" fill="#334155">Milestone / status</text>
+</svg>
