@@ -1208,7 +1208,7 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 
 
 
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_TelegramBot.png)
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.svg)
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_Config_telegrambot.png)
 
