@@ -37,8 +37,6 @@ String apPassword = "12345678";
 
 WiFiServer server(80);     // HTTP server listening on port 80
 
-#define CONFIG_INIC_IPC_HIGH_TP   // Enable high-throughput inter-IC communication config
-
 // ---------------------------------------------------------
 // Decode a URL-encoded string (e.g. "%20" -> " ", "+" -> " ")
 // Used to decode the body/path of incoming HTTP requests
