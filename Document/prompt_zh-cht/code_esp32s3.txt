@@ -3945,7 +3945,9 @@ void initWiFi() {
       if ((StartTime + 15000) < millis())
         break;
     }
-
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;
   }
 
   WiFi.softAP(apSsid.c_str(), apPassword.c_str());  

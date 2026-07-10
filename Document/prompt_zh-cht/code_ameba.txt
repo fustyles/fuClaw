@@ -4270,6 +4270,9 @@ void initWiFi() {
       if ((StartTime + 15000) < millis())
         break;  // 連線逾時（15 秒），跳出等待迴圈
     }
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;    
   }
 }
 
