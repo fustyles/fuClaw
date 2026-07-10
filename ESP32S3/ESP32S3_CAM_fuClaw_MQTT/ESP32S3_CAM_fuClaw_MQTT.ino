@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-06 23:30:00
+Build Date: 2026-07-10 19:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -3174,7 +3174,9 @@ void initWiFi() {
       if ((StartTime + 15000) < millis())
         break;
     }
-
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;
   }
 
   WiFi.softAP(apSsid.c_str(), apPassword.c_str());  
