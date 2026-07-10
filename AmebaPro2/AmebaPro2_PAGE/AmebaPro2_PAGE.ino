@@ -313,6 +313,9 @@ void initWiFi() {
       if ((StartTime+5000) < millis())
         break;  // Timed out waiting for this attempt; exit and let the loop retry or finish
     }
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;    
   }
   
 }

@@ -279,6 +279,9 @@ void initWiFi() {
       if ((StartTime+5000) < millis())
         break;
     }
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;    
   }
   
 }
