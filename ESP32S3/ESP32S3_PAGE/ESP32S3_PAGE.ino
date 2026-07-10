@@ -284,7 +284,7 @@ void initWiFi() {
 
   WiFi.mode(WIFI_AP_STA);  // Enable both Access Point and Station roles simultaneously
   
-  WiFi.softAP(apSsid.c_str(), apPassword.c_str());  // Start broadcasting the AP with the configured SSID/password
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());  // Start broadcasting the AP with the configured SSID/password   
 
   for (int i=0;i<2;i++) {  // Retry connecting to the station network up to 2 times
 
@@ -309,29 +309,8 @@ void initWiFi() {
         break;  // Timed out waiting for this attempt; exit and let the loop retry or finish
     }
 
-    // Print connection/AP info for convenience when debugging over Serial.
-    // NOTE: this block runs on every loop iteration (both attempts), not
-    // just once after the retry loop finishes.
-    Serial.println("\n");   
-    Serial.println("Main page\nhttp://192.168.4.1");   // Default ESP32 softAP gateway IP
-    Serial.println("AP ssid : " + apSsid);
-    Serial.println("AP password : " + apPassword);
-    Serial.println("\n");  
-
-    // If successfully connected to the station WiFi network, blink the LED
-    // 3 times as a visual "connected" indicator, and print the assigned
-    // IP address so the board can also be reached via the local network.
-    if (WiFi.status() == WL_CONNECTED) {
-      for (int i=0 ; i<3 ; i++) {
-        digitalWrite(LED_BUILTIN, 1);  // LED on
-        delay(300);
-        digitalWrite(LED_BUILTIN, 0);  // LED off
-        delay(300);      
-      }
-      
-      Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()));
-      Serial.println("\n");   
-    }  
+    if (WiFi.status() == WL_CONNECTED)
+      break; 
   }
   
 }
@@ -366,7 +345,31 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_task_getRequest failed");  // Log failure if task creation didn't succeed
-  }         
+  } 
+    
+  // Print connection/AP info for convenience when debugging over Serial.
+  // NOTE: this block runs on every loop iteration (both attempts), not
+  // just once after the retry loop finishes.
+  Serial.println("\n");   
+  Serial.println("Main page\nhttp://192.168.4.1");   // Default ESP32 softAP gateway IP
+  Serial.println("AP ssid : " + apSsid);
+  Serial.println("AP password : " + apPassword);
+  Serial.println("\n"); 
+
+  // If successfully connected to the station WiFi network, blink the LED
+  // 3 times as a visual "connected" indicator, and print the assigned
+  // IP address so the board can also be reached via the local network.
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(LED_BUILTIN, 1);  // LED on
+      delay(300);
+      digitalWrite(LED_BUILTIN, 0);  // LED off
+      delay(300);      
+    }
+    
+    Serial.println("Main page\nhttp://" + Ip2String(WiFi.localIP()));
+    Serial.println("\n");   
+  }    
   
 }
 
