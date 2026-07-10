@@ -215,42 +215,6 @@ ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 
-External Modules
-
-- Emergency button: pin 1
-  - digital input only
-  - active-high
-  - pressed = 1
-  - released = 0
-
-- Light sensor module: pin 2
-  - analog input
-  - range: 0–1023
-
-- Warning light: pin 11
-  - PWM output
-  - range: 0–255
-  - default startup value: 255
-
-- Window actuator (SG90 servo)
-  - Pin mapping: depends on development board
-		AMB82-mini: PIN 5
-		HUB 8735 Ultra: PIN 12
-  - servo angle control
-  - range: 0–180
-  - 0 = fully closed
-  - 180 = fully open
-
-- DHT11 Temperature & Humidity Sensor
-  - Pin mapping: depends on development board
-		AMB82-mini: PIN 8
-		HUB 8735 Ultra: PIN 20
-  - Measures: temperature (°C) and relative humidity (%)
-  - Read mode: single trigger, returns two integer values
-  - Temperature range: 0–50 °C
-  - Humidity range: 20–90 % RH
-  - Physical Rules: Values are integers. Sensor requires ~1 s between reads.
-
 Unknown hardware mappings require clarification.
 
 GPIO values are strictly validated before execution.
