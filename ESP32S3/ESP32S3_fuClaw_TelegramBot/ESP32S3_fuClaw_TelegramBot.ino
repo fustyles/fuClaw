@@ -15,7 +15,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-10 19:00:00
+Build Date: 2026-07-11 21:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -124,14 +124,14 @@ Supported Tools
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
-Confirmed device mappings carried over from the Ameba Pro2
+Confirmed device mappings carried over from the ESP32-S3
 original. VERIFY AGAINST YOUR OWN BOARD before relying on them.
 
 ESP32-S3-WROOM-1-N16R8
 - GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
-- Fill LED  : GPIO 48
+- Built-in LED  : GPIO 48
 
 Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
@@ -224,13 +224,9 @@ SemaphoreHandle_t stateMutex     = NULL;
 #include <WiFiClientSecure.h>
 
 // SSL client for secure Telegram polling
-// NOTE: setInsecure() disables certificate verification, matching the
-// original Ameba WiFiSSLClient behavior (no cert pinning). For production
-// use consider supplying a root CA with botClient.setCACert(...).
 WiFiClientSecure botClient;
 
 WiFiServer server(81);
-WiFiServer serverStream(82);
 
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
@@ -253,7 +249,7 @@ String geminiChatRequest(String workId, String message, int tools);
 #include <time.h>
 
 // ---------------------------------------------------------------------
-// Time / RTC (NTP + ESP32 internal RTC replaces Ameba rtc.h hardware RTC)
+// Time / RTC (NTP + ESP32 internal RTC)
 // getRtcTimeString() / isExecutedToday() / etc. further down still call
 // the same epoch-based logic; only the time source changed.
 // ---------------------------------------------------------------------
@@ -371,8 +367,7 @@ String getGeminiDatetime() {
 
 // Returns the current local time as a formatted string.
 // ESP32-S3 PORT: reads from the ESP32 internal RTC (kept in sync by NTP,
-// see rtcInitialTime() below) via the standard time() call, replacing
-// the original Ameba hardware rtc.Read() epoch read. Call sites and
+// see rtcInitialTime() below) via the standard time() call sites and
 // output format are unchanged.
 String getRtcTimeString(bool filename = false) {
 
@@ -1106,7 +1101,11 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     esp_task_wdt_reset();
 
     if (command == "/digitalwrite"||command == "/analogwrite") {
-      int pin = params["pin"].as<int>();
+      int pin = 0;
+      if (params["pin"].as<String>() == "LED_BUILTIN")
+        pin = LED_BUILTIN;
+      else 
+        pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
       int value = params["value"].as<int>();
       
@@ -2776,8 +2775,7 @@ void setup() {
 
   botClient.setInsecure();
 
-  server.begin(); 
-  serverStream.begin();  
+  server.begin();
 
   if (xTaskCreate(
         task_getRequest,
@@ -2830,7 +2828,7 @@ void setup() {
     Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");       
     Serial.println();
 
-    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+    historicalMessages += buildGeminiMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
   } 
 
 }

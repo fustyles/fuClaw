@@ -20,7 +20,7 @@ Author:
 Repository:
   https://github.com/fustyles/fuClaw
 
-Build Date: 2026-07-10 19:00:00
+Build Date: 2026-07-11 21:00:00
 ------------------------------------------------------------
 */
 
@@ -35,11 +35,7 @@ String wifiPassword = "xxxxxxxxxx"; // Password for the WiFi network above
 // ---------------------------------------------------------
 // AP (Access Point) credentials - the device also hosts its own network
 // so a client can connect directly to the board without a router.
-// Web UI can be reached at http://192.168.1.1:81
-// (Note: on ESP32 the default softAP gateway address is actually
-//  192.168.4.1, as printed later in initWiFi(); 192.168.1.1:81 in this
-//  comment is inherited from the original AmebaPro2 version of this
-//  sketch and does not reflect ESP32's default AP IP/port.)
+// Web UI can be reached at http://192.168.1.1
 // ---------------------------------------------------------
 String apSsid = "fuclaw";        // Name of the WiFi network this board broadcasts
 String apPassword = "12345678";  // Password required to join the AP above
@@ -278,7 +274,6 @@ void task_getRequest(void *param) {
 // join an existing WiFi network (station mode) concurrently.
 // On ESP32, WIFI_AP_STA mode natively supports running both
 // roles at once, so no special "concurrent" flag is needed
-// (unlike the AmebaPro2 version of this sketch).
 // ---------------------------------------------------------
 void initWiFi() {
 
