@@ -14,7 +14,7 @@ Version
 -----------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-07-10 19:00:00
+Build Date: 2026-07-11 21:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -3240,7 +3240,7 @@ void setup() {
     Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");            
     Serial.println();
 
-    historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
+    historicalMessages += buildGeminiMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
   }  
 }
 
