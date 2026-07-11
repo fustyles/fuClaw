@@ -8,7 +8,7 @@ String apSsid = "fuclaw";
 String apPassword = "12345678";
 
 // MQTT broker settings
-String mqttServer   = "broker.emqx.io";                          // Broker hostname or IP
+String mqttServer   = "mqttgo.io";                          // Broker hostname or IP
 uint16_t mqttPort   = 1883;                                  // Standard MQTT port (unencrypted)
 String mqttUser     = "";                                    // Leave empty if no auth required
 String mqttPassword = "";                                    // Leave empty if no auth required
