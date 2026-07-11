@@ -1639,6 +1639,11 @@ SemaphoreHandle_t imageMutex     = NULL;
 #define HREF_GPIO_NUM     7
 #define PCLK_GPIO_NUM     13
 
+#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
+
+#include <ESP32Servo.h>    // ESP32Servo 3.0.0
+Servo servos[49];
+
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
@@ -1814,11 +1819,6 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
-
-#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
-
-#include <ESP32Servo.h>    // ESP32Servo 3.0.0
-Servo servos[49];
 
 // Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {

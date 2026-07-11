@@ -1501,6 +1501,11 @@ SemaphoreHandle_t sdMutex        = NULL;
 // 10 s is generous enough for the longest Gemini round-trip.
 #define MUTEX_TIMEOUT_TICKS pdMS_TO_TICKS(10000)
 
+#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
+
+#include <ESP32Servo.h>    // ESP32Servo 3.0.0
+Servo servos[49];
+
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
@@ -1593,11 +1598,6 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
-
-#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
-
-#include <ESP32Servo.h>    // ESP32Servo 3.0.0
-Servo servos[49];
 
 // Decodes a URL-encoded string back to its original form
 String urldecode(const String& input) {
