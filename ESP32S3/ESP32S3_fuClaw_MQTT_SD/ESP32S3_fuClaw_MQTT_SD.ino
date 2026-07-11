@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-fuClaw AI Telegram Assistant with Gemini Integration
+fuClaw AI MQTT Assistant with Gemini Integration
 ------------------------------------------------------------
 Author:
   ChungYi Fu (Kaohsiung, Taiwan)
@@ -128,7 +128,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  Device Name / WiFi / Telegram / Gemini credentials / Time zone
+  Device Name / WiFi / MQTT / Gemini credentials / Time zone
 
 device.md
   Devices definition
@@ -171,7 +171,7 @@ ESP32-S3-WROOM-1-N16R8
 - GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
-- Built-in LED  : GPIO 48
+- Built-in LED: LED_BUILTIN
 
 External Modules (Confirmed)
 
@@ -260,12 +260,6 @@ const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>" };
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
-
-// Maximum download buffer size for Telegram voice files (256 KB)
-#define MAX_FILE_SIZE 262144
-
-// Actual number of bytes downloaded from Telegram
-size_t downloadedFileSize = 0;
 
 // Defines the core persona and behavioral guidelines for Gemini (e.g., Smart Home Assistant, Hardware Steward).
 String geminiRole = ""; 
@@ -2792,9 +2786,21 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       }
 
       String prompt =
-        "Please organize the following scheduled tasks and respond in the user's current language. "
-        "Present the information in a clear and well-structured bullet-point format for better readability: "
-        + localSchedule;
+      R"(You are summarizing a user's scheduled tasks.
+
+      Instructions:
+      - Reply in the user's current language.
+      - Present all tasks as concise bullet points.
+      - Some tasks are already written in natural language. Keep their meaning unchanged.
+      - Some tasks are tool commands (such as JSON or function-call data). Interpret them and describe the action in natural language instead of displaying the command itself.
+      - Never output raw JSON, code, or function-call syntax.
+      - Include important details such as time, device, location, recipient, colors, brightness, duration, or other parameters whenever available.
+      - If a command cannot be interpreted, simply state that the task could not be interpreted.
+      - Produce only the final task list.
+
+      Scheduled tasks:
+      )"
+      + localSchedule;
 
       String response = geminiChatRequest(workId, prompt);
       replyUserMessage(workId, response); 
