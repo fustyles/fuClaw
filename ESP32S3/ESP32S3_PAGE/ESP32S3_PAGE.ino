@@ -243,16 +243,9 @@ void task_getRequest(void *param) {
               // An empty line marks the end of the HTTP headers section.
               // If this was a POST request with a non-zero body length,
               // switch into body-reading mode starting from the next byte.
-              if (currentLine.length()==0 && getHead.startsWith("POST /")) {
-                if (bodyLength > 0) {
+              if (currentLine.length()==0 && getHead.startsWith("POST /") && bodyLength >= 0) {
                   bodyStart = true;
-                } 
-                else if (bodyLength == 0) {
-                  handleRequest(client, getHead, "");
-                  startTime = 0;
-                  break;
-                }
-              }                            
+              }                             
 
               currentLine = "";  // Reset line buffer for the next line
             }
