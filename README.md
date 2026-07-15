@@ -1206,6 +1206,8 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 
 ## 授權
 
+fuClaw 採用雙授權模式發布:
+
 Copyright (c) 2026 ChungYi Fu (fustyles)
 
 - 🆓 **個人、教育、非商業用途:免費使用**
