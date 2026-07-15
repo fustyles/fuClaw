@@ -113,7 +113,7 @@ String routeRequest(const String &getHead, const String &getBody) {
     digitalWrite(LED_BUILTIN, LOW);    // Command: turn the on-board LED off
     return "The light is turned off";  // Simple confirmation text sent back to client
   }
-  else if ((head.startsWith("GET / ") || head.startsWith("POST / ")) && body == "/") {
+  else if ((head.startsWith("GET / ") || head.startsWith("POST / ")) && (body == "/" || body == "")) {
     return String(INDEX_CHAT_HTML);   // Root path: serve the main chat HTML page
   }  
   else
