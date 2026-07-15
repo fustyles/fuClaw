@@ -806,17 +806,11 @@ If you are evaluating fuClaw as a foundation for a larger project, treat Section
 
 Copyright (c) 2026 ChungYi Fu (fustyles)
 
-fuClaw is released under a **Dual License** model:
-
 - 🆓 **Free for personal, educational, and non-commercial use**
   You may use, copy, modify, and distribute this project for personal projects,
   research, teaching, and non-commercial purposes at no cost, provided that
   this copyright notice is retained.
 
-- 💼 **Commercial use requires a separate license**
-  Any use of this project (in whole or in part) in a commercial product,
-  paid service, or for-profit deployment requires a separate commercial
-  license agreement. Please contact the author to discuss terms.
 
 
 <br><br>
@@ -1208,14 +1202,8 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 
 Copyright (c) 2026 ChungYi Fu (fustyles)
 
-fuClaw 採用雙授權模式發布:
-
 - 🆓 **個人、教育、非商業用途:免費使用**
   你可以自由使用、複製、修改、散布本專案,用於個人專案、研究、教學等
   非商業用途,不需付費,但須保留本著作權聲明。
-
-- 💼 **商業用途需另外取得授權**
-  若要將本專案(全部或部分)用於商業產品、付費服務,或任何營利性質的
-  部署,須另外與作者簽訂商業授權合約,請聯繫作者洽談授權方式與費用。
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_zh-TW.svg)
