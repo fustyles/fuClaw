@@ -20,7 +20,7 @@ Author:
 Repository:
   https://github.com/fustyles/fuClaw
 
-Build Date: 2026-07-11 21:00:00
+Build Date: 2026-07-15 08:00:00
 ------------------------------------------------------------
 */
 
@@ -105,9 +105,7 @@ String routeRequest(const String &getHead, const String &getBody) {
   // Route the request based on its head/body content.
   // Order matters: root path is checked first, then specific commands,
   // then a generic fallback for anything unrecognized.
-  if (head.startsWith("GET / ") || head.startsWith("POST / "))
-    return String(INDEX_CHAT_HTML);   // Root path: serve the main chat HTML page
-  else if (body == "/on") {
+  if (body == "/on") {
     digitalWrite(LED_BUILTIN, HIGH);   // Command: turn the on-board LED on
     return "The light is turned on";   // Simple confirmation text sent back to client
   }
@@ -115,6 +113,9 @@ String routeRequest(const String &getHead, const String &getBody) {
     digitalWrite(LED_BUILTIN, LOW);    // Command: turn the on-board LED off
     return "The light is turned off";  // Simple confirmation text sent back to client
   }
+  else if ((head.startsWith("GET / ") || head.startsWith("POST / ")) && body == "/") {
+    return String(INDEX_CHAT_HTML);   // Root path: serve the main chat HTML page
+  }  
   else
     return "Please enter /on or /off"; // Fallback message for unrecognized requests
 }
@@ -183,7 +184,7 @@ void task_getRequest(void *param) {
         String currentLine = "";   // Buffer for the current line being read (headers, request line, etc.)
         String getHead = "";       // Stores the request line (e.g. "GET /on HTTP/1.1" or "POST / HTTP/1.1")
         String getBody = "";       // Stores the request path (GET) or accumulated body content (POST)
-        int bodyLength = 0;        // Expected length of the POST body, parsed from the Content-Length header
+        int bodyLength = -1;        // Expected length of the POST body, parsed from the Content-Length header
         bool bodyStart = false;    // Flag: true once headers are finished and body reading begins
         int waitTime = 5000;       // Max time (ms) to wait for more data before giving up on this request
         unsigned long startTime = millis();  // Timestamp used to track the read timeout
@@ -221,7 +222,7 @@ void task_getRequest(void *param) {
                 // GET request: extract the path between the first and last space.
                 // e.g. "GET /on HTTP/1.1" -> " /on "
                 getHead = currentLine;
-                getBody = currentLine.substring(currentLine.indexOf(" "), currentLine.lastIndexOf(" "));
+                getBody = currentLine.substring(currentLine.indexOf(" ")+1, currentLine.lastIndexOf(" "));
                 handleRequest(client, getHead, getBody);  // GET requests have no body, so handle immediately
                 startTime = 0;  // Done handling this request, stop waiting
                 break;                  
@@ -242,8 +243,15 @@ void task_getRequest(void *param) {
               // An empty line marks the end of the HTTP headers section.
               // If this was a POST request with a non-zero body length,
               // switch into body-reading mode starting from the next byte.
-              if (currentLine.length()==0 && getHead.startsWith("POST /") && bodyLength > 0 ) {
-                bodyStart = true; 
+              if (currentLine.length()==0 && getHead.startsWith("POST /")) {
+                if (bodyLength > 0) {
+                  bodyStart = true;
+                } 
+                else if (bodyLength == 0) {
+                  handleRequest(client, getHead, "");
+                  startTime = 0;
+                  break;
+                }
               }                            
 
               currentLine = "";  // Reset line buffer for the next line
