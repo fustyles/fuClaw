@@ -312,7 +312,7 @@ void initWiFi() {
 
 // ---------------------------------------------------------
 // Convert an IPAddress object into a human-readable dotted string
-// e.g. IPAddress(192,168,1,1) -> "192.168.1.1"
+// e.g. IPAddress(192,168,4,1) -> "192.168.4.1"
 // ---------------------------------------------------------
 String Ip2String(IPAddress ip) {
   return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
