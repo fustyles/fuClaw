@@ -159,8 +159,8 @@ void handleRequest(WiFiClient &client, const String &getHead, const String &getB
   int sent   = 0;                          // How many bytes have been sent so far
 
   while (sent < total) {
-    // Send at most 512 bytes per write call
-    int chunk   = (total - sent) > 512 ? 512 : (total - sent);
+    // Send at most 1024 bytes per write call
+    int chunk   = (total - sent) > 1024 ? 1024 : (total - sent);
     int written = client.write((const uint8_t*)(ptr + sent), chunk);
     if (written > 0)
       sent += written;      // Advance by however many bytes were actually accepted
