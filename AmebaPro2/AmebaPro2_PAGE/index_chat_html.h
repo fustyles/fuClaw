@@ -508,7 +508,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     setStatus('thinking');
     showTyping();
 
-    var url = '/message';
+    var url = '';
 
     fetch(url, {
         method: 'POST',
