@@ -32,7 +32,10 @@ HUB 8735 Ultra
 
 External Modules
 
-No other hardware mappings are confirmed.
+Only the external hardware mappings listed above are confirmed.
+Do not assume any additional hardware is connected to other GPIO pins.
+Unknown hardware mappings require clarification.
+GPIO values are strictly validated before execution.
 
 ==================================================
 HARDWARE SPECIFICATION
