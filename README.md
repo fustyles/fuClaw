@@ -40,6 +40,7 @@ fuClaw now ships as a **dual-platform, dual-transport** firmware family. Every c
 |---|---|---|
 | **Realtek AmebaPro2 (RTL8735B)** | `AmebaPro2_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `AmebaPro2_fuClaw_MQTT_SD_SG90_DHT11.ino` |
 | **ESP32-S3-WROOM-CAM** | `ESP32S3_CAM_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11.ino` |
+| **ESP32-S3-WROOM-CAM (+ OLED)** | — | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11_OLED.ino` |
 | **ESP32-S3-WROOM** | `ESP32S3_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `ESP32S3_fuClaw_MQTT_SD_SG90_DHT11.ino` |
 
 ------------------------------------------------------------
@@ -104,6 +105,7 @@ Supported Tools
 /analogread              <br>GPIO analog input<br>
 /servo              <br>Servo angle control (window actuator)<br>
 /dht11              <br>Read temperature & humidity<br>
+/oled              <br>Display up to 4 lines of UTF-8 text on the SSD1306 OLED (OLED-equipped variant only)<br>
 /syncrtc              <br>Update the hardware RTC<br>
 /getrtc              <br>Get the hardware RTC current time<br>
 /still              <br>Capture image<br>
@@ -249,6 +251,7 @@ ESP32-S3-CAM build:
 - ESP32Servo
 - DHT (Adafruit)
 - Base64
+- U8g2lib / Wire.h (`_OLED` variant only — drives the SSD1306 display via `/oled`)
 
 ------------------------------------------------------------
 Known Limitations
@@ -594,8 +597,11 @@ Servo control uses a reference-passed servo instance (`AmebaServo` on AmebaPro2,
 ### DHT11 Temperature & Humidity Sensor (`/dht11`)
 The DHT11 integration handles the sensor's known failure mode — returning `NaN` on read errors — with an explicit `isnan()` check that produces a structured `dht11_read_failed` error response. This is fed back into the Gemini conversation history, allowing the AI to reason about sensor failures and respond naturally (e.g., "The sensor didn't respond — please check the wiring") rather than propagating silent errors downstream.
 
+### OLED Text Display (`/oled`, OLED-equipped variant)
+The variant adds a fourth tool, `/oled`, driving an SSD1306 128×64 I2C display via `U8g2lib`. The tool accepts up to four independent text lines (`line1`–`line4`); any line left as an empty string simply clears that row rather than requiring the caller to resend the full screen contents. Unlike `/still` or `/vision`, the OLED is a pure output surface with no read-back path, so it carries no risk of feeding stale or conflicting sensor state back into the conversation. UTF-8 rendering (including Chinese) is supported by the selected `u8g2` font; when swapping in a different CJK font, verify glyph coverage against the character set you actually intend to display, since different `u8g2` Chinese font tables cover different character subsets.
+
 ### Consistent Tool Contract
-Both new tools follow the same JSON response contract as all existing tools: a `status` field of either `"success"` or `"error"`, a `method` field identifying the tool, and either result data or a `reason` field for failures. This consistency means `evaluateWorkflowContinuation()` can reason uniformly about any tool outcome, regardless of the underlying hardware type or platform.
+All three new tools follow the same JSON response contract as all existing tools: a `status` field of either `"success"` or `"error"`, a `method` field identifying the tool, and either result data or a `reason` field for failures. This consistency means `evaluateWorkflowContinuation()` can reason uniformly about any tool outcome, regardless of the underlying hardware type or platform.
 
 ---
 
@@ -1052,7 +1058,9 @@ Prompt 驅動的工具架構能自然擴展至基本 GPIO 之外更複雜的周�
 
 **DHT11 溫濕度感測器(`/dht11`)**:DHT11 整合處理了該感測器讀取錯誤時回傳 `NaN` 的已知失效模式,透過明確的 `isnan()` 檢查產生結構化的 `dht11_read_failed` 錯誤回應。此結果會回饋至 Gemini 對話歷史,讓 AI 能針對感測器失效做出自然回應(例如:「感測器沒有回應——請檢查接線」),而非將靜默錯誤向下游傳遞。
 
-**一致的工具合約**:兩個新工具皆遵循與所有既有工具相同的 JSON 回應合約——一個 `status` 欄位(`"success"` 或 `"error"`)、一個識別工具的 `method` 欄位,以及結果資料或失敗時的 `reason` 欄位。這種一致性讓 `evaluateWorkflowContinuation()` 能以統一方式推理任何工具結果,無論底層硬體類型或平台為何。
+**OLED 文字顯示(`/oled`)**:這個工具 `/oled`,透過 `U8g2lib` 驅動 SSD1306 128×64 I2C 顯示器。此工具接受四行各自獨立的文字(`line1`–`line4`);任一行留空字串即可清除該行,呼叫端不需要每次都重送整個畫面內容。與 `/still` 或 `/vision` 不同,OLED 是純輸出裝置、沒有讀回路徑,因此不會有把過時或衝突的感測狀態帶回對話歷史的風險。UTF-8(含中文)渲染由所選的 `u8g2` 字型決定;若要更換成其他 CJK 字型,建議先對照你實際要顯示的字集確認涵蓋範圍,因為不同的 `u8g2` 中文字型表所涵蓋的字集並不相同。
+
+**一致的工具合約**:三個新工具皆遵循與所有既有工具相同的 JSON 回應合約——一個 `status` 欄位(`"success"` 或 `"error"`)、一個識別工具的 `method` 欄位,以及結果資料或失敗時的 `reason` 欄位。這種一致性讓 `evaluateWorkflowContinuation()` 能以統一方式推理任何工具結果,無論底層硬體類型或平台為何。
 
 ---
 
