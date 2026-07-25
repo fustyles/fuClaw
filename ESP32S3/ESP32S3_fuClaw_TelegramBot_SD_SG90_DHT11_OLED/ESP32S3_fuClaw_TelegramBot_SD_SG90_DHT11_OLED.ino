@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-11 21:00:00
+Build Date: 2026-07-25 13:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -104,6 +104,9 @@ Supported Tools
 /analogwrite              GPIO analog output
 /digitalread              GPIO digital input
 /analogread               GPIO analog input
+/servo                    Servo angle control (window actuator)
+/dht11                    Read temperature & humidity
+/oled                     Display up to 4 lines of UTF-8 text on the SSD1306 OLED (OLED-equipped variant only)
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
 /search                   Grounded web search
@@ -169,10 +172,24 @@ ESP32-S3-WROOM-1-N16R8
 - Built-in LED: LED_BUILTIN
 
 External Modules (Confirmed)
-- Emergency button     : GPIO 41  (active-high)
-- Light sensor         : GPIO 3  (analog input, 0-1023)
-- Window actuator (SG90): GPIO 47 (servo, 0-180)
-- DHT11 Sensor         : GPIO 21
+- Living Room Light     : GPIO 41  (analog output, range: 0-255)
+- Bedroom Light     : GPIO 42  (analog output, range: 0-255)
+- Light sensor         : GPIO 3  (analog input, range: 0-255)
+- Bottom-hung window (SG90): GPIO 47 (servo, range: 90-180, close:90, open:180)
+- Door (SG90): GPIO 48 (servo, range: 90-180, close:180, open:90)
+- DHT11 Sensor: GPIO 21
+- Electric Fan (Motor driver): GPIO 46, GPIO 14 (analog output, valid range: 0-100)
+  - off: (0, 0);
+  - full speed: (100, 0)
+- Text Display (OLED Display SSD1306, I2C):
+  - SDA: GPIO 1
+  - SCL: GPIO 2
+  - Resolution: 128x64 pixels
+  - Display lines: 4
+  - Supports UTF-8 text (including Traditional Chinese, English, numbers, and symbols)
+  - Maximum 21 ASCII characters per line (actual capacity depends on character width and font)
+  - Writable only
+  - Supports text display only
 
 Only the external hardware mappings listed above are confirmed.
 Do not assume any additional hardware is connected to other GPIO pins.
@@ -190,6 +207,8 @@ Software Stack (ESP32-S3 port)
 - Local Base64 helper (no external dependency)
 - DHT sensor library 1,4,7 (Adafruit)
 - ESP32Servo
+- U8g2lib.h
+- Wire.h
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
@@ -1080,6 +1099,35 @@ Error response:
   "workId": "<system-provided>"
 }
 
+--------------------------------------------------
+OLED display control:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/oled",
+  "params": {
+    "line1": "<Text for line 1. Empty string clears the line.>",
+    "line2": "<Text for line 2. Empty string clears the line.>",
+    "line3": "<Text for line 3. Empty string clears the line.>",
+    "line4": "<Text for line 4. Empty string clears the line.>"
+  }
+}
+
+Success response:
+{
+  "status":"success",
+  "method":"/oled",
+  "workId":"<system-provided>"
+}
+
+Error response:
+{
+  "status":"error",
+  "method":"/oled",
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
+}
+
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
@@ -1507,6 +1555,12 @@ SemaphoreHandle_t sdMutex        = NULL;
 
 #include <ESP32Servo.h>    // ESP32Servo 3.0.0
 Servo servos[49];
+
+#include <U8g2lib.h>    // U8g2 2.27.6
+#include <Wire.h>
+const int OLED_SDA = 1;
+const int OLED_SCL = 2;
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ OLED_SCL, /* data=*/ OLED_SDA, /* reset=*/ U8X8_PIN_NONE);
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -2544,6 +2598,39 @@ String tool_dht11(int pin, String workId) {
 	"\"workId\":\"" + workId + "\"}";		
 }
 
+/*
+  Display up to four lines of text on the OLED.
+
+  @param line1 First line.
+  @param line2 Second line.
+  @param line3 Third line.
+  @param line4 Fourth line.
+  @param workId Work ID.
+  @return JSON response string.
+ */
+String tool_oled(String line1, String line2, String line3, String line4, String workId) {
+
+	u8g2.clear();
+	u8g2.clearBuffer();
+	u8g2.setFont(u8g2_font_unifont_t_chinese1);
+
+	if (line1 != "")
+		u8g2.drawUTF8(0, 16, line1.c_str());
+	if (line2 != "")
+		u8g2.drawUTF8(0, 32, line2.c_str());
+	if (line3 != "")
+		u8g2.drawUTF8(0, 48, line3.c_str());
+	if (line4 != "")
+		u8g2.drawUTF8(0, 64, line4.c_str());
+
+	u8g2.sendBuffer();
+
+	return
+		"{\"status\":\"success\","
+		"\"method\":\"/oled\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
 // Ask Gemini to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
@@ -3062,7 +3149,28 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 		
       evaluateWorkflowContinuation(workId, reCheck);
   
-    }			
+    }
+	else if (command == "/oled") {
+
+		String line1 = params["line1"] | "";
+		String line2 = params["line2"] | "";
+		String line3 = params["line3"] | "";
+		String line4 = params["line4"] | "";
+
+		String response = tool_oled(line1, line2, line3, line4, workId );
+
+		if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+
+			historicalMessages += buildGeminiMessage("user", command + timestamps);
+			historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+			executeToolHistory += workId + " " + command + " [ " + line1 + " | " + line2 + " | " + line3 + " | " + line4 + " ]\n";
+
+			xSemaphoreGive(stateMutex);
+		}
+
+		evaluateWorkflowContinuation(workId, reCheck);
+	}    
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -4423,6 +4531,11 @@ void setup() {
 
     historicalMessages += buildGeminiMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
   } 
+
+  u8g2.begin();
+  u8g2.setFont(u8g2_font_10x20_me);
+  u8g2.enableUTF8Print();
+  u8g2.clear();  
 
 }
 
