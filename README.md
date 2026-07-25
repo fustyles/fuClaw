@@ -218,10 +218,10 @@ ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 
-Only the external hardware mappings listed above are confirmed.
-Do not assume any additional hardware is connected to other GPIO pins.
-Unknown hardware mappings require clarification.
-GPIO values are strictly validated before execution.
+Only the external hardware mappings listed above are confirmed.<br>
+Do not assume any additional hardware is connected to other GPIO pins.<br>
+Unknown hardware mappings require clarification.<br>
+GPIO values are strictly validated before execution.<br>
 
 ------------------------------------------------------------
 Software Stack
