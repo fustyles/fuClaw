@@ -183,6 +183,8 @@ External Modules (Confirmed)
 - Window actuator (SG90): GPIO 47 (servo, 0-180)
 - DHT11 Sensor         : GPIO 21
 
+Only the external hardware mappings listed above are confirmed.
+Do not assume any additional hardware is connected to other GPIO pins.
 Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
 ------------------------------------------------------------

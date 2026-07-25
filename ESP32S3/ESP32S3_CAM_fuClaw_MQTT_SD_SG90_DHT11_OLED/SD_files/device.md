@@ -13,6 +13,7 @@ ESP32-S3-WROOM-1-N16R8
 - Indicator Light  : LED_BUILTIN
 
 External Modules (Confirmed)
+
 - Living Room Light     : GPIO 41  (analog output, range: 0-255)
 - Bedroom Light     : GPIO 42  (analog output, range: 0-255)
 - Light sensor         : GPIO 3  (analog input, range: 0-255)

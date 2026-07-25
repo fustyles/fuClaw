@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-24 19:00:00
+Build Date: 2026-07-25 13:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -106,6 +106,9 @@ Supported Tools
 /analogwrite              GPIO analog output
 /digitalread              GPIO digital input
 /analogread               GPIO analog input
+/servo                    Servo angle control (window actuator)
+/dht11                    Read temperature & humidity
+/oled                     Display up to 4 lines of UTF-8 text on the SSD1306 OLED (OLED-equipped variant only)
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
 /still                    Capture a still image and send it to the user.
@@ -3315,11 +3318,21 @@ String tool_dht11(int pin, String workId) {
 	"\"workId\":\"" + workId + "\"}";		
 }
 
+/*
+  Display up to four lines of text on the OLED.
+
+  @param line1 First line.
+  @param line2 Second line.
+  @param line3 Third line.
+  @param line4 Fourth line.
+  @param workId Work ID.
+  @return JSON response string.
+ */
 String tool_oled(String line1, String line2, String line3, String line4, String workId) {
 
 	u8g2.clear();
 	u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_unifont_t_chinese1);
+	u8g2.setFont(u8g2_font_unifont_t_chinese1);
 
 	if (line1 != "")
 		u8g2.drawUTF8(0, 16, line1.c_str());
@@ -3332,10 +3345,10 @@ String tool_oled(String line1, String line2, String line3, String line4, String 
 
 	u8g2.sendBuffer();
 
-  return
-      "{\"status\":\"success\","
-      "\"method\":\"/oled\","
-      "\"workId\":\"" + workId + "\"}";
+	return
+		"{\"status\":\"success\","
+		"\"method\":\"/oled\","
+		"\"workId\":\"" + workId + "\"}";
 }
 
 // Ask Gemini to re-check whether the current workflow is complete.
