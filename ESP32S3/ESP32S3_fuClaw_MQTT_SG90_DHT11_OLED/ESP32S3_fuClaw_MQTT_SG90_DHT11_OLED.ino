@@ -1,0 +1,2836 @@
+/*
+------------------------------------------------------------
+fuClaw AI MQTT Assistant with Gemini Integration
+------------------------------------------------------------
+Author:
+  ChungYi Fu (Kaohsiung, Taiwan)
+  https://www.facebook.com/francefu
+
+Repository:
+  https://github.com/fustyles/fuClaw
+
+------------------------------------------------------------
+Version
+------------------------------------------------------------
+Prompt-Orchestrated Embedded Agent Edition
+Persistent Filesystem Runtime
+ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
+
+Build Date: 2026-07-25 13:00:00
+
+------------------------------------------------------------
+Arduino IDE settings
+------------------------------------------------------------
+Board                 : ESP32S3 Dev Module
+USB CDC On Boot       : Enabled
+CPU Frequency         : 240MHz (WiFi/BT)
+USB Firmware MSC On Boot : Disabled
+USB DFU On Boot       : Disabled
+Upload Mode           : UART0 / Hardware CDC
+Flash Mode            : QIO 80MHz
+Flash Size            : 16MB (128Mbit)
+Partition Scheme      : 16M Flash (3MB APP / 9.9MB FATFS)
+PSRAM                 : OPI PSRAM
+Arduino Runs On       : Core 1
+Events Run On         : Core 1
+
+------------------------------------------------------------
+Overview
+------------------------------------------------------------
+fuClaw is an embedded multimodal AI agent framework, run on
+ESP32-S3.
+
+It combines:
+- MQTT messaging
+- Gemini Chat Web Interface
+- Google Gemini generateContent API
+- Gemini grounded web search
+- Prompt-driven JSON tool routing
+- GPIO digital / analog I/O control
+- Persistent conversation memory
+- FreeRTOS concurrent task scheduling
+
+The runtime acts as a hybrid autonomous agent:
+Conversation + Reasoning + Tools + Memory + Hardware
+------------------------------------------------------------
+Runtime Architecture
+------------------------------------------------------------
+MQTT / Web Chat User
+      ↓
+Communication Task
+(MQTT / Web Chat)
+      ↓
+Message Router
+      ↓
+Gemini Reasoning Engine
+(Chat / Search / Vision / Workflow)
+      ↓
+JSON tool_call output
+      ↓
+ArduinoJson validation
+      ↓
+Tool Dispatcher
+      ↓
+Hardware / Search
+      ↓
+Result injection into memory
+      ↓
+Natural language reply
+------------------------------------------------------------
+Execution Model
+------------------------------------------------------------
+This is a prompt-orchestrated tool-routing system.
+
+Gemini does NOT use native function-calling APIs.
+
+Instead:
+- Gemini emits structured JSON tool_call responses
+- Local firmware validates all tool calls
+- Invalid JSON is rejected
+- Execution is strictly sequential
+- Hardware actions are never simulated
+
+Atomic execution rule:
+One response may perform only ONE hardware action:
+- one pin
+- one operation
+- one value
+
+Multi-step workflows are executed step-by-step.
+------------------------------------------------------------
+Supported Tools
+------------------------------------------------------------
+/digitalwrite             GPIO digital output
+/analogwrite              GPIO analog output
+/digitalread              GPIO digital input
+/analogread               GPIO analog input
+/servo                    Servo angle control (window actuator)
+/dht11                    Read temperature & humidity
+/oled                     Display up to 4 lines of UTF-8 text on the SSD1306 OLED (OLED-equipped variant only)
+/syncrtc                  Update the hardware RTC
+/getrtc                   Get the hardware RTC current time
+/search                   Grounded web search
+/delay                    Pause execution for specified milliseconds
+/getMemory                Runtime memory diagnostics
+/getLog                   Show tool execution history
+/reset                    Reset conversation state
+/chat                     Natural language reply
+/reboot                   Reboot the device
+/schedule                 Add scheduled tasks
+/getSchedule              Get all scheduled tasks
+/getUnfinishedSchedule    Get unfinished scheduled tasks
+/updateScheduleStatus     Update the executed status of scheduled tasks
+/modifySchedule           Modify or delete scheduled tasks
+/clearSchedule            Clear scheduled tasks
+/tcpSendMessage           Send a message to another device or agent over TCP
+/mqttSendMessage          Send a message to another device or agent over TCP or any subscriber via MQTT
+/mqttSendImage            Send a video snapshot to another fuClaw device or any subscriber via MQTT
+/telegramSendMessage      Send a message to Telegram Bot
+/lineSendMessage          Send a message to Line Bot
+
+------------------------------------------------------------
+Hardware Safety
+------------------------------------------------------------
+Confirmed device mappings carried over from the ESP32-S3
+original. VERIFY AGAINST YOUR OWN BOARD before relying on them.
+
+ESP32-S3-WROOM-1-N16R8
+- GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+- ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+- PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
+- Built-in LED: LED_BUILTIN
+
+External Modules (Confirmed)
+- Living Room Light     : GPIO 41  (analog output, range: 0-255)
+- Bedroom Light     : GPIO 42  (analog output, range: 0-255)
+- Light sensor         : GPIO 3  (analog input, range: 0-255)
+- Bottom-hung window (SG90): GPIO 47 (servo, range: 90-180, close:90, open:180)
+- Door (SG90): GPIO 48 (servo, range: 90-180, close:180, open:90)
+- DHT11 Sensor: GPIO 21
+- Electric Fan (Motor driver): GPIO 46, GPIO 14 (analog output, valid range: 0-100)
+  - off: (0, 0);
+  - full speed: (100, 0)
+- Text Display (OLED Display SSD1306, I2C):
+  - SDA: GPIO 1
+  - SCL: GPIO 2
+  - Resolution: 128x64 pixels
+  - Display lines: 4
+  - Supports UTF-8 text (including Traditional Chinese, English, numbers, and symbols)
+  - Maximum 21 ASCII characters per line (actual capacity depends on character width and font)
+  - Writable only
+  - Supports text display only
+
+Only the external hardware mappings listed above are confirmed.
+Do not assume any additional hardware is connected to other GPIO pins.
+Unknown hardware mappings require clarification.
+GPIO values are strictly validated before execution.
+------------------------------------------------------------
+Software Stack (ESP32-S3 port)
+------------------------------------------------------------
+- WiFi.h (ESP32 Arduino core)
+- WiFiClientSecure
+- PubSubClient
+- ArduinoJson
+- FreeRTOS (built into ESP32 Arduino core)
+- esp_camera.h (ESP32 Camera driver)
+- Local Base64 helper (no external dependency)
+- DHT sensor library 1,4,7 (Adafruit)
+- ESP32Servo
+- U8g2lib.h
+- Wire.h
+------------------------------------------------------------
+Known Limitations
+------------------------------------------------------------
+- Conversation history grows over time
+- String-heavy heap fragmentation risk
+- Large JSON parsing impacts heap usage
+- Gemini response format handled by ArduinoJson validation layer
+- Recursive tool chaining controlled via reCheck flag and NONE sentinel
+------------------------------------------------------------
+*/
+
+// System settings
+#include "config.h"
+
+// System prompt that defines assistant behavior.
+// Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
+#include "GeminiRole.h"
+#include "devicesDefinition.h"
+#include "toolsDefinition.h"
+#include "skillsDefinition.h"
+
+// Configuration manager
+#include "index_html.h"
+// Gemini chat
+#include "index_chat_html.h"
+// Gemini chat via MQTT
+#include "index_mqtt_chat_html.h"
+// Schedule manager
+#include "index_schedule_html.h"
+
+// Array of task-related tags used as stop markers when parsing text
+// Every tag MUST be enclosed in angle brackets '<' and '>'.
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>" };
+
+String mainPageHTML = "";
+bool mainPageStatus = false;
+
+// Serialized system prompt content used as the initial conversation context
+String systemContent = "";
+String systemContentTools = "";
+String systemContentNoTools = "";
+
+// Logs each tool execution as a human-readable record for /getLog command
+String executeToolHistory = "";
+  
+// Stores entire chat history in Gemini API JSON format
+// Used to preserve conversation memory across requests
+String historicalMessages = "";
+
+// Schedule Tasks
+String scheduleTasks = "";
+int scheduleTimeout = 5;    // minutes
+String executedTodayTasks = "";
+int executedTodayDate = 0;
+
+// ------------------------------------------------------------
+// FreeRTOS mutex handles
+// mqttClientMutex : protects the shared mqttClient SSL connection
+// stateMutex     : protects historicalMessages, scheduleTasks,
+//                  executedTodayTasks, executeToolHistory and
+//                  any other shared String state
+// ------------------------------------------------------------
+SemaphoreHandle_t mqttClientMutex = NULL;
+SemaphoreHandle_t stateMutex     = NULL;
+
+// Maximum ticks to wait when taking a mutex before giving up.
+// 10 s is generous enough for the longest Gemini round-trip.
+#define MUTEX_TIMEOUT_TICKS pdMS_TO_TICKS(10000)
+
+#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
+
+#include <ESP32Servo.h>    // ESP32Servo 3.0.0
+Servo servos[49];
+
+#include <U8g2lib.h>    // U8g2 2.27.6
+#include <Wire.h>
+const int OLED_SDA = 1;
+const int OLED_SCL = 2;
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ OLED_SCL, /* data=*/ OLED_SDA, /* reset=*/ U8X8_PIN_NONE);
+
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+
+// Underlying TCP socket used by PubSubClient
+WiFiClient wifiClient;
+
+WiFiServer server(81);
+
+#include "Base64.h"
+#include <ArduinoJson.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "esp_task_wdt.h"
+
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+
+#include <PubSubClient.h> // MQTT client (Nick O'Leary / knolleary)
+
+// MQTT client instance bound to the WiFi socket
+PubSubClient mqttClient(wifiClient);
+
+// Forward declarations
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
+String buildGeminiMessage(String role, String message, bool comma);
+String getRtcTimeString(bool filename);
+void replyUserMessage(String workId, String text);
+void handleAgentResponse(String workId, String message);
+String geminiChatRequest(String workId, String message, int tools);
+void setEnvironmentSettings(String jsonString);
+
+#include <stdio.h>
+#include <time.h>
+
+// ---------------------------------------------------------------------
+// Time / RTC (NTP + ESP32 internal RTC)
+// getRtcTimeString() / isExecutedToday() / etc. further down still call
+// the same epoch-based logic; only the time source changed.
+// ---------------------------------------------------------------------
+struct tm *timeinfo;
+int rtcYear = 0;
+int rtcMonth = 0;
+int rtcDay = 0;
+int rtcHour = 0;
+int rtcMinute = 0;
+int rtcSecond = 0;
+String rtcFormatTime = "";
+bool rtcUpdateStatus = false;
+
+// Generates a unique MQTT Client ID based on the device's Wi-Fi MAC address
+String generateMqttClientId() {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  char clientId[32];
+  snprintf(clientId, sizeof(clientId),
+           "ESP32S3-%02X%02X%02X",
+           mac[3], mac[4], mac[5]);
+  return String(clientId);
+}
+
+// Decodes a URL-encoded string back to its original form
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length());
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2;
+        } else if (input[i] == '+') {
+            result += ' ';
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+// Encodes a plain string into URL-encoded (percent-encoded) format
+String urlencode(String str) {
+  const char *msg = str.c_str();
+  const char *hex = "0123456789ABCDEF";
+  String encodedMsg = "";
+  while (*msg != '\0') {
+    if (('a' <= *msg && *msg <= 'z') || ('A' <= *msg && *msg <= 'Z') || ('0' <= *msg && *msg <= '9') || *msg == '-' || *msg == '_' || *msg == '.' || *msg == '~') {
+      encodedMsg += *msg;
+    } else {
+      encodedMsg += '%';
+      encodedMsg += hex[(unsigned char)*msg >> 4];
+      encodedMsg += hex[*msg & 0xf];
+    }
+    msg++;
+  }
+  return encodedMsg;
+}
+
+// Send request to Gemini and return GMT date and time
+String getGeminiDatetime() {
+
+  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String getDatetime = "";
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool getStatus = false;
+
+    while ((startTime + waitTime) > millis()){
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()){
+        char c = client.read();
+
+        if (getStatus == true && c == '\n') {
+          waitTime = 0;
+          break;
+        }
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
+        }
+        else
+          getDatetime += String(c);
+
+        startTime = millis();
+      }
+    }
+    
+    client.stop();
+    
+  } else {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  if (getDatetime == "") {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  return getDatetime;
+  
+}
+
+// Returns the current local time as a formatted string.
+// ESP32-S3 PORT: reads from the ESP32 internal RTC (kept in sync by NTP,
+// see rtcInitialTime() below) via the standard time() call sites and
+// output format are unchanged.
+String getRtcTimeString(bool filename = false) {
+
+  time_t rawtime;
+  time(&rawtime);
+
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  if (filename == true) {
+	  sprintf(
+		buffer,
+		"%04d%d%d%02d%02d%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
+  else {
+	  sprintf(
+		buffer,
+		"%04d/%d/%d %02d:%02d:%02d",
+		timeinfo->tm_year + 1900,
+		timeinfo->tm_mon + 1,
+		timeinfo->tm_mday,
+		timeinfo->tm_hour,
+		timeinfo->tm_min,
+		timeinfo->tm_sec
+	  );
+  }
+
+  return String(buffer);
+}
+
+// Returns the UTC offset in seconds for the configured timeZone string.
+// ESP32-S3 PORT helper: configTime() needs a numeric GMT offset rather
+// than an IANA name, so common zones used by this project are mapped
+// here. Add more entries if you operate in a different timeZone.
+long timeZoneToGmtOffsetSec(String tz) {
+  if (tz == "Asia/Taipei" || tz == "Asia/Shanghai" || tz == "Asia/Singapore")
+    return 8 * 3600;
+  if (tz == "Asia/Tokyo" || tz == "Asia/Seoul")
+    return 9 * 3600;
+  if (tz == "UTC" || tz == "Etc/UTC")
+    return 0;
+  if (tz == "America/New_York")
+    return -5 * 3600;
+  if (tz == "America/Los_Angeles")
+    return -8 * 3600;
+  if (tz == "Europe/London")
+    return 0;
+  // Default fallback: Asia/Taipei (matches this project's default timeZone)
+  return 8 * 3600;
+}
+
+// Initialize / synchronize the ESP32-S3 internal clock via NTP.
+// ESP32-S3 PORT:
+// (which asked Gemini for the current datetime and wrote it into a
+// dedicated RTC chip). ESP32-S3 has no standalone RTC chip, so this
+// function performs a standard NTP sync instead. The function name and
+// call sites (setup(), /syncrtc tool) are kept unchanged.
+void rtcInitialTime(String workName) {
+
+  rtcUpdateStatus = true;
+
+  long gmtOffsetSec = timeZoneToGmtOffsetSec(timeZone);
+  const long daylightOffsetSec = 0;
+  const char* ntpServer1 = "pool.ntp.org";
+  const char* ntpServer2 = "time.google.com";
+
+  configTime(gmtOffsetSec, daylightOffsetSec, ntpServer1, ntpServer2);
+
+  struct tm timeinfoLocal;
+  int retries = 0;
+  // getLocalTime() blocks briefly and returns false until NTP responds.
+  while (!getLocalTime(&timeinfoLocal) && retries < 20) {
+    delay(500);
+    retries++;
+  }
+
+  if (retries >= 20) {
+    Serial.println("[DEBUG] NTP time sync failed (rtcInitialTime)");
+    replyUserMessage(workName, "RTC time update failed.");
+    return;
+  }
+
+  rtcYear   = timeinfoLocal.tm_year + 1900;
+  rtcMonth  = timeinfoLocal.tm_mon + 1;
+  rtcDay    = timeinfoLocal.tm_mday;
+  rtcHour   = timeinfoLocal.tm_hour;
+  rtcMinute = timeinfoLocal.tm_min;
+  rtcSecond = timeinfoLocal.tm_sec;
+}
+
+// Send text message to Telegram bot
+String telegramSendMessage(String token, String chatid, String text, String keyboard = "") {
+  text.replace("\\n", "%0A");
+  const char* myDomain = "api.telegram.org";
+  String getAll="", getBody = "";
+  String request = "parse_mode=HTML&chat_id="+chatid+"&text="+text;
+
+  if (keyboard!="")
+    request += "&reply_markup="+keyboard;
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /bot"+token+"/sendMessage HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Content-Length: " + String(request.length()));
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.println("Connection: close");
+    client.println();
+    client.print(request);
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool state = false;
+
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+	  
+      while (client.available())  {
+        char c = client.read();
+
+        if (state)
+          getBody += String(c);
+
+        if (c == '\n')  {
+          if (getAll.length()==0)
+            state=true;
+          getAll = "";
+        }
+        else if (c != '\r')
+          getAll += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length()>0)
+        break;
+    }
+    client.stop();
+  }
+  else {
+    getBody="Connected to api.telegram.org failed.";
+  }
+  
+  return getBody;
+}
+
+// Send text message to Line bot
+String lineSendMessage(String token, String targetId, String message) {
+  String getAll="", getBody="";
+  
+  String request = "{\"to\":\""+targetId+"\",\"messages\":[{\"type\":\"text\",\"text\":\""+message+"\"}]}";
+	
+  const char* myDomain = "api.line.me";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  if (client.connect(myDomain, 443)) {
+    client.println("POST /v2/bot/message/push HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: api.line.me");
+    client.println("Authorization: Bearer " + token);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    client.println(request);
+    client.println();
+	
+    boolean state = false;
+    long startTime = millis();
+    while ((startTime + 3000) > millis()) {
+		while (client.available()) {
+			char c = client.read();
+			if (c == '\n') {
+				if (getAll.length()==0) 
+					state=true;
+				getAll = "";
+			}
+			else if (c != '\r')
+				getAll += String(c);
+			if (state==true) 
+				getBody += String(c);
+			startTime = millis();
+		}
+		if (getBody.length()!= 0) 
+			break;
+      }
+      client.stop();
+  }
+  else {
+    getBody="Connected to api.line.me failed.";
+  }
+  
+  return getBody;
+}
+
+// ============================================================
+//  MQTT: Send Text Message
+// ============================================================
+
+/**
+ * @brief Publish a plain-text message to an MQTT topic.
+ *
+ * Connects (or re-uses an existing connection) to the broker and
+ * publishes a single UTF-8 string payload.  The MQTT QoS level used
+ * by PubSubClient::publish() is QoS 0 (at-most-once / fire-and-forget).
+ *
+ * @param topic  Destination MQTT topic string.
+ * @param text   UTF-8 payload to publish.
+ */
+String mqttSendText(String topic, String text) {
+  
+    // Attempt to connect (no-op if already connected)
+    if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+
+      mqttClient.beginPublish(topic.c_str(), text.length(), false);
+
+      mqttClient.write(
+          (const uint8_t*)text.c_str(),
+          text.length()
+      );
+
+      bool isPublished = mqttClient.endPublish();          
+
+      if (isPublished)
+          return "Publishing message to MQTT Successfully";
+      else
+          return "Publishing message to MQTT Failed";
+    }
+    else
+    	return "Connect to MQTT Server Failed";
+	
+}
+
+// Cleans a text string by removing timestamps, workId, and truncating at any task tag
+// Returns "NONE" if the text is empty or explicitly marked as none
+String removeTimestamps(String workId, String timestamps, String text) {
+
+    // Skip processing if text is empty or already marked as "NONE"
+    if (text.length() == 0 || text.startsWith("NONE")) return "NONE";
+	
+    // Early exit: if there are no angle brackets at all, nothing left to process
+    if (text.indexOf("&lt;") == -1 && text.indexOf("<") == -1) return text;	
+
+    // Decode HTML-escaped angle brackets back to their literal characters
+    text.replace("&lt;", "<");
+    text.replace("&gt;", ">");
+
+    // Strip the timestamp and workId from the text
+    text.replace(timestamps, "");
+    text.replace(workId, "");
+
+    // Truncate text at the first occurrence of any task tag
+    // Everything from the tag onward is discarded
+    for (const auto& tag : taskTags) {
+        int pos = text.indexOf(tag);
+        if (pos != -1)
+            text = text.substring(0, pos); // Keep only the part before the tag
+    }
+
+    return text;
+}
+
+void replyUserMessage(String workId, String text) {
+	if (text.length() == 0 || text.startsWith("NONE")) return;
+
+	if (workId.startsWith(String(taskTags[0])))
+		mainPageHTML += text +"\n";
+	else {
+		mqttSendText(mqttPublishTextTopic, text);
+  }
+}
+
+// Convert role/content pair into Gemini-compatible JSON message object
+String buildGeminiMessage(String role, String message, bool comma = true) {
+  
+  message.replace("\"", "\\\"");
+  message.replace("\\\\", "\\");
+  
+  String jsonMessage = "";
+  if (comma)
+    jsonMessage = ", {\"role\": \"";
+  else
+    jsonMessage = "{\"role\": \"";
+  jsonMessage += role;
+  jsonMessage += "\", \"parts\":[{ \"text\": \"";
+  jsonMessage += message;
+  jsonMessage += "\" }]}";
+
+  return jsonMessage;
+}
+
+//   Send a message to another device or agent over TCP
+String tcpSendMessage(String workId, String domain, String request) {
+  
+  WiFiClient client;
+  
+  if (client.connect(domain.c_str(), 81)) {
+	  
+    client.setTimeout(20000);
+	
+    client.println("GET /message?" + urlencode(request) + " HTTP/1.1");
+    client.println("Host: " + domain);
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("Content-Length: 0");
+    client.println();
+    
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+    
+    return 
+      "{\"status\":\"success\","
+      "\"method\":\"/tcpSendMessage\","
+      "\"response\":\"" + body + "\","   
+      "\"workId\":\"" + workId + "\"}"; 
+  }
+
+  return 
+    "{\"status\":\"error\","
+    "\"method\":\"/tcpSendMessage\","       
+    "\"reason\":\"Connected to the device failed.\","
+    "\"workId\":\"" + workId + "\"}";
+      
+}
+
+// Reset conversation memory to initial system prompt state
+void geminiChatReset() {
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages = "";
+    executeToolHistory = "";
+    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
+  
+}
+
+// Reset system Content
+void systemContentReset() {
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    xSemaphoreGive(stateMutex);
+  }
+  
+}
+
+// Send request to Gemini and return response text
+String geminiChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildGeminiMessage("user", message);
+    else
+      contents = systemContent + buildGeminiMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+	  
+  client.setTimeout(10000);
+		  
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) { 
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } 
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini response
+      vTaskDelay(1);
+    }
+    
+    client.stop();
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    }  
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+      //const char* rawText = doc["candidates"][0]["content"]["parts"][0]["text"];
+      //if (rawText) {
+      //  responseText = String(rawText);
+      //}
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
+	  Serial.println(responseText);
+	  responseText = "Gemini API Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini.";
+      Serial.println("Unknown response format.");
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini did not respond. Please try again.";
+  }
+  
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+  
+}
+
+// Send Gemini request with Google Search tool enabled
+String geminiSearchRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    contents = systemContent + buildGeminiMessage("user", message);
+    if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Build request with Google Search tool
+  String request = "{\"contents\": [" + contents +
+                   "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+	  
+  client.setTimeout(10000);
+	
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    // Send HTTP Request
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long Gemini Search response
+      vTaskDelay(1);
+    }
+    
+    client.stop();  
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Gemini API (Search) Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+	  responseText = "Gemini API (Search) Error";
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Search.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Search)");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Gemini Search did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+// Get current memory usage information
+String getMemoryInfo() {
+  String msg = "";
+
+  msg += "Free heap: ";
+  msg += String(xPortGetFreeHeapSize());
+
+  msg += "\nMin heap: ";
+  msg += String(xPortGetMinimumEverFreeHeapSize());
+
+  msg += "\nHistorical messages len: ";
+  msg += String(historicalMessages.length());
+
+  return msg;
+}
+
+// Control device output using digital or analog mode.
+// This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
+String toolPinOutput(int pin, String mode, int value, String workId) {
+
+    pinMode(pin, OUTPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalwrite") {
+
+        if (value != 0 && value != 1) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/digitalwrite\","				
+				"\"reason\":\"invalid_digital_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        digitalWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogwrite") {
+
+        if (value < 0 || value > 255) {
+            return 
+				"{\"status\":\"error\","
+				"\"method\":\"/analogwrite\","				
+				"\"reason\":\"invalid_analog_value\","
+				"\"workId\":\"" + workId + "\"}";
+        }
+
+        analogWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogwrite\","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogwrite\","		
+        "\"reason\":\"invalid_output_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// Read device input using digital or analog mode.
+// This function supports general-purpose sensors such as buttons and analog sensors connected to GPIO pins.
+String toolPinInput(int pin, String mode, String workId) {
+
+    pinMode(pin, INPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalread") {
+
+        int value = digitalRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/digitalread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+    else if (mode == "analogread") {
+
+        int value = analogRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"/analogread\","
+            "\"value\":" + String(value) + ","
+			"\"workId\":\"" + workId + "\"}";
+
+    }
+
+    return
+        "{\"status\":\"error\","
+        "\"method\":\"/analogread\","		
+        "\"reason\":\"invalid_input_mode\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// Control a servo motor's position by specifying a target angle.
+// This function supports precise physical movement for actuators
+// like the SG90 servo connected to GPIO pins.
+String tool_servo(Servo &servo, int pin, int angle, String workId) {
+    if (!servo.attached()) {
+		servo.setPeriodHertz(50);
+        servo.attach(pin, 500, 2400);
+	}
+	
+	if (angle < 0 || angle > 180) {
+		return 
+			"{\"status\":\"error\","
+			"\"method\":\"/servo\","				
+			"\"reason\":\"invalid_servo_angle\","
+			"\"workId\":\"" + workId + "\"}";
+	}
+		
+    servo.write(angle);
+		
+    return
+        "{\"status\":\"success\","
+        "\"method\":\"/servo\","
+		"\"workId\":\"" + workId + "\"}";		
+}
+
+// Read temperature and humidity from a DHT11 sensor.
+// Returns a JSON result string for the agent workflow.
+String tool_dht11(int pin, String workId) {
+  DHT dht(pin, DHT11);
+  dht.begin();
+
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(temperature) || isnan(humidity)) {
+    return "{\"status\":\"error\","
+		   "\"method\":\"/dht11\","	
+           "\"reason\":\"dht11_read_failed\","
+		   "\"workId\":\"" + workId + "\"}";	
+
+  }
+
+  return
+    "{\"status\":\"success\","
+    "\"method\":\"/dht11\","
+    "\"temperature\":" + String(temperature) + ","
+    "\"humidity\":"    + String(humidity) + ","
+	"\"workId\":\"" + workId + "\"}";		
+}
+
+/*
+  Display up to four lines of text on the OLED.
+
+  @param line1 First line.
+  @param line2 Second line.
+  @param line3 Third line.
+  @param line4 Fourth line.
+  @param workId Work ID.
+  @return JSON response string.
+ */
+String tool_oled(String line1, String line2, String line3, String line4, String workId) {
+
+	u8g2.clear();
+	u8g2.clearBuffer();
+	u8g2.setFont(u8g2_font_unifont_t_chinese1);
+
+	if (line1 != "")
+		u8g2.drawUTF8(0, 16, line1.c_str());
+	if (line2 != "")
+		u8g2.drawUTF8(0, 32, line2.c_str());
+	if (line3 != "")
+		u8g2.drawUTF8(0, 48, line3.c_str());
+	if (line4 != "")
+		u8g2.drawUTF8(0, 64, line4.c_str());
+
+	u8g2.sendBuffer();
+
+	return
+		"{\"status\":\"success\","
+		"\"method\":\"/oled\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
+// Ask Gemini to re-check whether the current workflow is complete.
+// Optionally provide the original user task for context-aware continuation.
+// Executes returned tool calls automatically via handleAgentResponse().
+void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
+
+    if (!reCheck) return;
+
+    String prompt =
+        "Analyze the execution result and determine whether the workflow is complete.\n";
+
+    if (task != "") {
+        prompt += "User task request:\n" + task + "\n\n";
+    }
+
+    prompt +=
+        "If additional hardware actions are strictly required, "
+        "return ONLY a valid tool_call JSON.\n"
+        "If the workflow is already complete, return EXACTLY: NONE.\n"
+        "If no tool action is required and a user-facing reply is needed, "
+        "respond naturally in the user's language.\n"
+        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
+        "Do not include explanation or extra text.";
+
+    handleAgentResponse(workId, geminiChatRequest(workId, prompt));
+}
+
+// Execute tool commands returned by Gemini
+void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
+    String timestamps = "\n" + workId;
+
+    // Reset the per-task watchdog at each tool boundary so the TWDT
+    // doesn't fire during back-to-back multi-step tool chains.
+    esp_task_wdt_reset();
+
+    if (command == "/digitalwrite"||command == "/analogwrite") {
+      int pin = 0;
+      if (params["pin"].as<String>() == "LED_BUILTIN")
+        pin = LED_BUILTIN;
+      else 
+        pin = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>();
+      int value = params["value"].as<int>();
+      
+      String response = toolPinOutput(pin, pinmode, value, workId);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+    
+    } 
+    else if (command == "/digitalread" || command == "/analogread") {
+      int pin = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>();
+
+      String response = toolPinInput(pin, pinmode, workId);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck); 
+      
+    } 
+    else if (command == "/syncrtc") {
+      rtcInitialTime(workId);
+      String rtcTimeResponse = "RTC START: " + getRtcTimeString();
+      replyUserMessage(workId, rtcTimeResponse);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+    } 
+    else if (command == "/getrtc") {
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(workId, rtcTime);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+              
+    }
+  	else if (command == "/schedule") {
+      String task = params["task"].as<String>();
+	  
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+
+	    if (task.startsWith("[") && task.indexOf("]") !=-1) {
+		    task = task.substring(0, task.lastIndexOf("]") + 1);
+  			if (localSchedule == "")
+  				localSchedule = task;
+  			else {
+  				localSchedule += ", " + task;
+  
+        String prompt = 
+          "Merge all given JSON arrays into a single valid JSON array. "
+          "Output ONLY the merged array. "
+          "Ensure the result is valid JSON starting with [ and ending with ]. "
+          "For every object in the arrays, keep all fields unchanged. "
+          "The value of the task field MUST remain exactly as provided. "
+          "Never translate, rewrite, summarize, localize, or modify task descriptions. "
+          "Task descriptions MUST remain in the original user language.\n\n"
+          + localSchedule;
+  				  
+  				String jsonArray = geminiChatRequest(workId, prompt, -1);
+  				
+  				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+  				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+  				  localSchedule = jsonArray;
+  				}
+  			}
+  			
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = localSchedule;
+          xSemaphoreGive(stateMutex);
+        }
+                
+    		response = 
+    			"{\"status\":\"success\","			
+    			"\"method\":\"/schedule\","
+    			"\"workId\":\""+workId+"\"}";				
+    	}
+    	else {
+    		response =
+			"{\"status\":\"error\","
+			"\"method\":\"/schedule\","
+			"\"reason\":\"Invalid JSON array format.\","
+			"\"workId\":\""+workId+"\"}";	  
+  	  }   
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+    
+  	}	
+    else if (command == "/modifySchedule") {
+      String task = params["task"].as<String>();
+            
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a user-approved schedule modification request. "
+          "Apply the requested modification or deletion to the scheduled tasks. "
+          "Rules: "
+          "- Match tasks using both schedule time and task description. "
+          "- If the request is to modify a task, update only the requested fields. "
+          "- Modifying a task includes changing the task description, schedule time, or recurrence settings. "
+          "- Any modified task MUST have its executed field set to false. "
+          "- If the request is to delete a task, remove the matching task from the array. "
+          "- Do NOT modify unrelated tasks. "
+          "- Preserve all fields of unaffected tasks. "
+          "- Preserve the executed field of unaffected tasks. "
+          "- Do NOT add new fields. "
+          "- Do NOT remove existing fields except when deleting a task. "
+          "- Preserve the original JSON schema. "
+          "- If no matching task exists, return the original array unchanged. "
+          "- Output ONLY the updated JSON array. "
+          "- The result MUST start with [ and end with ]. "
+          "- Do NOT output explanations, markdown, code fences, or natural language.\n\n"
+          "Current scheduled tasks:\n" +
+          localSchedule +
+          "\n\nUser-approved modification request:\n" +
+          task;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+    
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/modifySchedule\","
+          "\"workId\":\""+workId+"\"}";     
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/modifySchedule\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }    
+    else if (command == "/updateScheduleStatus") {
+      String response = "";
+      String localSchedule = "";
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+      
+      String prompt =
+          "You are given a JSON array of scheduled tasks and a tool execution history. "
+          "For each task: "
+          "- If the task's schedule has \"year\" equal to 0, it is a recurring task. Do NOT change its \"executed\" field. "
+          "- Otherwise, set \"executed\" to true ONLY if the task's corresponding action appears in the execution history as successfully completed, otherwise Do NOT change its \"executed\" field. "
+          "Output ONLY the updated JSON array. "
+          "The result MUST start with [ and end with ]. "
+          "Do NOT change any other fields.\n\n"
+          + localSchedule;
+            
+      String jsonArray = geminiChatRequest(workId, prompt);
+      
+      if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
+        jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
+		
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+          scheduleTasks = jsonArray;
+          xSemaphoreGive(stateMutex);
+        }
+        
+        response = 
+          "{\"status\":\"success\","
+          "\"method\":\"/updateScheduleStatus\","
+		  "\"workId\":\""+workId+"\"}";		  
+      }
+      else {
+        response =
+        "{\"status\":\"error\","
+        "\"method\":\"/updateScheduleStatus\","
+        "\"reason\":\"Invalid JSON array format.\","
+        "\"workId\":\""+workId+"\"}";
+      }  
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+     
+    }
+    else if (command == "/getSchedule") {
+      String localSchedule = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+
+      String prompt =
+      R"(You are summarizing a user's scheduled tasks.
+
+      Instructions:
+      - Reply in the user's current language.
+      - Present all tasks as concise bullet points.
+      - Some tasks are already written in natural language. Keep their meaning unchanged.
+      - Some tasks are tool commands (such as JSON or function-call data). Interpret them and describe the action in natural language instead of displaying the command itself.
+      - Never output raw JSON, code, or function-call syntax.
+      - Include important details such as time, device, location, recipient, colors, brightness, duration, or other parameters whenever available.
+      - If a command cannot be interpreted, simply state that the task could not be interpreted.
+      - Produce only the final task list.
+
+      Scheduled tasks:
+      )"
+      + localSchedule;
+
+      String response = geminiChatRequest(workId, prompt);
+      replyUserMessage(workId, response); 
+          
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+     
+    }    
+    else if (command == "/getUnfinishedSchedule") {
+      String localSchedule = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+              scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+        localSchedule = scheduleTasks;
+        xSemaphoreGive(stateMutex);
+      }
+            
+      String response = getUnfinishedScheduleTasksJson(localSchedule);
+      replyUserMessage(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+ 
+    }
+    else if (command == "/clearSchedule") {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        scheduleTasks = "";
+        executedTodayTasks = "";
+        xSemaphoreGive(stateMutex);
+      }
+      
+      String response = "Scheduled tasks have been cleared.";
+      replyUserMessage(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+    }
+    else if (command == "/reset") {
+      geminiChatReset();  
+            
+      String response = "New chat started.";
+      replyUserMessage(workId, response);
+
+    } 
+    else if (command == "/getMemory") {
+      String msg = getMemoryInfo();
+      replyUserMessage(workId, msg);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", msg + timestamps);
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);          
+
+    } 
+    else if (command == "/getLog") {
+      String localHistory = "";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        localHistory = executeToolHistory;
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+      Serial.println("\n\nExecute tools history:\n\n"+localHistory+"\n\n");
+      replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
+      
+    } 
+    else if (command == "/chat") {
+      String reply = params["reply"].as<String>();
+      replyUserMessage(workId, reply);
+
+    } 
+    else if (command == "/search") {
+      String query = params["query"].as<String>();
+      String task = params["task"].as<String>();
+	  
+      String response = geminiSearchRequest(workId, query, false);
+      handleAgentResponse(workId, response);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+      
+      evaluateWorkflowContinuation(workId, reCheck, task);
+
+    } 
+    else if (command == "/delay") {
+      long milliseconds = params["milliseconds"].as<long>();
+      milliseconds = constrain(milliseconds, 0, 10000);
+  
+      unsigned long start = millis();
+  
+      while (millis() - start < milliseconds) {
+          vTaskDelay(10 / portTICK_PERIOD_MS);
+          esp_task_wdt_reset();
+      }
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+  
+      evaluateWorkflowContinuation(workId, reCheck);
+        
+    } 
+  	else if (command == "/reboot") {
+  	  replyUserMessage(workId, "Rebooting the device, please wait...");
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        executeToolHistory += workId + " " + command + "\n";
+        xSemaphoreGive(stateMutex);
+      }
+  		
+  	  Serial.println("User requested reboot the device.");
+  	  vTaskDelay(2000 / portTICK_PERIOD_MS);
+  		
+  	  ESP.restart();   // ESP32-S3 PORT: NVIC_SystemReset() -> ESP.restart()
+  	}
+  	else if (command == "/tcpSendMessage") {
+      String device = params["device"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = tcpSendMessage(workId, device, message);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/mqttSendMessage") {
+      String publishTopic = params["publishTopic"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = mqttSendText(
+        publishTopic,
+        message +
+		"\n\n<metadata>\n" +
+		"Default response topic rule:\n" +
+		"When a response is required, use " + mqttSubscribeTextTopic + " as the response topic.\n" +
+		"</metadata>"
+      );
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
+		
+		xSemaphoreGive(stateMutex);
+      }	  
+	}    
+  	else if (command == "/telegramSendMessage") {
+      String token = params["token"].as<String>();
+	  String chatId = params["chatId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = telegramSendMessage(token, chatId, message);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}
+  	else if (command == "/lineSendMessage") {
+      String token = params["token"].as<String>();
+	  String targetId = params["targetId"].as<String>();
+      String message = params["message"].as<String>();
+	  
+      String response = lineSendMessage(token, targetId, message);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
+        xSemaphoreGive(stateMutex);
+      }
+
+      evaluateWorkflowContinuation(workId, reCheck);
+	}	
+    else if (command == "/servo") {
+        int pin   = params["pin"].as<int>();
+        int angle = params["angle"].as<int>();
+
+        String response = tool_servo(servos[pin], pin, angle, workId);
+					   
+        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+		  historicalMessages += buildGeminiMessage("user", command + timestamps);
+		  historicalMessages += buildGeminiMessage("model", response + timestamps);
+		  executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+		  xSemaphoreGive(stateMutex);
+        }
+		
+        evaluateWorkflowContinuation(workId, reCheck);
+        
+    }    
+    else if (command == "/dht11") {
+      int pin   = params["pin"].as<int>();
+      String response = tool_dht11(pin, workId);
+  
+	  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {  
+		historicalMessages += buildGeminiMessage("user", command + timestamps);
+		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		executeToolHistory += workId + " " + command + " [ " + response  + " ]\n";
+		xSemaphoreGive(stateMutex);
+	  }
+		
+      evaluateWorkflowContinuation(workId, reCheck);
+  
+    }
+	else if (command == "/oled") {
+
+		String line1 = params["line1"] | "";
+		String line2 = params["line2"] | "";
+		String line3 = params["line3"] | "";
+		String line4 = params["line4"] | "";
+
+		String response = tool_oled(line1, line2, line3, line4, workId );
+
+		if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+
+			historicalMessages += buildGeminiMessage("user", command + timestamps);
+			historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+			executeToolHistory += workId + " " + command + " [ " + line1 + " | " + line2 + " | " + line3 + " | " + line4 + " ]\n";
+
+			xSemaphoreGive(stateMutex);
+		}
+
+		evaluateWorkflowContinuation(workId, reCheck);
+	}    
+    else if (command == "/help" || command == "/start") {
+         
+      String mem = getMemoryInfo();
+      String command = systemCommand;
+      command.replace("<memory>", mem);
+      command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
+      
+      replyUserMessage(workId, command);
+
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
+        historicalMessages += buildGeminiMessage("model", command + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
+      
+    }      
+    else {
+      String response = geminiChatRequest(workId, command);
+      handleAgentResponse(workId, response);
+      
+    }	
+}
+
+// Invalid JSON is rejected and logged to Serial.
+// No tool execution occurs on malformed payloads.
+void handleAgentResponse(String workId, String message) {
+
+  String rawMessage = message;
+  
+  message.replace("\\\"", "\""); 
+  message.replace("\\\\", "\\");             
+  message.replace("\\n", "");
+  message.replace("\n", "");
+  message.replace("\\r", "");
+  message.replace("\r", "");
+  message.replace("\\t", "");
+  message.replace("\t", "");
+  message.replace(String(char(0)), "");  
+  message.replace("\\-", "-");
+  message.replace("\\*", "*");
+  message.replace("\\_", "_");
+  message.replace("\\#", "#");              
+
+  if (message.startsWith("{") && message.indexOf("}") !=-1) {
+
+    message = message.substring(0, message.lastIndexOf("}") + 1);
+    
+    JsonObject obj;
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) {
+        Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+        return;
+    }
+  
+    obj = doc.as<JsonObject>();
+    String method =  obj["method"].as<String>();
+    JsonObject params = obj["params"];
+    executeTool(workId, method, params); 
+  }
+  else if (message.startsWith("[") && message.indexOf("]") !=-1) {
+
+    message = message.substring(0, message.lastIndexOf("]") + 1);
+  
+    DynamicJsonDocument doc(8192);
+  
+    DeserializationError error = deserializeJson(doc, message);
+  
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+      return;
+    }
+  
+    JsonArray toolsArray = doc.as<JsonArray>();
+    
+    int toolCount = toolsArray.size();
+    
+    for (int i = 0; i < toolCount; i++) {
+      JsonObject toolObject = toolsArray[i];
+    
+      if (toolObject.isNull()) continue;
+    
+      String command = toolObject["method"].as<String>();
+      JsonObject params = toolObject["params"];
+    
+      if (command == "" || params.isNull()) {
+        Serial.println("Incomplete tool detected → abort remaining tools");
+        break;
+      }
+    
+      bool isLast = (i == toolCount - 1);
+    
+      executeTool(workId, command, params, isLast);
+    }
+  }
+  else {
+    if (message.startsWith("[") || message.startsWith("{")) {
+      Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
+      replyUserMessage(workId, "Json parse failed (handleAgentResponse). Please type \"Continue\"");
+	  
+    } else if (message != "NONE") {
+      message = rawMessage;
+
+      if (workId.startsWith(String(taskTags[0]))) {
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      }
+      else {
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("&", "&amp;");
+        message.replace("<", "&lt;");
+        message.replace(">", "&gt;");
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      } 
+      
+      replyUserMessage(workId, message);
+    }
+  }
+}
+
+// fuClaw configuration web page. Users can set system parameters from the webpage.
+void task_getRequest(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL);   // Register this task with the TWDT
+  while (1) {
+    esp_task_wdt_reset();
+	  
+    WiFiClient client = server.available();
+
+    if (client) {
+      String currentLine = "";  // Buffer to accumulate one line of the HTTP request
+      
+      while (client.connected() || client.available()) {
+		esp_task_wdt_reset();
+		  
+        if (client.available()) {
+          char c = client.read();
+
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+            
+              String pageToSend = mainPageHTML;
+              mainPageHTML = "";
+            
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-Type: text/html; charset=utf-8");
+              client.println("Content-Length: " + String(pageToSend.length()));
+              client.println("Access-Control-Allow-Origin: *");
+              client.println("Cache-Control: no-cache");
+              client.println();
+            
+              const char* ptr = pageToSend.c_str();
+              int total  = pageToSend.length();
+              int sent   = 0;
+              while (sent < total) {
+                int chunk   = (total - sent) > 512 ? 512 : (total - sent);
+                int written = client.write((const uint8_t*)(ptr + sent), chunk);
+                if (written > 0) sent += written;
+                else delay(5);
+              }
+              client.flush();
+            
+              break;
+
+            } else {
+              currentLine = "";
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c;
+          }
+          
+          // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
+          if (currentLine.startsWith("GET / ") && currentLine.endsWith(" HTTP/1.")) {
+            
+            mainPageHTML = String(INDEX_HTML);
+			
+            mainPageHTML.replace("wifiSsid", wifiSsid);
+            mainPageHTML.replace("wifiPassword", wifiPassword);
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttPort", String(mqttPort));
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
+            mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
+            mainPageHTML.replace("geminiApiKey", geminiApiKey);
+            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("timeZone", timeZone);	
+
+            currentLine = "";            
+          }
+          else if (currentLine.startsWith("GET /updateConfig?") && currentLine.endsWith(" HTTP/1.")) {
+            
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateConfig?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+			  setEnvironmentSettings(currentLine);
+			  
+              devicesDefinitionFinal = devicesDefinition;
+              devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+              devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			  
+			  systemContentReset();
+			
+              mainPageHTML = "Configuration updated successfully.";
+			}
+            else
+              mainPageHTML = "Configuration updated failed. JSON parse failed.";
+		  
+			currentLine = "";
+			
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }
+          else if (currentLine.startsWith("GET /getSoul") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = geminiRole;
+
+            currentLine = "";
+
+          }
+          else if (currentLine.startsWith("GET /updateSoul?") && currentLine.endsWith(" HTTP/1.")) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSoul?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            geminiRole = currentLine;
+			
+            systemContentReset();
+			
+            mainPageHTML = "Soul updated successfully.";
+            
+            currentLine = "";  
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }		  
+          else if (currentLine.startsWith("GET /getDevice") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = devicesDefinition;
+
+            currentLine = "";
+
+          }
+		  else if (currentLine.startsWith("GET /updateDevice?") && currentLine.endsWith(" HTTP/1.")) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateDevice?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            devicesDefinition = currentLine;
+			
+            devicesDefinitionFinal = devicesDefinition;
+            devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+            devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+			
+			systemContentReset();
+			
+            mainPageHTML = "Device updated successfully.";
+			
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }
+          else if (currentLine.startsWith("GET /getSkill") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = skillsDefinition;
+
+            currentLine = "";
+
+          } 		  
+          else if (currentLine.startsWith("GET /updateSkill?") && currentLine.endsWith(" HTTP/1.")) {
+
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateSkill?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+			skillsDefinition = currentLine;
+			
+			systemContentReset();
+			
+            mainPageHTML = "Skill updated successfully.";
+            
+            currentLine = "";
+
+            // executeTool(workId, "/reboot", JsonObject());			
+            
+          }		  
+          else if (currentLine.startsWith("GET /chat") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = String(INDEX_CHAT_HTML);
+
+            currentLine = "";
+
+          }
+          else if (currentLine.startsWith("GET /mqtt") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = String(INDEX_MQTT_CHAT_HTML);
+      
+            mainPageHTML.replace("mqttServer", mqttServer);
+            mainPageHTML.replace("mqttUser", mqttUser);
+            mainPageHTML.replace("mqttPassword", mqttPassword);
+            mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+            mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);   
+
+            currentLine = "";
+
+          }           
+          else if (currentLine.startsWith("GET /schedule") && currentLine.endsWith(" HTTP/1.")) {
+
+            mainPageHTML = String(INDEX_SCHEDULE_HTML);
+			if (mainPageHTML == "")
+				mainPageHTML = "[]";
+
+            currentLine = "";
+
+          }
+          else if (currentLine.startsWith("GET /getScheduleTasks") && currentLine.endsWith(" HTTP/1.")) {
+
+            if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+              mainPageHTML = scheduleTasks;
+              xSemaphoreGive(stateMutex);
+            }
+
+            currentLine = "";
+
+          }                                            
+          else if (currentLine.startsWith("GET /updateScheduleTasks?") && currentLine.endsWith(" HTTP/1.")) {
+            
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();
+            
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /updateScheduleTasks?", "");
+            currentLine.replace(" HTTP/1.", "");
+            
+            if (currentLine.startsWith("[") && currentLine.endsWith("]")) {
+
+              mainPageHTML = "Schedule updated successfully.";
+
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                scheduleTasks = currentLine;
+                historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+                historicalMessages += buildGeminiMessage("model", mainPageHTML);
+                String localHistory = historicalMessages;
+                xSemaphoreGive(stateMutex);
+              }
+            }
+            else
+              mainPageHTML = "Schedule updated failed. JSON parse failed.";
+
+            currentLine = "";        
+            
+          }
+          else if (currentLine.startsWith("GET /message?") && currentLine.endsWith(" HTTP/1.")) {
+            
+            mainPageStatus = true;
+
+            mainPageHTML = "";
+            
+            String workId = String(taskTags[0]) + " " + getRtcTimeString();       
+
+            currentLine.replace("GET /message?", "");
+            currentLine.replace(" HTTP/1.", "");
+
+            if (currentLine != "") {
+              currentLine = urldecode(currentLine);           
+      				
+    				if (currentLine.startsWith("/")) 
+    				  executeTool(workId, currentLine, JsonObject()); 
+    				else {
+    				  currentLine = geminiChatRequest(workId, currentLine);
+    				  handleAgentResponse(workId, currentLine);
+    				}
+
+              String localHistory = "";
+              if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+                localHistory = historicalMessages;
+                xSemaphoreGive(stateMutex);
+              }
+            }
+            
+            mainPageStatus = false;
+
+            currentLine = "";
+
+    			}      
+        }
+		else {
+          vTaskDelay(1); // yield so IDLE0 can reset the watchdog
+        }
+      }
+
+      client.stop();
+    }
+    else {
+      vTaskDelay(5 / portTICK_PERIOD_MS);
+    }
+  }
+}
+
+// ============================================================
+//  MQTT: Inbound Message Callback
+// ============================================================
+
+/**
+ * @brief PubSubClient callback invoked on every received MQTT message.
+ *
+ * PubSubClient does NOT null-terminate the payload buffer, so a local
+ * copy is allocated, null-terminated, and forwarded to executeCommand().
+ * Memory is freed immediately after the command is dispatched.
+ *
+ * @param topic    C-string of the topic on which the message arrived.
+ * @param payload  Raw (non-terminated) byte array of the message payload.
+ * @param length   Number of valid bytes in payload[].
+ */
+void callback(char* topic, byte* payload, unsigned int length) {
+
+    String workId = String(taskTags[2]) + " " + getRtcTimeString();
+
+    // Allocate a null-terminated copy of the payload on the heap
+    char* message = (char*)malloc(length + 1);
+
+    if (message) {
+        memcpy(message, payload, length);  // Copy raw payload bytes
+        message[length] = '\0';            // Append null terminator
+
+    		String text = String(message);   // Dispatch to command handler
+
+    		if (text == "help") {
+    		  executeTool(workId, "/help", JsonObject());
+    		  
+    		} 
+    		else {
+    			if (text.startsWith("/")) 
+    				executeTool(workId, text, JsonObject()); 
+    			else {
+    				text = geminiChatRequest(workId, text);
+    				handleAgentResponse(workId, text);
+    			} 
+    
+    		}   
+      
+    		free(message);                     // Release temporary buffer
+          
+    }
+}
+
+// ============================================================
+//  MQTT: Reconnect Helper
+// ============================================================
+
+/**
+ * @brief Block until a successful MQTT broker connection is established.
+ *
+ * Loops indefinitely, attempting to connect with the configured client ID,
+ * username, and password.  On success, re-subscribes to the command topic
+ * to restore message delivery after a dropped connection.  On failure,
+ * waits 5 seconds before retrying to avoid hammering the broker.
+ */
+void reconnect() {
+    while (!mqttClient.connected()) {
+        
+        if (mqttClient.connect(wifiClientId.c_str(), mqttUser.c_str(), mqttPassword.c_str())) {
+            // Re-subscribe to the inbound command topic after each reconnect
+            mqttClient.subscribe(mqttSubscribeTextTopic.c_str());
+        } else {
+            // Wait before retrying to prevent rapid reconnect storms
+            Serial.print("MQTT connection failed, state=");
+            Serial.println(mqttClient.state());
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+        }
+    }
+}
+
+/**
+ * @brief Maintain the MQTT connection and process pending inbound messages.
+ *
+ * Should be called repeatedly from a dedicated FreeRTOS task.
+ * - Detects a dropped connection and triggers reconnect().
+ * - Calls mqttClient.loop() which:
+ *     1. Sends keep-alive PINGREQ packets to the broker.
+ *     2. Reads incoming PUBLISH packets and dispatches callback().
+ *     3. Handles QoS acknowledgement handshakes (not used here at QoS 0).
+ */
+void task_getMqttMessage(void* param) {
+  (void)param;          // Suppress unused-parameter warning
+  esp_task_wdt_add(NULL);
+  while (1) {
+	esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+    
+	if (!mqttClient.connected()) {
+      reconnect();          // Re-establish connection if it was lost
+    }
+    mqttClient.loop();        // Process keep-alive and inbound messages
+	
+    vTaskDelay(pdMS_TO_TICKS(10));
+		
+  }
+}
+
+// Returns the given integer value as a zero-padded two-digit string.
+// Used for formatting timestamps (e.g., 9 → "09").
+String twoDigits(int value) {
+  if (value < 10)
+    return "0" + String(value);
+  return String(value);
+
+}
+
+// Checks whether a recurring task (year == 0) has already been executed today.
+// Automatically resets the daily execution record when the calendar day changes.
+// ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+bool isExecutedToday(String task) {
+
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  int today = now->tm_mday;
+
+  if (executedTodayDate != today) {
+    executedTodayTasks = "";
+    executedTodayDate = today;
+  }
+
+  return executedTodayTasks.indexOf("|" + task + "|") != -1;
+}
+
+// Marks a recurring task as executed for today by appending its name
+// to the in-memory daily execution record.
+// ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+void markExecutedToday(const String &task) {
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
+  executedTodayTasks += "|" + task + "|";
+}
+
+String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+                
+      String scheduleStr;
+      serializeJson(task["schedule"], scheduleStr);
+      String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+      if (year == 0 && isExecutedToday(compareTask))
+          continue;
+
+      result += "*** " + String(year) + "/" + String(month) + "/" + String(day) + " " + String(hour) + ":" + String(minute) + ":" + String(sec) + " ***\n" + task["task"].as<String>() + "\n";
+  }
+  
+  if (result == "") result = "NULL";
+
+  return result;
+}
+
+// Filters the full schedule JSON array and returns only tasks that are
+// due for execution based on the current RTC time.
+// Recurring tasks (year == 0) are excluded if already executed today.
+// One-time tasks (year > 0) are excluded if "executed" is true.
+// Returns a JSON array string of due tasks, or "[]" if none qualify.
+String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
+  DynamicJsonDocument doc(16384);
+  DeserializationError err = deserializeJson(doc, scheduleTasksJson);
+  
+  if (err) {
+      Serial.println("Schedule JSON parse failed");
+      return "[]";
+  }
+  
+  JsonArray tasks = doc.as<JsonArray>();
+  
+  // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+
+  DynamicJsonDocument resultDoc(8192);
+  JsonArray resultArray = resultDoc.to<JsonArray>();
+
+  String result = "Unfinished Schedule Tasks:\n\n";
+  
+  for (JsonObject task : tasks) {
+      bool executed = task["executed"].as<bool>();
+       
+      if (executed) continue;
+  
+      JsonObject schedule = task["schedule"];
+      int year   = schedule["year"].as<int>();
+      int month  = schedule["month"].as<int>();
+      int day    = schedule["day"].as<int>();
+      int hour   = schedule["hour"].as<int>();
+      int minute = schedule["minute"].as<int>();
+      int sec    = schedule["second"].as<int>();
+
+      int resolvedYear  = (year  == 0) ? (now->tm_year + 1900) : year;
+      int resolvedMonth = (month == 0) ? (now->tm_mon  + 1)    : month;
+      int resolvedDay   = (day   == 0) ? (now->tm_mday)        : day;
+
+      struct tm tmTask = {};
+      tmTask.tm_year = resolvedYear  - 1900;
+      tmTask.tm_mon  = resolvedMonth - 1;
+      tmTask.tm_mday = resolvedDay;
+      tmTask.tm_hour = hour;
+      tmTask.tm_min  = minute;
+      tmTask.tm_sec  = sec;
+
+      time_t taskTime = mktime(&tmTask);
+      
+      if (mktime(&tmTask) <= rawtime) {
+        time_t diff = rawtime - taskTime;
+        
+        if ((scheduleTimeout > 0 && rawtime > taskTime && diff > (time_t)(scheduleTimeout * 60)))
+            continue;
+                
+        String scheduleStr;
+        serializeJson(task["schedule"], scheduleStr);
+        String compareTask = scheduleStr + " " + task["task"].as<String>();
+
+        if (year == 0 && isExecutedToday(compareTask))
+            continue;
+
+        JsonObject item = resultArray.createNestedObject();
+        item["task"] = task["task"].as<String>();
+        item["schedule"] = schedule;
+
+      }
+  }
+
+  serializeJson(resultDoc, result);
+  return result;
+}
+
+// FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
+// For each due task, constructs a prompt and sends it to Gemini for execution.
+// After all due tasks are processed, triggers /updateScheduleStatus to sync
+// execution state, and persists daily execution records and chat history to SD card.
+void task_time_scheduling(void *param) {
+  (void)param;
+  esp_task_wdt_add(NULL);   // Register this task with the TWDT
+  while (1) {
+    esp_task_wdt_reset();
+
+    // [WDT FIX] Split 60s wait into 10s segments so WDT (30s) is reset regularly
+    for (int i = 0; i < 6; i++) {
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
+      esp_task_wdt_reset();
+    }
+    esp_task_wdt_reset();
+
+    // Stop the shared botClient connection so the Telegram task yields
+    // before we start a potentially long scheduling cycle.
+    if (xSemaphoreTake(mqttClientMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      xSemaphoreGive(mqttClientMutex);
+    }
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+    String workId = String(taskTags[3]) + " " + rtcFormatTime;
+
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }
+
+    String localSchedule = "";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      if (scheduleTasks.startsWith("[") && scheduleTasks.indexOf("]") !=-1)
+        scheduleTasks = scheduleTasks.substring(0, scheduleTasks.lastIndexOf("]") + 1);
+      localSchedule = scheduleTasks;
+      xSemaphoreGive(stateMutex);
+    }
+
+    if (localSchedule.startsWith("[") && localSchedule.indexOf("]") !=-1) {
+ 
+      String unfinishedScheduleTasksJson = getExecuteScheduleTasksJson(localSchedule);
+
+      if (unfinishedScheduleTasksJson.startsWith("[") && unfinishedScheduleTasksJson.indexOf("]") !=-1) {
+        unfinishedScheduleTasksJson = unfinishedScheduleTasksJson.substring(0, unfinishedScheduleTasksJson.lastIndexOf("]") + 1);
+
+        String response = "";
+
+        DynamicJsonDocument doc(8192);
+      
+        DeserializationError err = deserializeJson(doc, unfinishedScheduleTasksJson);
+        if (err) {
+          Serial.println("[DEBUG] JSON parse failed: (task_time_scheduling)\n" + unfinishedScheduleTasksJson);
+          continue;   // don't return — keep the task alive
+        }  
+
+        JsonArray tasks = doc.as<JsonArray>();
+        
+        for (JsonObject obj : tasks) {
+          esp_task_wdt_reset();   // reset per task to survive long Gemini calls
+
+          String taskName = obj["task"].as<String>();
+
+          String schedule = obj["schedule"].as<String>();
+          String item = obj["task"].as<String>();           
+
+          if ((item.startsWith("{") && item.endsWith("}")) || (item.startsWith("[") && item.endsWith("]"))) {
+			  handleAgentResponse(workId, item);
+          } 
+		  else {
+			  String prompt =
+				"This is a deterministic scheduling execution step. "
+			  
+				"\n\nUnfinished scheduled tasks:\n" +
+				item +
+			  
+				"\n\nThe task list above already contains ONLY tasks that have not been executed. "
+				"Evaluate EvERY task in this list independently. "
+				"If a task's scheduled time is less than or equal to the current time, "
+				"it MUST be executed immediately. "
+				"Do NOT skip any eligible task. "
+				"More than one task may be eligible at the same time. "
+				"If multiple tasks are eligible, execute ALL of them in the same response. "
+				"Tasks whose scheduled time is still in the future must be ignored. "
+			  
+				"Output rules: "
+				"1. If no task is eligible for execution, return EXACTLY: NONE. "
+				"2. If one or more tasks are eligible, return tool_call JSON for ALL eligible tasks. "
+				"3. Never return natural language. "
+				"4. Never explain. "
+				"5. Never summarize. "
+				"6. Never ask questions. "
+				"7. Never claim success without tool execution results. "
+				"8. Process every task in the provided task list. "
+				"9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
+				"10. Do not stop after the first eligible task.";
+
+			  response = geminiChatRequest(workId, prompt);
+				 // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
+
+			  handleAgentResponse(workId, response);
+				 // [WDT FIX] handleAgentResponse may chain another Gemini call
+				 
+          }	
+
+          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+            markExecutedToday(schedule + " " + item);
+            xSemaphoreGive(stateMutex);
+          }
+        }
+        
+        if (tasks.size()>0) {
+          executeTool(workId, "/updateScheduleStatus", JsonObject(), false);
+
+          String localExecuted = "";
+          String localHistory = "";
+          if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+            localExecuted = executedTodayTasks;
+            localHistory  = historicalMessages;
+            xSemaphoreGive(stateMutex);
+          }
+        }
+      }
+      
+    }
+  }
+}
+
+// Initialize WiFi
+void initWiFi() {
+  WiFi.mode(WIFI_AP_STA);
+    
+  for (int i=0 ; i<2 ; i++) {
+
+    if (wifiSsid == "")
+      break;
+
+    WiFi.begin(wifiSsid.c_str(), wifiPassword.c_str());
+    delay(1000);
+
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(wifiSsid);
+
+    unsigned long StartTime=millis();
+
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+
+      if ((StartTime + 15000) < millis())
+        break;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED)
+      break;
+  }
+
+  WiFi.softAP(apSsid.c_str(), apPassword.c_str());  
+  
+}
+
+void setEnvironmentSettings(String jsonString) {
+  
+  DynamicJsonDocument doc(8192);
+  DeserializationError error = deserializeJson(doc, jsonString);
+  if (error) {
+    Serial.println("[DEBUG] JSON parse failed : (setEnvironmentSettings)\n" + jsonString);
+    return;
+  }
+
+  JsonObject obj = doc.as<JsonObject>();
+  deviceName =  obj["device_name"].as<String>(); 
+  wifiSsid =  obj["wifi_ssid"].as<String>();
+  wifiPassword =  obj["wifi_pass"].as<String>();
+  mqttServer =  obj["mqtt_server"].as<String>();
+  mqttPort =  obj["mqtt_port"].as<uint16_t>();
+  mqttUser =  obj["mqtt_user"].as<String>();
+  mqttPassword =  obj["mqtt_password"].as<String>();
+  mqttSubscribeTextTopic =  obj["mqtt_subscribeTextTopic"].as<String>();
+  mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
+  mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
+  geminiApiKey =  obj["gemini_apikey"].as<String>();
+  geminiModel =  obj["gemini_model"].as<String>();
+  scheduleTimeout = obj["schedule_timeout"].as<int>();  
+  timeZone = obj["timezone"].as<String>(); 
+
+}
+
+String Ip2String(IPAddress ip) {
+  return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
+}
+
+// Arduino setup
+void setup() {
+  Serial.begin(115200);
+
+  // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+
+  // ------------------------------------------------------------
+  // Create mutexes before any task or function that might use them
+  // runs. setup() itself calls rtcInitialTime()/replyUserMessage(),
+  // so these must exist before that point.
+  // ------------------------------------------------------------
+  mqttClientMutex = xSemaphoreCreateMutex();
+  stateMutex     = xSemaphoreCreateMutex();
+
+  if (!mqttClientMutex || !stateMutex) {
+    Serial.println("[DEBUG] Failed to create mutexes. Restarting the MCU...");
+    delay(2000);
+    ESP.restart();
+  }
+
+  // ------------------------------------------------------------
+  // Task Watchdog Timer (TWDT) configuration.
+  // Each long-running task explicitly registers itself
+  // (esp_task_wdt_add(NULL)) and resets the watchdog
+  // (esp_task_wdt_reset()) at safe points — see each task_xxx()
+  // function and executeTool(). This catches a task that hangs
+  // (e.g. stuck in a network read, or a forgotten blocking call)
+  // well before it can starve the IDLE task and trigger the
+  // global IDLE/abort watchdog panic.
+  // ------------------------------------------------------------
+  esp_task_wdt_config_t twdtConfig = {
+    .timeout_ms = 30000,                    // 30 s: generous for slow Gemini/Telegram round-trips
+    .idle_core_mask = (1 << 0) | (1 << 1), // also watch both IDLE tasks
+    .trigger_panic = true
+  };
+  esp_task_wdt_reconfigure(&twdtConfig);
+
+  devicesDefinitionFinal = devicesDefinition;
+  devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
+  devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
+
+  systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+
+  initWiFi();  
+
+  Serial.println("AP mode"); 
+  Serial.println("fuClaw Manager: http://192.168.1.1:81");
+  Serial.println("AP ssid : " + apSsid);
+  Serial.println("AP password : " + apPassword);
+  Serial.println();  
+
+  // ---- MQTT initialisation ----
+  // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
+  wifiClientId = generateMqttClientId();
+  mqttClient.setServer(mqttServer.c_str(), mqttPort); // Set broker endpoint
+  mqttClient.setCallback(callback);                   // Register inbound handler
+
+  // Establish the initial MQTT connection and subscribe to the command topic
+  reconnect();  
+  
+  rtcInitialTime("RTC Initial Time");
+  replyUserMessage(String(taskTags[1]) + " " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
+
+  // IMPORTANT: Must be synced with RTC date immediately after loading
+  // ESP32-S3 PORT: rtc.Read() -> time() (NTP-synced ESP32 internal RTC).
+  time_t rawtime;
+  time(&rawtime);
+  struct tm *now = localtime(&rawtime);
+  executedTodayDate = now->tm_mday;
+
+  server.begin();
+
+  if (xTaskCreate(
+        task_getMqttMessage,
+        (const char *)"task_getMqttMessage",
+        32768,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_getMqttMessage failed");
+  }   
+  
+  if (xTaskCreate(
+        task_getRequest,
+        (const char *)"task_getRequest",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequest failed");
+  }        
+
+  if (xTaskCreate(
+        task_time_scheduling,
+        (const char *)"task_time_scheduling",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_time_scheduling failed");
+  }  
+
+  // Indicator LED  
+  pinMode(LED_BUILTIN, OUTPUT);  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(LED_BUILTIN, 1);
+      delay(300);
+      digitalWrite(LED_BUILTIN, 0);
+      delay(300);      
+    }
+	
+    Serial.println("STA mode"); 
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");       
+    Serial.println();
+
+    historicalMessages += buildGeminiMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
+  } 
+
+  u8g2.begin();
+  u8g2.setFont(u8g2_font_10x20_me);
+  u8g2.enableUTF8Print();
+  u8g2.clear();  
+
+}
+
+// Main loop
+void loop() {
+  // Main Arduino loopTask is otherwise idle; just yield. (loopTask is
+  // NOT registered with the TWDT, since it does no blocking work here.)
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
