@@ -3447,7 +3447,7 @@ void task_getRequest(void *param) {
 // 串流格式：
 //   Content-Type: multipart/x-mixed-replace; boundary=Taiwan
 //   每幀影像前加上 "--Taiwan
-Content-Type: image/jpeg
+//                  Content-Type: image/jpeg
 
 //
 // 注意：
