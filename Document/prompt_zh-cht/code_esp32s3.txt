@@ -3449,7 +3449,6 @@ void task_getRequest(void *param) {
 //   每幀影像前加上 "--Taiwan
 Content-Type: image/jpeg
 
-" 邊界標頭
 //
 // 注意：
 //   - 每幀直接從 esp_camera_fb_get() 取得後立即傳送，不複製到獨立緩衝。
