@@ -169,8 +169,6 @@ Known Limitations
 #include "index_html.h"
 // Gemini chat
 #include "index_chat_html.h"
-// Gemini chat via MQTT
-#include "index_mqtt_chat_html.h"
 // Schedule manager
 #include "index_schedule_html.h"
 
