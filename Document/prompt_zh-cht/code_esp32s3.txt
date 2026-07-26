@@ -141,7 +141,8 @@ env.json
   裝置名稱 / WiFi / MQTT / Gemini API 金鑰 / 時區設定
 
 device.md
-  硬體裝置定義（GPIO 腳位、感測器種類等）
+  裝置定義（GPIO 腳位對應表，以及預留／預設為空的區塊，用於設定 Agent 之間的 MQTT/TCP 通訊目標，以及家庭管理通知的 Telegram／Line／MQTT 通知管道。）
+
 
 skill.md
   技能（Skill）定義，例如防盜偵測工作流程
@@ -180,16 +181,30 @@ ESP32-S3-WROOM-1-N16R8 可用腳位：
 - PWM（類比輸出）: 0~21, 38~48
 - 補光 LED       : GPIO 48
 
-已確認的外部模組連接：
-- 緊急按鈕（active-high）  : GPIO 41
-- 光線感測器（0~1023）     : GPIO 3（類比輸入）
-- 窗戶致動器 SG90 伺服馬達 : GPIO 47（0~180 度）
-- DHT11 溫溼度感測器       : GPIO 21
+外部模組（已確認）
+- 客廳燈：GPIO 41（類比輸出，範圍：0-255）
+- 臥室燈：GPIO 42（類比輸出，範圍：0-255）
+- 光線感測器：GPIO 3（類比輸入，範圍：0-255）
+- 上懸窗（SG90）：GPIO 47（伺服馬達，範圍：90-180，關閉：90，開啟：180）
+- 門（SG90）：GPIO 48（伺服馬達，範圍：90-180，關閉：180，開啟：90）
+- DHT11 感測器：GPIO 21
+- 電風扇（馬達驅動器）：GPIO 46、GPIO 14（類比輸出，有效範圍：0-100）
+  - 關閉：(0, 0)
+  - 全速：(100, 0)
+- 文字顯示器（OLED SSD1306，I2C）：
+  - SDA：GPIO 1
+  - SCL：GPIO 2
+  - 解析度：128×64 像素
+  - 顯示行數：4 行
+  - 支援 UTF-8 文字（包含繁體中文、英文、數字及符號）
+  - 每行最多 21 個 ASCII 字元（實際可顯示字數依字元寬度與字型而定）
+  - 僅支援寫入
+  - 僅支援文字顯示
 
-只有上述列出的外部硬體對應關係已確認。
-請勿假設其他 GPIO 腳位已連接任何額外的硬體。
-未知的硬體對應關係需先確認後才能使用。
-所有 GPIO 值在執行前都會進行嚴格驗證。
+僅上述列出的外部硬體對應已確認。
+請勿假設其他 GPIO 腳位有連接任何額外硬體。
+未知的硬體對應需先確認後才能使用。
+GPIO 的設定值在執行前皆會進行嚴格驗證。
 
 ============================================================
 軟體堆疊（ESP32-S3）
@@ -204,6 +219,8 @@ ESP32-S3-WROOM-1-N16R8 可用腳位：
 - Base64.h            (本地 Base64 編碼，無外部依賴)
 - DHT sensor library  (Adafruit，支援 DHT11/DHT22)
 - ESP32Servo          (ESP32 伺服馬達控制函式庫)
+- U8g2lib.h           (U8g2 OLED 圖形與文字顯示函式庫，支援 SSD1306)
+- Wire.h              (Arduino I2C（Two-Wire Interface）通訊函式庫)
 
 ============================================================
 已知限制
@@ -401,6 +418,26 @@ SemaphoreHandle_t imageMutex     = NULL;
 #define HREF_GPIO_NUM     7
 #define PCLK_GPIO_NUM     13
 
+#include <DHT.h>            // DHT 感測器函式庫（Adafruit，支援 DHT11/DHT22）
+
+#include <ESP32Servo.h>     // ESP32Servo 函式庫（ESP32 伺服馬達控制）
+Servo servos[49];
+
+#include <U8g2lib.h>        // U8g2 OLED 圖形與文字顯示函式庫（支援 SSD1306）
+#include <Wire.h>           // Arduino I2C（Two-Wire Interface）通訊函式庫
+
+// OLED 顯示器 I2C 腳位設定
+const int OLED_SDA = 1;
+const int OLED_SCL = 2;
+
+// 建立 U8g2 OLED 物件（SSD1306 128×64，軟體 I2C，無 Reset 腳）
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(
+    U8G2_R0,
+    /* clock = */ OLED_SCL,
+    /* data  = */ OLED_SDA,
+    /* reset = */ U8X8_PIN_NONE
+);
+
 // ── 引入函式庫 ──
 #include <WiFi.h>              // ESP32 WiFi 連線管理
 #include <WiFiClientSecure.h>  // TLS/HTTPS 安全連線（用於 Gemini / Telegram API）
@@ -597,11 +634,6 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
-
-#include <DHT.h>    // DHT sensor library 1,4,7 (Adafruit)
-
-#include <ESP32Servo.h>    // ESP32Servo 3.0.0
-Servo servos[49];
 
 // 根據裝置 Wi-Fi MAC 位址產生唯一的 MQTT Client ID。
 // 取 MAC 位址後三組（6 個十六進位字元）組成字串，格式如：AmebaPro2-AABBCC。
@@ -2205,6 +2237,46 @@ String tool_dht11(int pin, String workId) {
 	"\"workId\":\"" + workId + "\"}";		
 }
 
+/*
+  在 OLED 顯示器上顯示最多四行文字。
+
+  @param line1 第 1 行文字，空字串表示清除此行。
+  @param line2 第 2 行文字，空字串表示清除此行。
+  @param line3 第 3 行文字，空字串表示清除此行。
+  @param line4 第 4 行文字，空字串表示清除此行。
+  @param workId 工作識別碼。
+  @return JSON 格式回應字串。
+*/
+String tool_oled(String line1, String line2, String line3, String line4, String workId) {
+
+	// 清除目前顯示內容與內部繪圖緩衝區
+	u8g2.clear();
+	u8g2.clearBuffer();
+
+	// 設定字型（支援 UTF-8，包含繁體中文、英文、數字及符號）
+	u8g2.setFont(u8g2_font_unifont_t_chinese1);
+
+	// 將非空字串繪製到指定列
+	// X 座標固定為 0，Y 座標分別為 16、32、48、64
+	if (line1 != "")
+		u8g2.drawUTF8(0, 16, line1.c_str());
+	if (line2 != "")
+		u8g2.drawUTF8(0, 32, line2.c_str());
+	if (line3 != "")
+		u8g2.drawUTF8(0, 48, line3.c_str());
+	if (line4 != "")
+		u8g2.drawUTF8(0, 64, line4.c_str());
+
+	// 將繪圖緩衝區內容更新至 OLED 顯示器
+	u8g2.sendBuffer();
+
+	// 回傳成功結果
+	return
+		"{\"status\":\"success\","
+		"\"method\":\"/oled\","
+		"\"workId\":\"" + workId + "\"}";
+}
+
 // 詢問 Gemini 評估目前工作流程是否已完成，必要時繼續執行下一步工具。
 //
 // 這是實現「多步驟代理人工作流程」的核心機制。
@@ -2850,7 +2922,27 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 		
       evaluateWorkflowContinuation(workId, reCheck);
   
-    }					
+    }
+	else if (command == "/oled") {
+		String line1 = params["line1"] | "";
+		String line2 = params["line2"] | "";
+		String line3 = params["line3"] | "";
+		String line4 = params["line4"] | "";
+
+		String response = tool_oled(line1, line2, line3, line4, workId);
+
+		if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+
+			historicalMessages += buildGeminiMessage("user", command + timestamps);
+			historicalMessages += buildGeminiMessage("model", response + timestamps);
+
+			executeToolHistory += workId + " " + command + " [ " + line1 + " | " + line2 + " | " + line3 + " | " + line4 + " ]\n";
+
+			xSemaphoreGive(stateMutex);
+		}
+
+		evaluateWorkflowContinuation(workId, reCheck);
+	}    
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -4228,6 +4320,18 @@ void setup() {
     historicalMessages += buildGeminiMessage("user", "Device IP: " + Ip2String(WiFi.localIP()));
   } 
 
+  // 初始化 OLED 顯示器
+  u8g2.begin();
+
+  // 設定預設字型（10×20 像素）
+  u8g2.setFont(u8g2_font_10x20_me);
+
+  // 啟用 UTF-8 文字輸出（支援繁體中文、英文、數字及符號）
+  u8g2.enableUTF8Print();
+
+  // 清除 OLED 顯示內容
+  u8g2.clear();
+  
 }
 
 // ── Arduino 主迴圈（loop()）──

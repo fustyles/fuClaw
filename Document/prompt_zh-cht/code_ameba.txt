@@ -113,7 +113,7 @@ env.json
   WiFi / Telegram / Gemini 憑證 / 時區設定
 
 device.md
-  硬體裝置定義（腳位對應）
+  裝置定義（GPIO 腳位對應表，以及預留／預設為空的區塊，用於設定 Agent 之間的 MQTT/TCP 通訊目標，以及家庭管理通知的 Telegram／Line／MQTT 通知管道。）
 
 skill.md
   技能定義（自訂複合工作流程）
