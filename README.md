@@ -176,11 +176,14 @@ Conversation state is restored automatically on boot.
 | Field | Purpose |
 |---|---|
 | `device_name` | Friendly identifier used in prompts and logs |
-| `wifi_ssid` / `wifi_pass` | Station Wi-Fi credentials |
-| `telegramBot_token` / `telegramBot_chatID` | Telegram Bot version credentials |
+| `wifi_ssid` | Station Wi-Fi SSID (network name) |
+| `wifi_pass` | Station Wi-Fi password |
+| `telegramBot_token` | Telegram Bot API token used for the Telegram Bot version |
+| `telegramBot_chatID` | Telegram chat ID the bot sends messages to / receives messages from |
 | `mqtt_server` | Hostname or IP address of the MQTT broker |
 | `mqtt_port` | Port number used to connect to the MQTT broker (e.g. 1883 / 8883) |
-| `mqtt_user` / `mqtt_password` | Credentials used to authenticate with the MQTT broker |
+| `mqtt_user` | Username used to authenticate with the MQTT broker |
+| `mqtt_password` | Password used to authenticate with the MQTT broker |
 | `mqtt_subscribeTextTopic` | Topic the device subscribes to, for receiving inbound text commands/messages |
 | `mqtt_publishTextTopic` | Topic the device publishes to, for outbound text content such as replies, status, or logs |
 | `mqtt_publishImageTopic` | Topic the device publishes to, for outbound image data (e.g. screenshots or captured photos) |
