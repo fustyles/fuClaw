@@ -178,6 +178,12 @@ Conversation state is restored automatically on boot.
 | `device_name` | Friendly identifier used in prompts and logs |
 | `wifi_ssid` / `wifi_pass` | Station Wi-Fi credentials |
 | `telegramBot_token` / `telegramBot_chatID` | Telegram Bot version credentials |
+| `mqtt_server` | Hostname or IP address of the MQTT broker |
+| `mqtt_port` | Port number used to connect to the MQTT broker (e.g. 1883 / 8883) |
+| `mqtt_user` / `mqtt_password` | Credentials used to authenticate with the MQTT broker |
+| `mqtt_subscribeTextTopic` | Topic the device subscribes to, for receiving inbound text commands/messages |
+| `mqtt_publishTextTopic` | Topic the device publishes to, for outbound text content such as replies, status, or logs |
+| `mqtt_publishImageTopic` | Topic the device publishes to, for outbound image data (e.g. screenshots or captured photos) |
 | `gemini_apikey` | Google Gemini API key |
 | `gemini_model` | Selectable Gemini model string (e.g. `gemini-3-flash-preview`), letting the same firmware binary switch model generations without recompiling |
 | `schedule_timeout` | Minutes of grace tolerance applied by `task_time_scheduling` before a missed scheduled task is silently skipped instead of fired late |
