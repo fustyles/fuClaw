@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-25 13:00:00
+Build Date: 2026-07-11 21:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -1097,35 +1097,6 @@ Error response:
   "method": "/dht11", 
   "reason":"<error reason>",  
   "workId": "<system-provided>"
-}
-
---------------------------------------------------
-OLED display control:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/oled",
-  "params": {
-    "line1": "<Text for line 1. Empty string clears the line.>",
-    "line2": "<Text for line 2. Empty string clears the line.>",
-    "line3": "<Text for line 3. Empty string clears the line.>",
-    "line4": "<Text for line 4. Empty string clears the line.>"
-  }
-}
-
-Success response:
-{
-  "status":"success",
-  "method":"/oled",
-  "workId":"<system-provided>"
-}
-
-Error response:
-{
-  "status":"error",
-  "method":"/oled",
-  "reason":"<error reason>",
-  "workId":"<system-provided>"
 }
 
 ==================================================
@@ -3149,7 +3120,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 		
       evaluateWorkflowContinuation(workId, reCheck);
   
-    }
+    }	
 	else if (command == "/oled") {
 
 		String line1 = params["line1"] | "";
@@ -3170,7 +3141,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 		}
 
 		evaluateWorkflowContinuation(workId, reCheck);
-	}    
+	}     
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
@@ -4536,7 +4507,7 @@ void setup() {
   u8g2.setFont(u8g2_font_10x20_me);
   u8g2.enableUTF8Print();
   u8g2.clear();  
-
+  
 }
 
 // Main loop
