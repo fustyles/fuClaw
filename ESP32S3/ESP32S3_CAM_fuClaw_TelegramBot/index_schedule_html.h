@@ -1236,13 +1236,11 @@ renderTable();
   <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
   <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
-  <a href="/mqtt" id="fcn-mqtt"     title="MQTT Chat"><span class="fc-ico">&#128225;</span><span>MQTT</span></a>
 </nav>
 <script>
   (function(){
     var map={"/":"fcn-config","":"fcn-config","/agent":"fcn-agent",
-             "/schedule":"fcn-schedule","/chat":"fcn-chat",
-             "/mqtt":"fcn-mqtt"};
+             "/schedule":"fcn-schedule","/chat":"fcn-chat"};
     var seg=location.pathname.replace(/\/$/,"") || "/";
     var el=document.getElementById(map[seg]); if(el) el.className+=" fc-active";
   })();
