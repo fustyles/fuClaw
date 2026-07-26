@@ -91,7 +91,6 @@ Supported Tools
 /analogread               GPIO analog input
 /servo                    Servo angle control (window actuator)
 /dht11                    Read temperature & humidity
-/oled                     Display up to 4 lines of UTF-8 text on the SSD1306 OLED (OLED-equipped variant only)
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
 /still                    Capture a still image and send it to the user.
