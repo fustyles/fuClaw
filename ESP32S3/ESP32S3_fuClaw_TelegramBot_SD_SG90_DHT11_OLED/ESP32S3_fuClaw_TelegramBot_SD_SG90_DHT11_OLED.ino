@@ -1099,6 +1099,35 @@ Error response:
   "workId": "<system-provided>"
 }
 
+--------------------------------------------------
+OLED display control:
+--------------------------------------------------
+{
+  "type": "tool_call",
+  "method": "/oled",
+  "params": {
+    "line1": "<Text for line 1. Empty string clears the line.>",
+    "line2": "<Text for line 2. Empty string clears the line.>",
+    "line3": "<Text for line 3. Empty string clears the line.>",
+    "line4": "<Text for line 4. Empty string clears the line.>"
+  }
+}
+
+Success response:
+{
+  "status":"success",
+  "method":"/oled",
+  "workId":"<system-provided>"
+}
+
+Error response:
+{
+  "status":"error",
+  "method":"/oled",
+  "reason":"<error reason>",
+  "workId":"<system-provided>"
+}
+
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
