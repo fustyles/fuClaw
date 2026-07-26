@@ -39,9 +39,8 @@ fuClaw now ships as a **dual-platform, dual-transport** firmware family. Every c
 | | Telegram Bot | MQTT |
 |---|---|---|
 | **Realtek AmebaPro2 (RTL8735B)** | `AmebaPro2_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `AmebaPro2_fuClaw_MQTT_SD_SG90_DHT11.ino` |
-| **ESP32-S3-WROOM-CAM** | `ESP32S3_CAM_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11.ino` |
-| **ESP32-S3-WROOM-CAM (+ OLED)** | `ESP32S3_CAM_fuClaw_TelegramBot_SD_SG90_DHT11_OLED.ino` | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11_OLED.ino` |
-| **ESP32-S3-WROOM** | `ESP32S3_fuClaw_TelegramBot_SD_SG90_DHT11.ino` | `ESP32S3_fuClaw_MQTT_SD_SG90_DHT11.ino` |
+| **ESP32-S3-WROOM-CAM** | `ESP32S3_CAM_fuClaw_TelegramBot_SD_SG90_DHT11_OLED.ino` | `ESP32S3_CAM_fuClaw_MQTT_SD_SG90_DHT11_OLED.ino` |
+| **ESP32-S3-WROOM** | `ESP32S3_fuClaw_TelegramBot_SG90_DHT11_OLED.ino` | `ESP32S3_fuClaw_MQTT_SG90_DHT11_OLED.ino` |
 
 ------------------------------------------------------------
 Runtime Architecture
