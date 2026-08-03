@@ -212,7 +212,7 @@ Software Stack (ESP32-S3 port)
 - SD_MMC (built into ESP32 Arduino core)
 - Local Base64 helper (no external dependency)
 - DHT sensor library 1,4,7 (Adafruit)
-- ESP32Servo
+- ESP32Servo 3.0.0
 - U8g2lib.h
 - Wire.h
 ------------------------------------------------------------
