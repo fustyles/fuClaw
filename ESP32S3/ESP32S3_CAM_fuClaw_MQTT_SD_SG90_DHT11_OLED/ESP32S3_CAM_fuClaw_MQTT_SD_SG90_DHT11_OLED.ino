@@ -228,6 +228,7 @@ Known Limitations
 - Large JSON parsing impacts heap usage
 - Gemini / OpenAI response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
+- When switching between Gemini and OpenAI servers, the conversation history must be reset; otherwise, unexpected behavior or compatibility issues may occur.
 ------------------------------------------------------------
 */
 
@@ -2809,8 +2810,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     } 
     else if (doc["error"]) {
       responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
-	  Serial.println(responseText);
-	  responseText = "Gemini API Error";
+      Serial.println(responseText);
+      responseText = "Gemini API Error";
     } 
     else {
       responseText = "Unexpected response from Gemini.";
