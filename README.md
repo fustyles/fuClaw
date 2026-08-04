@@ -1,4 +1,4 @@
-Embedded AI Agent - fuClaw with Gemini Integration
+Embedded AI Agent - fuClaw with Gemini / openAI Integration
 ------------------------------------------------------------
 
 Author:
