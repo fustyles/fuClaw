@@ -4601,7 +4601,8 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
             mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
             mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
-            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));
+            mainPageHTML.replace("llmType", llmType);            
             mainPageHTML.replace("llmKey", llmKey);
             mainPageHTML.replace("llmModel", llmModel);
             mainPageHTML.replace("timeZone", timeZone);
