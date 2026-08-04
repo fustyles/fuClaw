@@ -4102,6 +4102,7 @@ void setEnvironmentSettings(String jsonString) {
   }
 
   JsonObject obj = doc.as<JsonObject>();
+  
   deviceName =  obj["device_name"].as<String>(); 
   wifiSsid =  obj["wifi_ssid"].as<String>();
   wifiPassword =  obj["wifi_pass"].as<String>();

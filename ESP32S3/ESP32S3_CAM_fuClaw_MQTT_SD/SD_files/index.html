@@ -596,6 +596,7 @@
 	
   function buildJson() {
     return {
+      device_name:              document.getElementById('device_name').value.trim(),    
       wifi_ssid:                document.getElementById('wifi_ssid').value.trim(),
       wifi_pass:                document.getElementById('wifi_pass').value,
       mqtt_server:              document.getElementById('mqtt_server').value.trim(),
@@ -614,6 +615,7 @@
   }
 
   function validate(cfg) {
+	if (!cfg.device_name)             return 'Device name cannot be empty';  
 	if (!cfg.wifi_ssid)               return 'Wi-Fi SSID cannot be empty';
 	if (!cfg.wifi_pass)               return 'Wi-Fi password cannot be empty';
 	if (!cfg.mqtt_server)             return 'MQTT Server cannot be empty';
