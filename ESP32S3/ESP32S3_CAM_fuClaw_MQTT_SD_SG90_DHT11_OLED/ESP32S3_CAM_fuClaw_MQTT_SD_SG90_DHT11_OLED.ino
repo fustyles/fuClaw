@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-03 22:00:00
+Build Date: 2026-08-04 12:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -226,7 +226,7 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini/OpenAI response format handled by ArduinoJson validation layer
+- Gemini / OpenAI response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
 ------------------------------------------------------------
 */
@@ -254,7 +254,7 @@ String systemCommand =
   "- Digital input reading\n"
   "- Analog input reading\n\n"
   "System Status:\n<memory>"
-  "\n\nYou can chat with Gemini using natural language.\n"
+  "\n\nYou can chat with AI using natural language.\n"
   "The system supports real-time search and vision-based analysis.\n\n"
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
@@ -1305,7 +1305,7 @@ When creating a scheduled task:
 - The stored tool_call MUST be identical to the JSON that would be generated
   for an immediate execution request.
 
-- This allows the scheduler to execute the task locally without invoking Gemini.
+- This allows the scheduler to execute the task locally without invoking AI.
 
 - If the requested action requires reasoning, conversation, multimodal analysis,
   searching, or multiple hardware actions, store "task" as a natural-language
@@ -1752,9 +1752,9 @@ String envFilename = "env.json";
 	"mqtt_subscribeTextTopic": "xxxxx",
 	"mqtt_publishTextTopic": "xxxxx",
 	"mqtt_publishImageTopic": "xxxxx",
-	"gemini_type": "xxxxx",  
-	"gemini_apikey": "xxxxx",
-	"gemini_model": "xxxxx",  
+	"llm_type": "xxxxx",  
+	"llm_apikey": "xxxxx",
+	"llm_model": "xxxxx",  
 	"schedule_timeout": 10,
 	"timezone": "Asia/Taipei" 
 }
@@ -1851,7 +1851,7 @@ bool initCamera() {
 // globals. Callers that need a consistent imageAddress/imageLength +
 // buffer-contents view across multiple steps (capture, then encode)
 // MUST hold imageMutex for the whole sequence -- see
-// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/
+// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/openaiVisionRequest()/
 // telegramSendCapturedImage() below.
 void captureImage() {
   camera_fb_t *fb = esp_camera_fb_get();
@@ -5389,9 +5389,9 @@ void setEnvironmentSettings(String jsonString) {
   mqttSubscribeTextTopic =  obj["mqtt_subscribeTextTopic"].as<String>();
   mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
   mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
-  llmType =  obj["gemini_type"].as<String>();  
-  llmKey =  obj["gemini_apikey"].as<String>();
-  llmModel =  obj["gemini_model"].as<String>();
+  llmType =  obj["llm_type"].as<String>();  
+  llmKey =  obj["llm_apikey"].as<String>();
+  llmModel =  obj["llm_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>(); 
   
