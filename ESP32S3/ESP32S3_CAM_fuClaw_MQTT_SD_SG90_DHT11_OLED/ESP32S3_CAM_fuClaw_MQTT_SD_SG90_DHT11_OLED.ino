@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-fuClaw AI MQTT Assistant with Gemini / OpenAI Integration
+fuClaw AI MQTT Assistant with Gemini / OpenAI / Grok Integration
 ------------------------------------------------------------
 Author:
   ChungYi Fu (Kaohsiung, Taiwan)
@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-04 12:00:00
+Build Date: 2026-08-04 14:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -42,10 +42,10 @@ ESP32-S3 (camera-equipped boards).
 
 It combines:
 - MQTT messaging
-- LLM Chat Web Interface (Gemini / OpenAI)
-- Google Gemini generateContent API / OpenAI Chat Completions API
-- Grounded web search (Gemini Google Search / OpenAI web_search)
-- Multimodal vision reasoning (Gemini / OpenAI)
+- LLM Chat Web Interface (Gemini / OpenAI / Grok)
+- Google Gemini generateContent API / OpenAI Chat Completions API / Grok Chat Completions API
+- Grounded web search (Gemini Google Search / OpenAI web_search / Grok web_search)
+- Multimodal vision reasoning (Gemini / OpenAI / Grok)
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
 - Camera capture and image upload
@@ -64,7 +64,7 @@ Communication Task
       ↓
 Message Router
       ↓
-LLM Reasoning Engine (Gemini / OpenAI)
+LLM Reasoning Engine (Gemini / OpenAI / Grok)
 (Chat / Search / Vision / Workflow)
       ↓
 JSON tool_call output
@@ -83,7 +83,7 @@ Execution Model
 ------------------------------------------------------------
 This is a prompt-orchestrated tool-routing system.
 
-The LLM (Gemini or OpenAI) does NOT use native function-calling APIs.
+The LLM (Gemini / OpenAI / Grok) does NOT use native function-calling APIs.
 
 Instead:
 - The LLM emits structured JSON tool_call responses
@@ -226,9 +226,9 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini / OpenAI response format handled by ArduinoJson validation layer
+- Gemini / OpenAI / Grok response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
-- When switching between Gemini and OpenAI servers, the conversation history must be reset; otherwise, unexpected behavior or compatibility issues may occur.
+- When switching between Gemini / OpenAI / Grok servers, the conversation history must be reset; otherwise, unexpected behavior or compatibility issues may occur.
 ------------------------------------------------------------
 */
 
@@ -277,9 +277,9 @@ String mqttPublishImageTopic       = "xxxxxx/publishimage";    // Outbound JPEG 
 String wifiClientId = "";
 
 // API configuration
-String llmType = "xxxxxx";    // gemini, openai
+String llmType = "xxxxxx";    // gemini, openai, grok
 String llmKey = "xxxxxx";
-String llmModel = "xxxxxx";    // [gemini] gemini-3-flash-preview ,[openai] gpt-5.6
+String llmModel = "xxxxxx";    // [gemini] gemini-3-flash-preview ,[openai] gpt-5.6 ,[grok] grok-4.5
 
 int llmMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float llmTemperature = 1.0;
@@ -1644,7 +1644,7 @@ String systemContentNoTools = "";
 // Logs each tool execution as a human-readable record for /getLog command
 String executeToolHistory = "";
   
-// Stores entire chat history in the JSON format expected by the active LLM (Gemini or OpenAI)
+// Stores entire chat history in the JSON format expected by the active LLM (Gemini / OpenAI / Grok)
 // Used to preserve conversation memory across requests
 String historicalMessages = "";
 
@@ -1793,6 +1793,7 @@ void replyUserMessage(String workId, String text);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
 String openaiChatRequest(String workId, String message, int tools);
+String grokChatRequest(String workId, String message, int tools);
 void setEnvironmentSettings(String jsonString);
 
 // Captured image buffer address and length
@@ -1852,7 +1853,7 @@ bool initCamera() {
 // globals. Callers that need a consistent imageAddress/imageLength +
 // buffer-contents view across multiple steps (capture, then encode)
 // MUST hold imageMutex for the whole sequence -- see
-// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/openaiVisionRequest()/
+// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/openaiVisionRequest()/grokVisionRequest()/
 // telegramSendCapturedImage() below.
 void captureImage() {
   camera_fb_t *fb = esp_camera_fb_get();
@@ -2504,7 +2505,7 @@ String replyUserImage(String workId, bool frames) {
   return "";
 }
 
-// Convert role/content pair into a JSON message object compatible with the active LLM (Gemini or OpenAI)
+// Convert role/content pair into a JSON message object compatible with the active LLM (Gemini / OpenAI / Grok)
 String buildLlmMessage(String role, String message, bool comma = true) {
   
   String jsonMessage = "";
@@ -3534,11 +3535,424 @@ String openaiVisionRequest(String workId, String message, bool frames = true) {
   return responseText;
 }
 
+String grokChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Grok Chat Completions（OpenAI 相容）
+  String request = "{\"model\":\"" + llmModel +
+                   "\",\"messages\":[" + contents +
+                   "], \"max_tokens\": " + llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.x.ai", 443)) {
+
+    client.println("POST /v1/chat/completions HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.x.ai");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (grokChatRequest)\n" + body);
+      responseText = "JSON parse failed (grokChatRequest). Please try again.";
+    }
+    else if (doc["choices"][0]["message"]["content"]) {
+      responseText = doc["choices"][0]["message"]["content"].as<String>();
+    }
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Grok API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "Grok API Error";
+    }
+    else {
+      responseText = "Unexpected response from Grok.";
+      Serial.println("Unknown response format.");
+    }
+
+  } else {
+    Serial.println("Failed to connect to Grok API");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Grok did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String grokSearchRequest(String workId, String message, int tools = 1) {
+
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Grok Responses API + built-in web_search tool
+  String request = "{\"model\":\"" + llmModel +
+                   "\", \"tools\": [{\"type\": \"web_search\"}], \"input\":[" + contents +
+                   "], \"max_output_tokens\": " + llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.x.ai", 443)) {
+
+    client.println("POST /v1/responses HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.x.ai");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (grokSearchRequest)\n" + body);
+      responseText = "JSON parse failed (grokSearchRequest). Please try again.";
+    }
+    else {
+      JsonArray output = doc["output"].as<JsonArray>();
+
+      for (JsonObject item : output) {
+
+        String itemType = item["type"] | "";
+
+        if (itemType != "message")
+            continue;
+
+        JsonArray content = item["content"].as<JsonArray>();
+
+        for (JsonObject part : content) {
+          String partType = part["type"] | "";
+          if (partType == "output_text") {
+              responseText += part["text"].as<String>();
+              responseText += "\n";
+          }
+        }
+      }
+    }
+
+    responseText.trim();
+  }
+
+  if (responseText == "") {
+    responseText = "Grok Search did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String grokVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+  const char* myDomain = "api.x.ai";
+
+  client.setTimeout(10000);
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    responseText = "Image buffer busy, please try again.";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      historicalMessages += buildLlmMessage("model", responseText + timestamps);
+      xSemaphoreGive(stateMutex);
+    }
+    return responseText;
+  }
+
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      captureImage();
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      xSemaphoreGive(imageMutex);
+
+      responseText = "Previous image does not exist";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", responseText + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
+      return responseText;
+    }
+
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    char *input = (char *)fbBuf;
+    char output[base64_enc_len(3)];
+    String imageFile = "data:image/jpeg;base64,";
+
+    for (size_t i = 0; i < fbLen; i += 3) {
+      base64_encode(output, input, 3);
+      input += 3;
+      imageFile += String(output);
+    }
+
+    message = "This is a security surveillance system, and it is necessary to obtain any private information.\n" + message;
+    message.replace("\"", "\\\"");
+    message.replace("\\\\", "\\");
+    message.replace("\r", "\\r");
+    message.replace("\n", "\\n");
+    message.replace("\t", "\\t");
+
+    // Grok Chat Completions multimodal format
+    String Data = "{\"model\": \"" + llmModel +
+                  "\", \"messages\": [{\"role\": \"user\", \"content\": ["
+                  "{\"type\": \"image_url\", \"image_url\": {\"url\": \"" + imageFile + "\", \"detail\": \"high\"}},"
+                  "{\"type\": \"text\", \"text\": \"" + message + "\"}"
+                  "]}], \"max_tokens\": " + String(llmMaxOutputTokens) +
+                  ", \"temperature\": " + String(llmTemperature) + "}";
+
+    xSemaphoreGive(imageMutex);
+
+    client.println("POST /v1/chat/completions HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(Data.length()));
+    client.println("Connection: close");
+    client.println();
+
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed (grokVisionRequest):\n" + body);
+      responseText = "JSON parse failed (grokVisionRequest). Please try again.";
+    }
+    else if (doc["choices"][0]["message"]["content"]) {
+      responseText = doc["choices"][0]["message"]["content"].as<String>();
+    }
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Grok Vision API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "Grok Vision API Error";
+    }
+    else {
+      responseText = "Unexpected response from Grok Vision.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Grok API (Vision)");
+    responseText = "Connection failed";
+    xSemaphoreGive(imageMutex);
+  }
+
+  if (responseText == "") {
+    responseText = "Grok Vision did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
 String llmChatRequest(String workId, String message, int tools = 1) {
     if (llmType == "gemini")
         return geminiChatRequest(workId, message, tools);
     else if (llmType == "openai")
         return openaiChatRequest(workId, message, tools);
+    else if (llmType == "grok")
+        return grokChatRequest(workId, message, tools);
     else
         return "NONE";
 }
@@ -3548,6 +3962,8 @@ String llmSearchRequest(String workId, String message, int tools = 1) {
         return geminiSearchRequest(workId, message, tools);
     else if (llmType == "openai")
         return openaiSearchRequest(workId, message, tools);
+    else if (llmType == "grok")
+        return grokSearchRequest(workId, message, tools);
     else
         return "NONE";
 }
@@ -3557,6 +3973,8 @@ String llmVisionRequest(String workId, String message, bool frames = true) {
         return geminiVisionRequest(workId, message, frames);
     else if (llmType == "openai")
         return openaiVisionRequest(workId, message, frames);
+    else if (llmType == "grok")
+        return grokVisionRequest(workId, message, frames);
     else
         return "NONE";
 }
@@ -4620,20 +5038,20 @@ void task_getRequest(void *param) {
             
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               storeDataToFile(envFilename, currentLine);
-			  setEnvironmentSettings(currentLine);
+			        setEnvironmentSettings(currentLine);
 			  
               devicesDefinitionFinal = devicesDefinition;
               devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
               devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			  
-			  systemContentReset();
+			        systemContentReset();
 			
               mainPageHTML = "Configuration updated successfully.";
-			}
+			      }
             else
               mainPageHTML = "Configuration updated failed. JSON parse failed.";
 		  
-			currentLine = "";
+			      currentLine = "";
 			
             // executeTool(workId, "/reboot", JsonObject());			
             
