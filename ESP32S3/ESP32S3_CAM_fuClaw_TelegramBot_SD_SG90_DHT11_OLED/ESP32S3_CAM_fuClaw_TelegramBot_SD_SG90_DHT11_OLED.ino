@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-04 17:00:00
+Build Date: 2026-08-04 20:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -4913,14 +4913,6 @@ String sendFileToOpenAI(uint8_t* fileinput, size_t fileSize, String mimeType, St
 
   // Telegram voice is OGG Opus; Whisper accepts ogg.
   String filename = "voice.ogg";
-  if (mimeType.indexOf("mpeg") != -1 || mimeType.indexOf("mp3") != -1)
-    filename = "voice.mp3";
-  else if (mimeType.indexOf("wav") != -1)
-    filename = "voice.wav";
-  else if (mimeType.indexOf("webm") != -1)
-    filename = "voice.webm";
-  else if (mimeType.indexOf("m4a") != -1)
-    filename = "voice.m4a";
 
   String boundary = "Taiwan";
   String head =
@@ -5037,14 +5029,6 @@ String sendFileToGrok(uint8_t* fileinput, size_t fileSize, String mimeType, Stri
   }
 
   String filename = "voice.ogg";
-  if (mimeType.indexOf("mpeg") != -1 || mimeType.indexOf("mp3") != -1)
-    filename = "voice.mp3";
-  else if (mimeType.indexOf("wav") != -1)
-    filename = "voice.wav";
-  else if (mimeType.indexOf("webm") != -1)
-    filename = "voice.webm";
-  else if (mimeType.indexOf("m4a") != -1)
-    filename = "voice.m4a";
 
   String boundary = "Taiwan";
 
