@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-04 14:30:00
+Build Date: 2026-08-04 16:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -2794,7 +2794,14 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -2919,7 +2926,14 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3075,7 +3089,14 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3196,7 +3217,14 @@ String openaiChatRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3318,7 +3346,14 @@ String openaiSearchRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     // Search responses include "annotations" (url_citation) alongside content; a larger
     // buffer than the plain chat request is used to accommodate citation metadata.
     DynamicJsonDocument doc(16384);
@@ -3485,7 +3520,14 @@ String openaiVisionRequest(String workId, String message, bool frames = true) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3618,7 +3660,14 @@ String grokChatRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3742,7 +3791,14 @@ String grokSearchRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(16384);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -3906,7 +3962,14 @@ String grokVisionRequest(String workId, String message, bool frames = true) {
     if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
