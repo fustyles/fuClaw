@@ -53,7 +53,7 @@ Communication Task<br>
       ↓<br>
 Message Router<br>
       ↓<br>
-Gemini Reasoning Engine<br>
+Gemini / openAI  / Grok Reasoning Engine<br>
 (Chat / Search / Vision / Workflow)<br>
       ↓<br>
 JSON tool_call output<br>
@@ -74,11 +74,11 @@ Execution Model
 
 This is a prompt-orchestrated tool-routing system.
 
-Gemini does NOT use native function-calling APIs.
+LLM does NOT use native function-calling APIs.
 
 Instead:
 
-- Gemini emits structured JSON tool_call responses
+- LLM emits structured JSON tool_call responses
 - Local firmware validates all tool calls
 - Invalid JSON is rejected
 - Execution is strictly sequential
@@ -134,7 +134,7 @@ Persistent Files
 ------------------------------------------------------------
 
 env.json
-  <br>Device name / WiFi / Telegram / MQTT / Gemini credentials / Gemini model / Time zone / Schedule timeout tolerance
+  <br>Device name / WiFi / Telegram / MQTT / LLM credentials / LLM model / Time zone / Schedule timeout tolerance
 
 device.md
   <br>Devices definition (GPIO pin mappings, plus reserved/empty-by-default blocks for agent-to-agent MQTT/TCP targets and household-admin Telegram/Line/MQTT notification channels)
@@ -164,10 +164,10 @@ index_schedule.html
   <br>Schedule manager (Web Chat Interface)
 
 index_chat.html
-  <br>Gemini talk web page (Web Chat Interface)
+  <br>LLM talk web page (Web Chat Interface)
 
 index_mqtt_chat.html
-  <br>Gemini talk web page via MQTT (Web Chat Interface)
+  <br>LLM talk web page via MQTT (Web Chat Interface)
 
 Conversation state is restored automatically on boot.
 
@@ -187,8 +187,9 @@ Conversation state is restored automatically on boot.
 | `mqtt_subscribeTextTopic` | Topic the device subscribes to, for receiving inbound text commands/messages |
 | `mqtt_publishTextTopic` | Topic the device publishes to, for outbound text content such as replies, status, or logs |
 | `mqtt_publishImageTopic` | Topic the device publishes to, for outbound image data (e.g. screenshots or captured photos) |
-| `gemini_apikey` | Google Gemini API key |
-| `gemini_model` | Selectable Gemini model string (e.g. `gemini-3-flash-preview`), letting the same firmware binary switch model generations without recompiling |
+| `llm_type` | Gemini / openAI / Grok |
+| `llm_key` | API key |
+| `llm_model` | Selectable model string (e.g. `gemini-3-flash-preview`), letting the same firmware binary switch model generations without recompiling |
 | `schedule_timeout` | Minutes of grace tolerance applied by `task_time_scheduling` before a missed scheduled task is silently skipped instead of fired late |
 | `timezone` | IANA-style time zone used for RTC conversion and schedule evaluation |
 
@@ -270,7 +271,7 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini response format handled by ArduinoJson validation layer
+- LLM response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
 
 ------------------------------------------------------------
@@ -280,7 +281,7 @@ AI Evaluation
 # fuClaw AI Framework
 
 > An embedded multimodal AI agent running on Realtek AmebaPro2 and ESP32-S3-CAM devices,
-> combining Telegram / MQTT / Web chat, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
+> combining Telegram / MQTT / Web chat, Gemini, openAI, Grok, hardware control, and persistent memory in a single FreeRTOS runtime.
 
 ---
 
