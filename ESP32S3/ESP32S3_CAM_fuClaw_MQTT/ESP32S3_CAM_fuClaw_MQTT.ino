@@ -3332,6 +3332,7 @@ void task_getRequest(void *param) {
             
             mainPageHTML = String(INDEX_HTML);
 			
+            mainPageHTML.replace("deviceName", deviceName);            
             mainPageHTML.replace("wifiSsid", wifiSsid);
             mainPageHTML.replace("wifiPassword", wifiPassword);
             mainPageHTML.replace("mqttServer", mqttServer);
