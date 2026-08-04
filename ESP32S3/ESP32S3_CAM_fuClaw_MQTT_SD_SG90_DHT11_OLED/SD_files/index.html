@@ -620,8 +620,8 @@
 	if (!cfg.mqtt_subscribeTextTopic) return 'Subscribe Text Topic cannot be empty';
 	if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic cannot be empty';
 	if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic cannot be empty';
-	if (!cfg.llm_llmKey)           return 'API Key cannot be empty';
-	if (!cfg.llm_model)            return 'API Model cannot be empty';	
+	if (!cfg.llm_key)                 return 'API Key cannot be empty';
+	if (!cfg.llm_model)               return 'API Model cannot be empty';	
 	if (!cfg.schedule_timeout)        return 'Schedule Timeout cannot be empty';		
     return null;
   }
