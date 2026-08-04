@@ -404,24 +404,34 @@
       </div>
     </div>
 
-    <!-- Gemini -->
+    <!-- API -->
     <div class="section-label">
-      <span class="sl-icon sl-purple">&#10024;</span>Gemini Settings
+      <span class="sl-icon sl-purple">&#10024;</span>API Settings
     </div>
 
     <div class="field">
       <div class="field-header">
+        <label for="gemini_type">Type &nbsp;</label>
+        <span class="field-hint">API Type</span>
+      </div>	  
+      <div class="input-wrap">
+        <select id="gemini_type">
+            <option value="gemini">Gemini</option>
+            <option value="openai">openAI</option>
+        </select>
+      </div>    
+      <div class="field-header">
         <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Google AI Studio API Key</span>
+        <span class="field-hint">API Key</span>
       </div>
       <div class="input-wrap">
-        <input type="password" id="gemini_key" value="geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
+        <input type="password" id="gemini_key" value="geminillmKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
         <span class="icon">&#128273;</span>
         <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
       </div>
       <div class="field-header">
         <label for="gemini_model">Model &nbsp;</label>
-        <span class="field-hint">Gemini Model</span>
+        <span class="field-hint">API Model</span>
       </div>	  
       <div class="input-wrap">
         <input type="text" id="gemini_model" value="geminiModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
@@ -594,7 +604,8 @@
       mqtt_subscribeTextTopic:  document.getElementById('mqtt_subText').value.trim(),
       mqtt_publishTextTopic:    document.getElementById('mqtt_pubText').value.trim(),
       mqtt_publishImageTopic:   document.getElementById('mqtt_pubImage').value.trim(),
-      gemini_apikey:            document.getElementById('gemini_key').value.trim(),
+      gemini_type:              document.getElementById('gemini_type').value,      
+      gemini_llmKey:            document.getElementById('gemini_key').value.trim(),
       gemini_model:             document.getElementById('gemini_model').value.trim(),
       schedule_timeout:         document.getElementById('schedule_timeout').value,	  
       timezone:                 document.getElementById('timezone').value
@@ -609,8 +620,8 @@
 	if (!cfg.mqtt_subscribeTextTopic) return 'Subscribe Text Topic cannot be empty';
 	if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic cannot be empty';
 	if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic cannot be empty';
-	if (!cfg.gemini_apikey)           return 'Gemini API Key cannot be empty';
-	if (!cfg.gemini_model)            return 'Gemini Model cannot be empty';	
+	if (!cfg.gemini_llmKey)           return 'API Key cannot be empty';
+	if (!cfg.gemini_model)            return 'API Model cannot be empty';	
 	if (!cfg.schedule_timeout)        return 'Schedule Timeout cannot be empty';		
     return null;
   }
