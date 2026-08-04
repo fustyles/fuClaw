@@ -1753,7 +1753,7 @@ String envFilename = "env.json";
 	"mqtt_publishTextTopic": "xxxxx",
 	"mqtt_publishImageTopic": "xxxxx",
 	"llm_type": "xxxxx",  
-	"llm_apikey": "xxxxx",
+	"llm_key": "xxxxx",
 	"llm_model": "xxxxx",  
 	"schedule_timeout": 10,
 	"timezone": "Asia/Taipei" 
@@ -5390,7 +5390,7 @@ void setEnvironmentSettings(String jsonString) {
   mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
   mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
   llmType =  obj["llm_type"].as<String>();  
-  llmKey =  obj["llm_apikey"].as<String>();
+  llmKey =  obj["llm_key"].as<String>();
   llmModel =  obj["llm_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>(); 
