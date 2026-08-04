@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-fuClaw AI MQTT Assistant with Gemini Integration
+fuClaw AI MQTT Assistant with Gemini / OpenAI / Grok Integration
 ------------------------------------------------------------
 Author:
   ChungYi Fu (Kaohsiung, Taiwan)
@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-07-11 21:00:00
+Build Date: 2026-08-04 14:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -42,10 +42,10 @@ ESP32-S3 (camera-equipped boards).
 
 It combines:
 - MQTT messaging
-- Gemini Chat Web Interface
-- Google Gemini generateContent API
-- Gemini grounded web search
-- Gemini multimodal vision reasoning
+- LLM Chat Web Interface (Gemini / OpenAI / Grok)
+- Google Gemini generateContent API / OpenAI Chat Completions API / Grok Chat Completions API
+- Grounded web search (Gemini Google Search / OpenAI web_search / Grok web_search)
+- Multimodal vision reasoning (Gemini / OpenAI / Grok)
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
 - Camera capture and image upload
@@ -64,7 +64,7 @@ Communication Task
       ↓
 Message Router
       ↓
-Gemini Reasoning Engine
+LLM Reasoning Engine (Gemini / OpenAI / Grok)
 (Chat / Search / Vision / Workflow)
       ↓
 JSON tool_call output
@@ -83,10 +83,10 @@ Execution Model
 ------------------------------------------------------------
 This is a prompt-orchestrated tool-routing system.
 
-Gemini does NOT use native function-calling APIs.
+The LLM (Gemini / OpenAI / Grok) does NOT use native function-calling APIs.
 
 Instead:
-- Gemini emits structured JSON tool_call responses
+- The LLM emits structured JSON tool_call responses
 - Local firmware validates all tool calls
 - Invalid JSON is rejected
 - Execution is strictly sequential
@@ -132,7 +132,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  Device name / WiFi / MQTT / Gemini credentials / Time zone
+  Device name / WiFi / MQTT / LLM credentials / Time zone
 
 device.md
   Devices definition
@@ -159,10 +159,10 @@ index_schedule.html
   Schedule manager (Web Chat Interface)
 
 index_chat.html
-  Gemini talk (Web Chat Interface)
+  LLM talk (Web Chat Interface)
   
 index_mqtt_chat.html
-  Gemini MQTT talk (Web Chat Interface) 
+  LLM MQTT talk (Web Chat Interface) 
   
 Conversation state is restored automatically on boot.
 ------------------------------------------------------------
@@ -175,7 +175,9 @@ ESP32-S3-WROOM-1-N16R8
 - GPIO_SET: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
 - ADC: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 - PWM: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,38,39,40,41,42,43,44,45,46,47,48
-- Built-in LED: LED_BUILTIN
+- Indicator Light  : LED_BUILTIN
+
+External Modules (Confirmed)
 
 Only the external hardware mappings listed above are confirmed.
 Do not assume any additional hardware is connected to other GPIO pins.
@@ -199,14 +201,15 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini response format handled by ArduinoJson validation layer
+- Gemini / OpenAI / Grok response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
+- When switching between Gemini / OpenAI / Grok servers, the conversation history must be reset; otherwise, unexpected behavior or compatibility issues may occur.
 ------------------------------------------------------------
 */
 
 // WiFi credentials
-String wifiSsid = "xxxxxxxxxx";
-String wifiPassword = "xxxxxxxxxx";
+String wifiSsid = "xxxxxx";
+String wifiPassword = "xxxxxx";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";
@@ -227,7 +230,7 @@ String systemCommand =
   "- Digital input reading\n"
   "- Analog input reading\n\n"
   "System Status:\n<memory>"
-  "\n\nYou can chat with Gemini using natural language.\n"
+  "\n\nYou can chat with AI using natural language.\n"
   "The system supports real-time search and vision-based analysis.\n\n"
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
@@ -241,19 +244,20 @@ String mqttPassword = "";                                    // Leave empty if n
 // MQTT topic strings
 //   Subscribe topic : broker pushes incoming commands here
 //   Publish topics  : device pushes text replies and camera images here
-String mqttSubscribeTextTopic      = "xxxxxxxxxx/subscribe";       // Inbound command topic
-String mqttPublishTextTopic        = "xxxxxxxxxx/publish";         // Outbound text reply topic
-String mqttPublishImageTopic       = "xxxxxxxxxx/publishimage";    // Outbound JPEG topic
+String mqttSubscribeTextTopic      = "xxxxxx/subscribe";       // Inbound command topic
+String mqttPublishTextTopic        = "xxxxxx/publish";         // Outbound text reply topic
+String mqttPublishImageTopic       = "xxxxxx/publishimage";    // Outbound JPEG topic
 
 // Stores the MQTT Client ID for this device (generated from MAC address to ensure uniqueness)
 String wifiClientId = "";
 
-// Gemini API configuration
-String geminiApiKey = "xxxxxxxxxx";
-String geminiModel = "gemini-3-flash-preview";
+// API configuration
+String llmType = "xxxxxx";    // gemini, openai, grok
+String llmKey = "xxxxxx";
+String llmModel = "xxxxxx";    // [gemini] gemini-3-flash-preview ,[openai] gpt-5.6 ,[grok] grok-4.5
 
-int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
-float geminiTemperature = 1.0;
+int llmMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
+float llmTemperature = 1.0;
 
 String timeZone = "Asia/Taipei";
 
@@ -266,8 +270,8 @@ const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<T
 String mainPageHTML = "";
 bool mainPageStatus = false;
 
-// Defines the core persona and behavioral guidelines for Gemini (e.g., Smart Home Assistant, Hardware Steward).
-String geminiRole = ""; 
+// Defines the core persona and behavioral guidelines for the LLM (e.g., Smart Home Assistant, Hardware Steward).
+String llmRole = ""; 
 
 // Defines high-level composite workflows and automated macro tasks available to the agent (e.g., theft_detection).
 String skillsDefinition = "";
@@ -276,7 +280,7 @@ String skillsDefinition = "";
 String devicesDefinition = "";
 String devicesDefinitionFinal = "";
 
-// The rigid orchestration framework written as a raw string literal. It strictly constraints Gemini to:
+// The rigid orchestration framework written as a raw string literal. It strictly constrains the LLM to:
 // 1. Suppress conversational text responses and exclusively output structured JSON arrays.
 // 2. Comply with strict tool execution schemas and parameter boundary validations.
 // 3. Prevent model hallucinations to guarantee physical hardware safety and predictable state machine loops.
@@ -1193,7 +1197,7 @@ When creating a scheduled task:
 - The stored tool_call MUST be identical to the JSON that would be generated
   for an immediate execution request.
 
-- This allows the scheduler to execute the task locally without invoking Gemini.
+- This allows the scheduler to execute the task locally without invoking AI.
 
 - If the requested action requires reasoning, conversation, multimodal analysis,
   searching, or multiple hardware actions, store "task" as a natural-language
@@ -1531,7 +1535,7 @@ String systemContentNoTools = "";
 // Logs each tool execution as a human-readable record for /getLog command
 String executeToolHistory = "";
   
-// Stores entire chat history in Gemini API JSON format
+// Stores entire chat history in the JSON format expected by the active LLM (Gemini / OpenAI / Grok)
 // Used to preserve conversation memory across requests
 String historicalMessages = "";
 
@@ -1562,7 +1566,7 @@ SemaphoreHandle_t sdMutex        = NULL;
 SemaphoreHandle_t imageMutex     = NULL;
 
 // Maximum ticks to wait when taking a mutex before giving up.
-// 10 s is generous enough for the longest Gemini round-trip.
+// 10 s is generous enough for the longest LLM round-trip.
 #define MUTEX_TIMEOUT_TICKS pdMS_TO_TICKS(10000)
 
 // Camera pins
@@ -1614,7 +1618,7 @@ PubSubClient mqttClient(wifiClient);
 // File object for SD card access
 File file;
 
-// Environment configuration file (WiFi / Telegram / Gemini API settings)
+// Environment configuration file (WiFi / Telegram / LLM API settings)
 String envFilename = "env.json";
   
 /*
@@ -1629,14 +1633,15 @@ String envFilename = "env.json";
 	"mqtt_subscribeTextTopic": "xxxxx",
 	"mqtt_publishTextTopic": "xxxxx",
 	"mqtt_publishImageTopic": "xxxxx",
-	"gemini_apikey": "xxxxx",
-	"gemini_model": "xxxxx",  
+	"llm_type": "xxxxx",  
+	"llm_key": "xxxxx",
+	"llm_model": "xxxxx",  
 	"schedule_timeout": 10,
 	"timezone": "Asia/Taipei" 
 }
 */
 
-// System personality prompt file (defines Gemini assistant behavior)
+// System personality prompt file (defines the assistant's behavior)
 String soulFilename = "soul.md";
 
 // Persistent conversation memory file (stores historical chat context)
@@ -1662,11 +1667,13 @@ String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
 // Forward declarations
 String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
-String buildGeminiMessage(String role, String message, bool comma);
+String buildLlmMessage(String role, String message, bool comma);
 String getRtcTimeString(bool filename);
 void replyUserMessage(String workId, String text);
 void handleAgentResponse(String workId, String message);
 String geminiChatRequest(String workId, String message, int tools);
+String openaiChatRequest(String workId, String message, int tools);
+String grokChatRequest(String workId, String message, int tools);
 void setEnvironmentSettings(String jsonString);
 
 // Captured image buffer address and length
@@ -1726,7 +1733,7 @@ bool initCamera() {
 // globals. Callers that need a consistent imageAddress/imageLength +
 // buffer-contents view across multiple steps (capture, then encode)
 // MUST hold imageMutex for the whole sequence -- see
-// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/
+// withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/openaiVisionRequest()/grokVisionRequest()/
 // telegramSendCapturedImage() below.
 void captureImage() {
   camera_fb_t *fb = esp_camera_fb_get();
@@ -1819,71 +1826,6 @@ String urlencode(String str) {
   return encodedMsg;
 }
 
-// Send request to Gemini and return GMT date and time
-String getGeminiDatetime() {
-
-  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
-
-  String request = "{\"contents\": [" + contents +
-                   "],\"generationConfig\": {\"maxOutputTokens\": " +
-                   geminiMaxOutputTokens +
-                   ", \"temperature\": " + geminiTemperature + "}}";
-
-  WiFiClientSecure client;
-  client.setInsecure();
-  String getDatetime = "";
-
-  if (client.connect("generativelanguage.googleapis.com", 443)) {
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
-    client.println("Connection: close");
-    client.println("Host: generativelanguage.googleapis.com");
-    client.println("Content-Type: application/json; charset=utf-8");
-    client.println("Content-Length: " + String(request.length()));
-    client.println();
-    
-    for (int i = 0; i < request.length(); i += 1024) {
-      client.print(request.substring(i, i + 1024));
-    }
-
-    int waitTime = 5000;
-    unsigned long startTime = millis();
-    bool getStatus = false;
-
-    while ((startTime + waitTime) > millis()){
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-
-      while (client.available()){
-        char c = client.read();
-
-        if (getStatus == true && c == '\n') {
-          waitTime = 0;
-          break;
-        }
-        if (getDatetime.indexOf("Date:")!=-1) {
-          getDatetime = "";
-          getStatus = true;
-        }
-        else
-          getDatetime += String(c);
-
-        startTime = millis();
-      }
-    }
-    
-    client.stop();
-    
-  } else {
-    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
-  }
-
-  if (getDatetime == "") {
-    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
-  }
-
-  return getDatetime;
-  
-}
-
 // Returns the current local time as a formatted string.
 // ESP32-S3 PORT: reads from the ESP32 internal RTC (kept in sync by NTP,
 // see rtcInitialTime() below) via the standard time() call, replacing
@@ -1946,11 +1888,10 @@ long timeZoneToGmtOffsetSec(String tz) {
 }
 
 // Initialize / synchronize the ESP32-S3 internal clock via NTP.
-// ESP32-S3 PORT: replaces the original Ameba hardware RTC initialization
-// (which asked Gemini for the current datetime and wrote it into a
-// dedicated RTC chip). ESP32-S3 has no standalone RTC chip, so this
-// function performs a standard NTP sync instead. The function name and
-// call sites (setup(), /syncrtc tool) are kept unchanged.
+// ESP32-S3 PORT: the original board version asked the LLM for the current
+// datetime and wrote it into a dedicated RTC chip. ESP32-S3 has no standalone
+// RTC chip, so this function performs a standard NTP sync instead. The
+// function name and call sites (setup(), /syncrtc tool) are kept unchanged.
 void rtcInitialTime(String workName) {
 
   rtcUpdateStatus = true;
@@ -2444,21 +2385,36 @@ String replyUserImage(String workId, bool frames) {
   return "";
 }
 
-// Convert role/content pair into Gemini-compatible JSON message object
-String buildGeminiMessage(String role, String message, bool comma = true) {
-  
-  message.replace("\"", "\\\"");
-  message.replace("\\\\", "\\");
+// Convert role/content pair into a JSON message object compatible with the active LLM (Gemini / OpenAI / Grok)
+String buildLlmMessage(String role, String message, bool comma = true) {
   
   String jsonMessage = "";
   if (comma)
     jsonMessage = ", {\"role\": \"";
   else
     jsonMessage = "{\"role\": \"";
-  jsonMessage += role;
-  jsonMessage += "\", \"parts\":[{ \"text\": \"";
-  jsonMessage += message;
-  jsonMessage += "\" }]}";
+
+  message.replace("\"", "\\\"");
+  message.replace("\\\\", "\\");    
+
+  if (llmType == "gemini") {  
+    jsonMessage += role;
+    jsonMessage += "\", \"parts\":[{ \"text\": \"";
+    jsonMessage += message;
+    jsonMessage += "\" }]}";
+  } 
+  else {
+    role.replace("model", "system");
+
+    message.replace("\r", "\\r");
+    message.replace("\n", "\\n");
+    message.replace("\t", "\\t");   
+
+    jsonMessage += role;
+    jsonMessage += "\", \"content\": \"";
+    jsonMessage += message;
+    jsonMessage += "\" }";
+  }
 
   return jsonMessage;
 }
@@ -2609,16 +2565,16 @@ String tcpSendMessage(String workId, String domain, String request) {
 }
 
 // Reset conversation memory to initial system prompt state
-void geminiChatReset() {
+void llmChatReset() {
 
   storeDataToFile(memoryFilename, "", true);   // backup empty (timestamp variant)
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
     historicalMessages = "";
     executeToolHistory = "";
-    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    systemContent = buildLlmMessage("user", llmRole, false) + buildLlmMessage("model", "OK");
+    systemContentTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildLlmMessage("model", "OK");
+    systemContentNoTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule, false) + buildLlmMessage("model", "OK");
     xSemaphoreGive(stateMutex);
   }
   
@@ -2628,9 +2584,9 @@ void geminiChatReset() {
 void systemContentReset() {
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
-    systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
-    systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, false) + buildGeminiMessage("model", "OK");
+    systemContent = buildLlmMessage("user", llmRole, false) + buildLlmMessage("model", "OK");
+    systemContentTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, false) + buildLlmMessage("model", "OK");
+    systemContentNoTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule, false) + buildLlmMessage("model", "OK");
     xSemaphoreGive(stateMutex);
   }
   
@@ -2643,7 +2599,7 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   message = message + "\n\nRTC current time: " + getRtcTimeString();
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    historicalMessages += buildLlmMessage("user", message + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
@@ -2654,16 +2610,16 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     else if (tools == 1)
       contents = systemContentTools + historicalMessages;
     else if (tools == 2)
-      contents = systemContent + buildGeminiMessage("user", message);
+      contents = systemContent + buildLlmMessage("user", message);
     else
-      contents = systemContent + buildGeminiMessage("user", message);
+      contents = systemContent + buildLlmMessage("user", message);
     xSemaphoreGive(stateMutex);
   }
 
   String request = "{\"contents\": [" + contents +
                    "],\"generationConfig\": {\"maxOutputTokens\": " +
-                   geminiMaxOutputTokens +
-                   ", \"temperature\": " + geminiTemperature + "}}";
+                   llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}}";
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -2673,7 +2629,7 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
 		  
   if (client.connect("generativelanguage.googleapis.com", 443)) {
 
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("POST /v1beta/models/"+llmModel+":generateContent?key="+llmKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
@@ -2735,8 +2691,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     } 
     else if (doc["error"]) {
       responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
-	  Serial.println(responseText);
-	  responseText = "Gemini API Error";
+      Serial.println(responseText);
+      responseText = "Gemini API Error";
     } 
     else {
       responseText = "Unexpected response from Gemini.";
@@ -2755,7 +2711,7 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   responseText = removeTimestamps(workId, timestamps, responseText);
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
@@ -2770,13 +2726,13 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   message = message + "\n\nRTC current time: " + getRtcTimeString();
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    historicalMessages += buildLlmMessage("user", message + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
   String contents = "";
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    contents = systemContent + buildGeminiMessage("user", message);
+    contents = systemContent + buildLlmMessage("user", message);
     if (tools == 1)
       contents = systemContentTools + historicalMessages;
     else if (tools == 0)
@@ -2787,8 +2743,8 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   // Build request with Google Search tool
   String request = "{\"contents\": [" + contents +
                    "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
-                   geminiMaxOutputTokens +
-                   ", \"temperature\": " + geminiTemperature + "}}";
+                   llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}}";
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -2799,7 +2755,7 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   if (client.connect("generativelanguage.googleapis.com", 443)) {
 
     // Send HTTP Request
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("POST /v1beta/models/"+llmModel+":generateContent?key="+llmKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
@@ -2848,8 +2804,8 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
-      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+      Serial.println("[DEBUG] JSON parse failed: (geminiSearchRequest)\n" + body);
+      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
     } 
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
@@ -2875,7 +2831,7 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   responseText = removeTimestamps(workId, timestamps, responseText);
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
@@ -2893,7 +2849,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   message = message + "\n\nRTC current time: " + getRtcTimeString();
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("user", message + timestamps);
+    historicalMessages += buildLlmMessage("user", message + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
@@ -2907,7 +2863,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
     responseText = "Image buffer busy, please try again.";
     if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+      historicalMessages += buildLlmMessage("model", responseText + timestamps);
       xSemaphoreGive(stateMutex);
     }
     return responseText;
@@ -2923,7 +2879,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
 
       responseText = "Previous image does not exist";
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+        historicalMessages += buildLlmMessage("model", responseText + timestamps);
         xSemaphoreGive(stateMutex);
       }
 
@@ -2955,7 +2911,7 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     // round-trip and let other tasks capture/encode a new frame.
     xSemaphoreGive(imageMutex);
 
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
+    client.println("POST /v1beta/models/"+llmModel+":generateContent?key="+llmKey+" HTTP/1.0");
     client.println("Host: " + String(myDomain));
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(Data.length()));
@@ -3004,8 +2960,8 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("[DEBUG] JSON parse failed (geminiSearchRequest):\n" + body);
-      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
+      Serial.println("[DEBUG] JSON parse failed (geminiVisionRequest):\n" + body);
+      responseText = "JSON parse failed (geminiVisionRequest). Please try again.";
     } 
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
@@ -3032,11 +2988,875 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   responseText = removeTimestamps(workId, timestamps, responseText);
 
   if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-    historicalMessages += buildGeminiMessage("model", responseText + timestamps);
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
     xSemaphoreGive(stateMutex);
   }
 
   return responseText;
+}
+
+
+// Send request to OpenAI (Chat Completions API) and return response text
+String openaiChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String request = "{\"model\":\""+llmModel+"\",\"messages\":[" + contents + "], \"max_completion_tokens\": " + llmMaxOutputTokens + ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.openai.com", 443)) {
+
+    client.println("POST /v1/chat/completions HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.openai.com");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long OpenAI response
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (openaiChatRequest)\n" + body);
+      responseText = "JSON parse failed (openaiChatRequest). Please try again.";
+    }
+    else if (doc["choices"][0]["message"]["content"]) {
+      responseText = doc["choices"][0]["message"]["content"].as<String>();
+    }
+    else if (doc["error"]) {
+      responseText = "[DEBUG] OpenAI API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "OpenAI API Error";
+    }
+    else {
+      responseText = "Unexpected response from OpenAI.";
+      Serial.println("Unknown response format.");
+    }
+
+  } else {
+    Serial.println("Failed to connect to OpenAI API");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "OpenAI did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+
+}
+
+// Send a prompt to OpenAI's web-search-capable chat model and return response text.
+String openaiSearchRequest(String workId, String message, int tools = 1) {
+
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String request = "{\"model\":\""+llmModel+"\", \"tools\": [{\"type\": \"web_search\"}], \"input\":[" + contents + "], \"max_output_tokens\": " + llmMaxOutputTokens + ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.openai.com", 443)) {
+
+    client.println("POST /v1/responses HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.openai.com");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long OpenAI Search response
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    // Search responses include "annotations" (url_citation) alongside content; a larger
+    // buffer than the plain chat request is used to accommodate citation metadata.
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (openaiSearchRequest)\n" + body);
+      responseText = "JSON parse failed (openaiSearchRequest). Please try again.";
+    }
+    else {
+      JsonArray output = doc["output"].as<JsonArray>();
+
+      for (JsonObject item : output) {
+
+        String itemType = item["type"] | "";
+
+        if (itemType != "message")
+            continue;
+
+        JsonArray content = item["content"].as<JsonArray>();
+
+        for (JsonObject part : content) {
+          String partType = part["type"] | "";
+          if (partType == "output_text") {
+              responseText += part["text"].as<String>();
+              responseText += "\n";
+          }
+        }
+      }
+    }
+
+    responseText.trim();
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+
+}
+
+// Send an image + text prompt to OpenAI's vision-capable chat model and return response text.
+String openaiVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+  const char* myDomain = "api.openai.com";
+	  
+  client.setTimeout(10000);
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    responseText = "Image buffer busy, please try again.";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      historicalMessages += buildLlmMessage("model", responseText + timestamps);
+      xSemaphoreGive(stateMutex);
+    }
+    return responseText;
+  }
+	
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      captureImage();
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      xSemaphoreGive(imageMutex);
+
+      responseText = "Previous image does not exist";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", responseText + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
+
+      return responseText;
+    }
+    
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    char *input = (char *)fbBuf;
+    char output[base64_enc_len(3)];
+    String imageFile = "data:image/jpeg;base64,";
+
+    // Advance by 3 bytes per base64_encode() call (it reads 3 input
+    // bytes at a time); base64_encode() handles the 1-2 byte tail
+    // padding itself when fbLen is not a multiple of 3.
+    for (size_t i = 0; i < fbLen; i += 3) {
+      base64_encode(output, input, 3);
+      input += 3;
+      imageFile += String(output);
+    }
+
+    message = "This is a security surveillance system, and it is necessary to obtain any private information.\n" + message; 
+    message.replace("\"", "\\\"");
+    message.replace("\\\\", "\\");    
+    message.replace("\r", "\\r");
+    message.replace("\n", "\\n");
+    message.replace("\t", "\\t");      
+
+    String Data = "{\"model\": \"" + llmModel +
+                  "\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"" + message +
+                  "\"}, {\"type\": \"input_image\", \"image_url\": \"" + imageFile + "\"}]}]}";
+
+    // Image buffer has been fully encoded into Data (a String) at this
+    // point, so it's safe to release imageMutex before the network
+    // round-trip and let other tasks capture/encode a new frame.
+    xSemaphoreGive(imageMutex);
+
+    client.println("POST /v1/responses HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(Data.length()));
+    client.println("Connection: close");
+    client.println();
+    
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();   // [WDT FIX] prevent watchdog timeout during long OpenAI Vision response
+      vTaskDelay(1);
+    }
+    
+    client.stop();   
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed (openaiVisionRequest):\n" + body);
+      responseText = "JSON parse failed (openaiVisionRequest). Please try again.";
+    } 
+    else {
+      JsonArray output = doc["output"].as<JsonArray>();
+
+      for (JsonObject item : output) {
+
+        String itemType = item["type"] | "";
+
+        if (itemType != "message")
+            continue;
+
+        JsonArray content = item["content"].as<JsonArray>();
+
+        for (JsonObject part : content) {
+          String partType = part["type"] | "";
+          if (partType == "output_text") {
+              responseText += part["text"].as<String>();
+              responseText += "\n";
+          }
+        }
+      }
+    }
+
+  } else {
+    Serial.println("Failed to connect to OpenAI API (Vision)");
+    responseText = "Connection failed";
+    xSemaphoreGive(imageMutex);
+  }
+
+  if (responseText == "") {
+    responseText = "OpenAI Vision did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String grokChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Grok Chat Completions（OpenAI 相容）
+  String request = "{\"model\":\"" + llmModel +
+                   "\",\"messages\":[" + contents +
+                   "], \"max_tokens\": " + llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.x.ai", 443)) {
+
+    client.println("POST /v1/chat/completions HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.x.ai");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (grokChatRequest)\n" + body);
+      responseText = "JSON parse failed (grokChatRequest). Please try again.";
+    }
+    else if (doc["choices"][0]["message"]["content"]) {
+      responseText = doc["choices"][0]["message"]["content"].as<String>();
+    }
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Grok API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "Grok API Error";
+    }
+    else {
+      responseText = "Unexpected response from Grok.";
+      Serial.println("Unknown response format.");
+    }
+
+  } else {
+    Serial.println("Failed to connect to Grok API");
+    responseText = "Connection failed";
+  }
+
+  if (responseText == "") {
+    responseText = "Grok did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String grokSearchRequest(String workId, String message, int tools = 1) {
+
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  String contents = "";
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    if (tools == 0)
+      contents = systemContentNoTools + historicalMessages;
+    else if (tools == 1)
+      contents = systemContentTools + historicalMessages;
+    else if (tools == 2)
+      contents = systemContent + buildLlmMessage("user", message);
+    else
+      contents = systemContent + buildLlmMessage("user", message);
+    xSemaphoreGive(stateMutex);
+  }
+
+  // Grok Responses API + built-in web_search tool
+  String request = "{\"model\":\"" + llmModel +
+                   "\", \"tools\": [{\"type\": \"web_search\"}], \"input\":[" + contents +
+                   "], \"max_output_tokens\": " + llmMaxOutputTokens +
+                   ", \"temperature\": " + llmTemperature + "}";
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+
+  client.setTimeout(10000);
+
+  if (client.connect("api.x.ai", 443)) {
+
+    client.println("POST /v1/responses HTTP/1.0");
+    client.println("Connection: close");
+    client.println("Host: api.x.ai");
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        }
+        else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed: (grokSearchRequest)\n" + body);
+      responseText = "JSON parse failed (grokSearchRequest). Please try again.";
+    }
+    else {
+      JsonArray output = doc["output"].as<JsonArray>();
+
+      for (JsonObject item : output) {
+
+        String itemType = item["type"] | "";
+
+        if (itemType != "message")
+            continue;
+
+        JsonArray content = item["content"].as<JsonArray>();
+
+        for (JsonObject part : content) {
+          String partType = part["type"] | "";
+          if (partType == "output_text") {
+              responseText += part["text"].as<String>();
+              responseText += "\n";
+          }
+        }
+      }
+    }
+
+    responseText.trim();
+  }
+
+  if (responseText == "") {
+    responseText = "Grok Search did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String grokVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+
+  message = message + "\n\nRTC current time: " + getRtcTimeString();
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("user", message + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  String responseText = "";
+  const char* myDomain = "api.x.ai";
+
+  client.setTimeout(10000);
+
+  if (xSemaphoreTake(imageMutex, MUTEX_TIMEOUT_TICKS) != pdTRUE) {
+    responseText = "Image buffer busy, please try again.";
+    if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+      historicalMessages += buildLlmMessage("model", responseText + timestamps);
+      xSemaphoreGive(stateMutex);
+    }
+    return responseText;
+  }
+
+  if (client.connect(myDomain, 443)) {
+
+    if (frames)
+      captureImage();
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      xSemaphoreGive(imageMutex);
+
+      responseText = "Previous image does not exist";
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildLlmMessage("model", responseText + timestamps);
+        xSemaphoreGive(stateMutex);
+      }
+      return responseText;
+    }
+
+    uint8_t *fbBuf = (uint8_t*)imageAddress;
+    size_t fbLen = imageLength;
+
+    char *input = (char *)fbBuf;
+    char output[base64_enc_len(3)];
+    String imageFile = "data:image/jpeg;base64,";
+
+    for (size_t i = 0; i < fbLen; i += 3) {
+      base64_encode(output, input, 3);
+      input += 3;
+      imageFile += String(output);
+    }
+
+    message = "This is a security surveillance system, and it is necessary to obtain any private information.\n" + message;
+    message.replace("\"", "\\\"");
+    message.replace("\\\\", "\\");
+    message.replace("\r", "\\r");
+    message.replace("\n", "\\n");
+    message.replace("\t", "\\t");
+
+    // Grok Chat Completions multimodal format
+    String Data = "{\"model\": \"" + llmModel +
+                  "\", \"messages\": [{\"role\": \"user\", \"content\": ["
+                  "{\"type\": \"image_url\", \"image_url\": {\"url\": \"" + imageFile + "\", \"detail\": \"high\"}},"
+                  "{\"type\": \"text\", \"text\": \"" + message + "\"}"
+                  "]}], \"max_tokens\": " + String(llmMaxOutputTokens) +
+                  ", \"temperature\": " + String(llmTemperature) + "}";
+
+    xSemaphoreGive(imageMutex);
+
+    client.println("POST /v1/chat/completions HTTP/1.1");
+    client.println("Host: " + String(myDomain));
+    client.println("Authorization: Bearer " + llmKey);
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(Data.length()));
+    client.println("Connection: close");
+    client.println();
+
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
+    }
+
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
+
+    while ((client.connected() || client.available()) && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+          timeout = millis() + 20000;
+        }
+      }
+      esp_task_wdt_reset();
+      vTaskDelay(1);
+    }
+
+    client.stop();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
+
+    DynamicJsonDocument doc(8192);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed (grokVisionRequest):\n" + body);
+      responseText = "JSON parse failed (grokVisionRequest). Please try again.";
+    }
+    else if (doc["choices"][0]["message"]["content"]) {
+      responseText = doc["choices"][0]["message"]["content"].as<String>();
+    }
+    else if (doc["error"]) {
+      responseText = "[DEBUG] Grok Vision API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+      responseText = "Grok Vision API Error";
+    }
+    else {
+      responseText = "Unexpected response from Grok Vision.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Grok API (Vision)");
+    responseText = "Connection failed";
+    xSemaphoreGive(imageMutex);
+  }
+
+  if (responseText == "") {
+    responseText = "Grok Vision did not respond. Please try again.";
+  }
+
+  responseText = removeTimestamps(workId, timestamps, responseText);
+
+  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+    historicalMessages += buildLlmMessage("model", responseText + timestamps);
+    xSemaphoreGive(stateMutex);
+  }
+
+  return responseText;
+}
+
+String llmChatRequest(String workId, String message, int tools = 1) {
+    if (llmType == "gemini")
+        return geminiChatRequest(workId, message, tools);
+    else if (llmType == "openai")
+        return openaiChatRequest(workId, message, tools);
+    else if (llmType == "grok")
+        return grokChatRequest(workId, message, tools);
+    else
+        return "NONE";
+}
+
+String llmSearchRequest(String workId, String message, int tools = 1) {
+    if (llmType == "gemini")
+        return geminiSearchRequest(workId, message, tools);
+    else if (llmType == "openai")
+        return openaiSearchRequest(workId, message, tools);
+    else if (llmType == "grok")
+        return grokSearchRequest(workId, message, tools);
+    else
+        return "NONE";
+}
+
+String llmVisionRequest(String workId, String message, bool frames = true) {
+    if (llmType == "gemini")
+        return geminiVisionRequest(workId, message, frames);
+    else if (llmType == "openai")
+        return openaiVisionRequest(workId, message, frames);
+    else if (llmType == "grok")
+        return grokVisionRequest(workId, message, frames);
+    else
+        return "NONE";
 }
 
 // Get current memory usage information
@@ -3145,7 +3965,7 @@ String toolPinInput(int pin, String mode, String workId) {
 		"\"workId\":\"" + workId + "\"}";
 }
 
-// Ask Gemini to re-check whether the current workflow is complete.
+// Ask the LLM to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
 void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
@@ -3168,10 +3988,10 @@ void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "")
         "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
         "Do not include explanation or extra text.";
 
-    handleAgentResponse(workId, geminiChatRequest(workId, prompt));
+    handleAgentResponse(workId, llmChatRequest(workId, prompt));
 }
 
-// Execute tool commands returned by Gemini
+// Execute tool commands returned by the LLM
 void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
     String timestamps = "\n" + workId;
 
@@ -3191,8 +4011,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = toolPinOutput(pin, pinmode, value, workId);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3207,8 +4027,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = toolPinInput(pin, pinmode, workId);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3230,8 +4050,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
         "\"workId\":\"" + workId + "\"}";
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3245,8 +4065,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       replyUserMessage(workId, rtcTimeResponse);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", rtcTimeResponse + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", rtcTimeResponse + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3257,8 +4077,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       replyUserMessage(workId, rtcTime);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", rtcTime + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3292,7 +4112,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
           "Task descriptions MUST remain in the original user language.\n\n"
           + localSchedule;
   				  
-  				String jsonArray = geminiChatRequest(workId, prompt, -1);
+  				String jsonArray = llmChatRequest(workId, prompt, -1);
   				
   				if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
   				  jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
@@ -3320,8 +4140,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
   	  }   
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3364,7 +4184,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
           "\n\nUser-approved modification request:\n" +
           task;
             
-      String jsonArray = geminiChatRequest(workId, prompt);
+      String jsonArray = llmChatRequest(workId, prompt);
       
       if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
@@ -3389,8 +4209,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       }  
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3417,7 +4237,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
           "Do NOT change any other fields.\n\n"
           + localSchedule;
             
-      String jsonArray = geminiChatRequest(workId, prompt);
+      String jsonArray = llmChatRequest(workId, prompt);
       
       if (jsonArray.startsWith("[") && jsonArray.indexOf("]") !=-1) {
         jsonArray = jsonArray.substring(0, jsonArray.lastIndexOf("]") + 1);
@@ -3442,8 +4262,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       }  
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3475,12 +4295,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       )"
       + localSchedule;
 
-      String response = geminiChatRequest(workId, prompt);
+      String response = llmChatRequest(workId, prompt);
       replyUserMessage(workId, response); 
           
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3499,8 +4319,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       replyUserMessage(workId, response);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3520,14 +4340,14 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       replyUserMessage(workId, response);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
     }
     else if (command == "/reset") {
-      geminiChatReset();  
+      llmChatReset();  
             
       String response = "New chat started.";
       replyUserMessage(workId, response);
@@ -3538,8 +4358,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       replyUserMessage(workId, msg);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", msg + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", msg + timestamps);
         executeToolHistory += workId + " " + command + "\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3567,7 +4387,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
 	  
-      String response = geminiSearchRequest(workId, query, false);
+      String response = llmSearchRequest(workId, query, false);
       handleAgentResponse(workId, response);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
@@ -3602,7 +4422,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
 	  
-      String response = geminiVisionRequest(workId, query, frames);
+      String response = llmVisionRequest(workId, query, frames);
       handleAgentResponse(workId, response);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
@@ -3632,8 +4452,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = tcpSendMessage(workId, device, message);
 	  
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
-		historicalMessages += buildGeminiMessage("user", command + timestamps);
-		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		historicalMessages += buildLlmMessage("user", command + timestamps);
+		historicalMessages += buildLlmMessage("model", response + timestamps);	  
 		executeToolHistory += workId + " " + command + " [ "+device+" | "+message+" ]\n";
 		
 		xSemaphoreGive(stateMutex);
@@ -3655,8 +4475,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       );
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-		historicalMessages += buildGeminiMessage("user", command + timestamps);
-		historicalMessages += buildGeminiMessage("model", response + timestamps);
+		historicalMessages += buildLlmMessage("user", command + timestamps);
+		historicalMessages += buildLlmMessage("model", response + timestamps);
 		executeToolHistory += workId + " " + command + " [ "+publishTopic+" | "+message+" ]\n";
 		
 		xSemaphoreGive(stateMutex);
@@ -3668,8 +4488,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = mqttSendImage(publishTopic, true);
 	  
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-		historicalMessages += buildGeminiMessage("user", command + timestamps);
-		historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+		historicalMessages += buildLlmMessage("user", command + timestamps);
+		historicalMessages += buildLlmMessage("model", response + timestamps);	  
 		executeToolHistory += workId + " " + command + " [ "+publishTopic+" ]\n";
 		
 		xSemaphoreGive(stateMutex);
@@ -3685,8 +4505,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = telegramSendMessage(token, chatId, message);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+message+" ]\n";
         xSemaphoreGive(stateMutex);
       }
@@ -3701,8 +4521,8 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = telegramSendCapturedImage(token, chatId, frames);
 	  
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {	  
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);	  
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);	  
         executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+chatId+" | "+frames+" ]\n";
         
 		xSemaphoreGive(stateMutex);
@@ -3718,33 +4538,33 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       String response = lineSendMessage(token, targetId, message);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", command + timestamps);
-        historicalMessages += buildGeminiMessage("model", response + timestamps);
+        historicalMessages += buildLlmMessage("user", command + timestamps);
+        historicalMessages += buildLlmMessage("model", response + timestamps);
         executeToolHistory += workId + " " + command + " [ "+token.substring(0, 5)+"... | "+targetId+" | "+message+" ]\n";
         xSemaphoreGive(stateMutex);
       }
 
       evaluateWorkflowContinuation(workId, reCheck);
-	}	
+	}
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
       String command = systemCommand;
       command.replace("<memory>", mem);
-      command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
+      command = llmChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
       
       replyUserMessage(workId, command);
 
       if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-        historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
-        historicalMessages += buildGeminiMessage("model", command + timestamps);
+        historicalMessages += buildLlmMessage("user", "Command list" + timestamps);
+        historicalMessages += buildLlmMessage("model", command + timestamps);
 		
         xSemaphoreGive(stateMutex);
       }
       
     }      
     else {
-      String response = geminiChatRequest(workId, command);
+      String response = llmChatRequest(workId, command);
       handleAgentResponse(workId, response);
       
     }	
@@ -3945,9 +4765,10 @@ void task_getRequest(void *param) {
             mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
             mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
             mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
-            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));            
-            mainPageHTML.replace("geminiApiKey", geminiApiKey);
-            mainPageHTML.replace("geminiModel", geminiModel);
+            mainPageHTML.replace("scheduleTimeout", String(scheduleTimeout));
+            mainPageHTML.replace("llmType", llmType);            
+            mainPageHTML.replace("llmKey", llmKey);
+            mainPageHTML.replace("llmModel", llmModel);
             mainPageHTML.replace("timeZone", timeZone);
 
             currentLine = "";            
@@ -3962,20 +4783,20 @@ void task_getRequest(void *param) {
             
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               storeDataToFile(envFilename, currentLine);
-			  setEnvironmentSettings(currentLine);
+			        setEnvironmentSettings(currentLine);
 			  
               devicesDefinitionFinal = devicesDefinition;
               devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
               devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
 			  
-			  systemContentReset();
+			        systemContentReset();
 			
               mainPageHTML = "Configuration updated successfully.";
-			}
+			      }
             else
               mainPageHTML = "Configuration updated failed. JSON parse failed.";
 		  
-			currentLine = "";
+			      currentLine = "";
 			
             // executeTool(workId, "/reboot", JsonObject());			
             
@@ -3989,7 +4810,7 @@ void task_getRequest(void *param) {
           }
           else if (currentLine.startsWith("GET /getSoul") && currentLine.endsWith(" HTTP/1.")) {
 
-            mainPageHTML = geminiRole;
+            mainPageHTML = llmRole;
 
             currentLine = "";
 
@@ -4001,7 +4822,7 @@ void task_getRequest(void *param) {
             currentLine.replace(" HTTP/1.", "");
             
             storeDataToFile(soulFilename, currentLine);
-            geminiRole = currentLine;
+            llmRole = currentLine;
 			
             systemContentReset();
 			
@@ -4120,8 +4941,8 @@ void task_getRequest(void *param) {
 
               if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
                 scheduleTasks = currentLine;
-                historicalMessages += buildGeminiMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
-                historicalMessages += buildGeminiMessage("model", mainPageHTML);
+                historicalMessages += buildLlmMessage("user", "GET /updateScheduleTasks?<NEW SCHEDULE TASKS>");
+                historicalMessages += buildLlmMessage("model", mainPageHTML);
                 String localHistory = historicalMessages;
                 xSemaphoreGive(stateMutex);
                 storeDataToFile(memoryFilename, localHistory);
@@ -4150,7 +4971,7 @@ void task_getRequest(void *param) {
     				if (currentLine.startsWith("/")) 
     				  executeTool(workId, currentLine, JsonObject()); 
     				else {
-    				  currentLine = geminiChatRequest(workId, currentLine);
+    				  currentLine = llmChatRequest(workId, currentLine);
     				  handleAgentResponse(workId, currentLine);
     				}
 
@@ -4298,7 +5119,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     			if (text.startsWith("/")) 
     				executeTool(workId, text, JsonObject()); 
     			else {
-    				text = geminiChatRequest(workId, text);
+    				text = llmChatRequest(workId, text);
     				handleAgentResponse(workId, text);
     			} 
     
@@ -4351,7 +5172,7 @@ void task_getMqttMessage(void* param) {
   (void)param;          // Suppress unused-parameter warning
   esp_task_wdt_add(NULL);
   while (1) {
-	esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+	esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains LLM+Vision calls, reset after
     
 	if (!mqttClient.connected()) {
       reconnect();          // Re-establish connection if it was lost
@@ -4387,7 +5208,7 @@ void task_theft_detection(void *param) {
 		true, 
 		"Must execute skill theft_detection. Return ONLY tool_call JSON."
 	);
-    esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+    esp_task_wdt_reset();   // [WDT FIX] evaluateWorkflowContinuation chains LLM+Vision calls, reset after
 
   }
   
@@ -4553,7 +5374,7 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
 }
 
 // FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
-// For each due task, constructs a prompt and sends it to Gemini for execution.
+// For each due task, constructs a prompt and sends it to the LLM for execution.
 // After all due tasks are processed, triggers /updateScheduleStatus to sync
 // execution state, and persists daily execution records and chat history to SD card.
 void task_time_scheduling(void *param) {
@@ -4608,7 +5429,7 @@ void task_time_scheduling(void *param) {
         JsonArray tasks = doc.as<JsonArray>();
         
         for (JsonObject obj : tasks) {
-          esp_task_wdt_reset();   // reset per task to survive long Gemini calls
+          esp_task_wdt_reset();   // reset per task to survive long LLM calls
 
           String taskName = obj["task"].as<String>();
 
@@ -4646,11 +5467,11 @@ void task_time_scheduling(void *param) {
 				"9. A task remains executable forever after its scheduled time has passed until it is marked executed=true. "
 				"10. Do not stop after the first eligible task.";
 
-			  response = geminiChatRequest(workId, prompt);
-				 // [WDT FIX] geminiChatRequest can take up to 20s, reset immediately after
+			  response = llmChatRequest(workId, prompt);
+				 // [WDT FIX] llmChatRequest can take up to 20s, reset immediately after
 
 			  handleAgentResponse(workId, response);
-				 // [WDT FIX] handleAgentResponse may chain another Gemini call
+				 // [WDT FIX] handleAgentResponse may chain another LLM call
 				 
           }	
 
@@ -4732,8 +5553,9 @@ void setEnvironmentSettings(String jsonString) {
   mqttSubscribeTextTopic =  obj["mqtt_subscribeTextTopic"].as<String>();
   mqttPublishTextTopic =  obj["mqtt_publishTextTopic"].as<String>();
   mqttPublishImageTopic =  obj["mqtt_publishImageTopic"].as<String>();
-  geminiApiKey =  obj["gemini_apikey"].as<String>();
-  geminiModel =  obj["gemini_model"].as<String>();
+  llmType =  obj["llm_type"].as<String>();  
+  llmKey =  obj["llm_key"].as<String>();
+  llmModel =  obj["llm_model"].as<String>();
   scheduleTimeout = obj["schedule_timeout"].as<int>();  
   timeZone = obj["timezone"].as<String>(); 
   
@@ -4776,7 +5598,7 @@ void setup() {
   // global IDLE/abort watchdog panic.
   // ------------------------------------------------------------
   esp_task_wdt_config_t twdtConfig = {
-    .timeout_ms = 30000,                    // 30 s: generous for slow Gemini/Telegram round-trips
+    .timeout_ms = 30000,                    // 30 s: generous for slow LLM/Telegram round-trips
     .idle_core_mask = (1 << 0) | (1 << 1), // also watch both IDLE tasks
     .trigger_panic = true
   };
@@ -4799,7 +5621,7 @@ void setup() {
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
-    geminiRole = soul;
+    llmRole = soul;
 
   String device = getStringFromFile(deviceFilename);
   Serial.println("device.md len: " + String(device.length()));
@@ -4809,7 +5631,7 @@ void setup() {
   devicesDefinitionFinal += "\n\nDevice Name: " + deviceName;
   devicesDefinitionFinal += "\nDevice timezone: " + timeZone;
   
-  if (geminiRole.length() == 0 || devicesDefinition.length() == 0) {
+  if (llmRole.length() == 0 || devicesDefinition.length() == 0) {
 	  Serial.println("System configuration failed. Restarting the MCU...");
 	  delay(5000);
 	  ESP.restart();
@@ -4830,9 +5652,9 @@ void setup() {
   if (scheduleExecutedTodayTasks != "")
     executedTodayTasks = scheduleExecutedTodayTasks;
 
-  systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
-  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinitionFinal + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+  systemContent = buildLlmMessage("user", llmRole, 0) + buildLlmMessage("model", "OK");
+  systemContentTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule + skillsDefinition + toolsDefinition, 0) + buildLlmMessage("model", "OK");
+  systemContentNoTools = buildLlmMessage("user", llmRole + devicesDefinitionFinal + devicesRule, 0) + buildLlmMessage("model", "OK");  
     
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
@@ -4932,8 +5754,8 @@ void setup() {
     Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");       
     Serial.println();
 
-    historicalMessages += buildGeminiMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
-  } 
+    historicalMessages += buildLlmMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
+  }
 
 }
 

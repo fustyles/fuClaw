@@ -404,27 +404,38 @@
       </div>
     </div>
 
-    <!-- Gemini -->
+    <!-- API -->
     <div class="section-label">
-      <span class="sl-icon sl-purple">&#10024;</span>Gemini Settings
+      <span class="sl-icon sl-purple">&#10024;</span>API Settings
     </div>
 
     <div class="field">
       <div class="field-header">
-        <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Google AI Studio API Key</span>
-      </div>
-      <div class="input-wrap">
-        <input type="password" id="gemini_key" value="geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
-        <span class="icon">&#128273;</span>
-        <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
-      </div>
-      <div class="field-header">
-        <label for="gemini_model">Model &nbsp;</label>
-        <span class="field-hint">Gemini Model</span>
+        <label for="llm_type">Type &nbsp;</label>
+        <span class="field-hint">API Type</span>
       </div>	  
       <div class="input-wrap">
-        <input type="text" id="gemini_model" value="geminiModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
+        <select id="llm_type">
+            <option value="gemini">Gemini</option>
+            <option value="openai">openAI</option>
+            <option value="grok">Grok</option>            
+        </select>
+      </div>    
+      <div class="field-header">
+        <label for="llm_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">API Key</span>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="llm_key" value="llmKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128273;</span>
+        <button type="button" class="toggle-vis" onclick="toggleVis('llm_key',this)">&#128065;</button>
+      </div>
+      <div class="field-header">
+        <label for="llm_model">Model &nbsp;</label>
+        <span class="field-hint">API Model</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="text" id="llm_model" value="llmModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
       </div>	  
     </div>
 	
@@ -594,8 +605,9 @@
       mqtt_subscribeTextTopic:  document.getElementById('mqtt_subText').value.trim(),
       mqtt_publishTextTopic:    document.getElementById('mqtt_pubText').value.trim(),
       mqtt_publishImageTopic:   document.getElementById('mqtt_pubImage').value.trim(),
-      gemini_apikey:            document.getElementById('gemini_key').value.trim(),
-      gemini_model:             document.getElementById('gemini_model').value.trim(),
+      llm_type:                 document.getElementById('llm_type').value,      
+      llm_key:                  document.getElementById('llm_key').value.trim(),
+      llm_model:                document.getElementById('llm_model').value.trim(),
       schedule_timeout:         document.getElementById('schedule_timeout').value,	  
       timezone:                 document.getElementById('timezone').value
     };
@@ -609,8 +621,8 @@
 	if (!cfg.mqtt_subscribeTextTopic) return 'Subscribe Text Topic cannot be empty';
 	if (!cfg.mqtt_publishTextTopic)   return 'Publish Text Topic cannot be empty';
 	if (!cfg.mqtt_publishImageTopic)  return 'Publish Image Topic cannot be empty';
-	if (!cfg.gemini_apikey)           return 'Gemini API Key cannot be empty';
-	if (!cfg.gemini_model)            return 'Gemini Model cannot be empty';	
+	if (!cfg.llm_key)                 return 'API Key cannot be empty';
+	if (!cfg.llm_model)               return 'API Model cannot be empty';	
 	if (!cfg.schedule_timeout)        return 'Schedule Timeout cannot be empty';		
     return null;
   }
@@ -644,6 +656,7 @@
   }
 </script>
 <script>
+  document.getElementById('llm_type').value = 'llmType';
   document.getElementById('timezone').value = 'timeZone';
 </script>
 
@@ -684,7 +697,7 @@
   <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
   <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
   <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
-  <a href="/chat"      id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
+  <a href="/chat"      id="fcn-chat"     title="AI Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
   <a href="/mqtt" id="fcn-mqtt"     title="MQTT Chat"><span class="fc-ico">&#128225;</span><span>MQTT</span></a>
 </nav>
 <script>
