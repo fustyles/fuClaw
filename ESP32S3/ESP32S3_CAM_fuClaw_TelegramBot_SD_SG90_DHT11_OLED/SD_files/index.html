@@ -16,6 +16,7 @@
     --accent:    #4f6ef7;
     --accent2:   #7c3aed;
     --accent3:   #06b6d4;
+    --accent4:   #f59e0b;
     --text:      #1a1d2e;
     --text2:     #4a5270;
     --text3:     #8892b0;
@@ -42,39 +43,26 @@
     padding: 40px 16px 60px;
   }
 
-  .wrapper {
-    width: 100%;
-    max-width: 660px;
-  }
+  .wrapper { width: 100%; max-width: 660px; }
 
-  /* ── header ── */
-  header {
-    text-align: center;
-    margin-bottom: 36px;
-  }
+  /* header */
+  header { text-align: center; margin-bottom: 36px; }
 
   .logo-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px; margin-bottom: 8px;
   }
-
   .logo-icon {
     width: 52px; height: 52px;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     border-radius: 16px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 24px rgba(79,110,247,.3);
-    position: relative;
-    overflow: hidden;
-    flex-shrink: 0;
+    position: relative; overflow: hidden; flex-shrink: 0;
   }
   .logo-icon::before {
     content: '';
-    position: absolute;
-    top: -50%; left: -50%;
+    position: absolute; top: -50%; left: -50%;
     width: 200%; height: 200%;
     background: conic-gradient(transparent 30%, rgba(255,255,255,.15) 50%, transparent 70%);
     animation: spin 4s linear infinite;
@@ -84,128 +72,76 @@
 
   .logo-mark {
     font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 2.2rem;
-    letter-spacing: -.02em;
+    font-weight: 700; font-size: 2.2rem; letter-spacing: -.02em;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
+  .tagline { font-size: .8rem; color: var(--text3); letter-spacing: .18em; text-transform: uppercase; margin-top: 4px; }
 
-  .tagline {
-    font-size: .8rem;
-    color: var(--text3);
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    margin-top: 4px;
-  }
-
-  .chips {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin-top: 14px;
-    flex-wrap: wrap;
-  }
+  .chips { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
   .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: .72rem;
-    color: var(--text2);
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; background: white;
+    border: 1px solid var(--border); border-radius: 20px;
+    font-size: .72rem; color: var(--text2);
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
   }
   .chip-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--success);
-    animation: blink 2s ease-in-out infinite;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); animation: blink 2s ease-in-out infinite;
   }
-  @keyframes blink {
-    0%,100% { opacity: 1; } 50% { opacity: .3; }
-  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
 
-  /* ── card ── */
+  /* card */
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 36px 36px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 36px;
     box-shadow: 0 4px 24px rgba(79,110,247,.08), 0 1px 4px rgba(0,0,0,.06);
   }
 
   /* section label */
   .section-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: flex; align-items: center; gap: 10px;
     margin: 28px 0 16px;
-    font-size: .72rem;
-    font-weight: 600;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--text3);
+    font-size: .72rem; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text3);
   }
   .section-label:first-of-type { margin-top: 0; }
   .section-label .sl-icon {
-    width: 26px; height: 26px;
-    border-radius: 8px;
+    width: 26px; height: 26px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: .88rem;
-    flex-shrink: 0;
+    font-size: .88rem; flex-shrink: 0;
   }
-  .sl-blue  { background: rgba(79,110,247,.1);  color: var(--accent); }
-  .sl-purple{ background: rgba(124,58,237,.1);  color: var(--accent2); }
-  .sl-cyan  { background: rgba(6,182,212,.1);   color: var(--accent3); }
-  .sl-green { background: rgba(16,185,129,.1);  color: var(--success); }
-  .section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+  .sl-blue   { background: rgba(79,110,247,.1);  color: var(--accent); }
+  .sl-purple { background: rgba(124,58,237,.1);  color: var(--accent2); }
+  .sl-cyan   { background: rgba(6,182,212,.1);   color: var(--accent3); }
+  .sl-green  { background: rgba(16,185,129,.1);  color: var(--success); }
+  .sl-amber  { background: rgba(245,158,11,.1);  color: var(--accent4); }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  /* ── field ── */
+  /* two-column grid for paired fields */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+  }
+  @media (max-width: 480px) { .field-grid { grid-template-columns: 1fr; } }
+
+  /* field */
   .field { margin-bottom: 16px; }
-  .field:last-of-type { margin-bottom: 0; }
-
-  .field-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-  label {
-    font-size: .82rem;
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: .01em;
-  }
-  .field-hint {
-    font-size: .7rem;
-    color: var(--text3);
-  }
+  .field-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  label { font-size: .82rem; font-weight: 500; color: var(--text); letter-spacing: .01em; }
+  .field-hint { font-size: .7rem; color: var(--text3); }
 
   .input-wrap { position: relative; }
-
   .input-wrap .icon {
-    position: absolute;
-    left: 13px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1rem;
-    pointer-events: none;
-    color: var(--text3);
-    transition: color .2s;
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    font-size: 1rem; pointer-events: none; color: var(--text3); transition: color .2s;
   }
 
   input[type="text"],
-  input[type="password"] {
+  input[type="password"],
+  input[type="number"] {
     width: 100%;
     padding: 10px 40px 10px 40px;
     background: var(--surface2);
@@ -220,175 +156,104 @@
   }
   input::placeholder { color: var(--text3); font-size: .8rem; }
   input:focus {
-    border-color: var(--accent);
-    background: white;
+    border-color: var(--accent); background: white;
     box-shadow: 0 0 0 3px rgba(79,110,247,.12);
   }
-  input:focus ~ .icon { color: var(--accent); }
 
   .toggle-vis {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--text3);
-    cursor: pointer;
-    font-size: .9rem;
-    padding: 4px 6px;
-    transition: color .2s;
-    line-height: 1;
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: .9rem; padding: 4px 6px;
+    transition: color .2s; line-height: 1;
   }
   .toggle-vis:hover { color: var(--accent); }
 
   /* select */
   .select-wrap { position: relative; }
   select {
-    width: 100%;
-    padding: 10px 36px 10px 40px;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'Noto Sans TC', sans-serif;
-    font-size: .84rem;
-    outline: none;
-    cursor: pointer;
-    -webkit-appearance: none;
-    appearance: none;
+    width: 100%; padding: 10px 36px 10px 40px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif; font-size: .84rem;
+    outline: none; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
     transition: border-color .2s, box-shadow .2s;
   }
-  select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(79,110,247,.12);
-  }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,110,247,.12); }
   select option { background: white; color: var(--text); }
   .select-arrow {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: var(--text3);
-    font-size: .75rem;
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; color: var(--text3); font-size: .75rem;
   }
   .select-icon {
-    position: absolute;
-    left: 13px;
-    top: 50%;
-    transform: translateY(-50%);
-    pointer-events: none;
-    color: var(--text3);
-    font-size: 1rem;
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; color: var(--text3); font-size: 1rem;
   }
 
-  /* ── submit ── */
-  .btn-row { margin-top: 32px; }
-
-  .btn-submit {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none;
-    border-radius: var(--radius);
-    color: white;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: .9rem;
-    font-weight: 600;
+  /* topic tag badge */
+  .topic-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: .65rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
     letter-spacing: .04em;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+  }
+  .badge-sub  { background: rgba(6,182,212,.1);  color: #0891b2; }
+  .badge-pub  { background: rgba(124,58,237,.1); color: #7c3aed; }
+
+  /* submit */
+  .btn-row { margin-top: 32px; }
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: var(--radius); color: white;
+    font-family: 'Space Grotesk', sans-serif; font-size: .9rem;
+    font-weight: 600; letter-spacing: .04em; cursor: pointer;
     transition: transform .15s, box-shadow .15s, opacity .15s;
     box-shadow: 0 6px 20px rgba(79,110,247,.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn-submit:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(79,110,247,.45);
-  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(79,110,247,.45); }
   .btn-submit:active { transform: translateY(0); opacity: .9; }
-  .btn-submit .arrow { font-size: 1.1rem; }
 
-  /* ── toast ── */
-  .toast {
-    display: none;
-    margin-top: 16px;
-    padding: 12px 16px;
-    border-radius: var(--radius);
-    font-size: .82rem;
-    letter-spacing: .02em;
-    text-align: center;
-  }
-  .toast.success {
-    display: block;
-    background: rgba(16,185,129,.08);
-    border: 1px solid rgba(16,185,129,.25);
-    color: #059669;
-  }
-  .toast.error {
-    display: block;
-    background: rgba(239,68,68,.07);
-    border: 1px solid rgba(239,68,68,.25);
-    color: #dc2626;
-  }
+  /* toast */
+  .toast { display: none; margin-top: 16px; padding: 12px 16px; border-radius: var(--radius); font-size: .82rem; text-align: center; }
+  .toast.success { display: block; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); color: #059669; }
+  .toast.error   { display: block; background: rgba(239,68,68,.07);  border: 1px solid rgba(239,68,68,.25);  color: #dc2626; }
 
-  /* ── json preview ── */
+  /* json preview */
   .json-preview {
-    display: none;
-    margin-top: 16px;
-    padding: 16px;
-    background: #1a1d2e;
-    border-radius: var(--radius);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: .75rem;
-    color: #a5d6a7;
-    line-height: 1.8;
-    white-space: pre;
-    overflow-x: auto;
+    display: none; margin-top: 16px; padding: 16px;
+    background: #1a1d2e; border-radius: var(--radius);
+    font-family: 'JetBrains Mono', monospace; font-size: .75rem;
+    color: #a5d6a7; line-height: 1.8; white-space: pre; overflow-x: auto;
   }
   .json-key   { color: #90caf9; }
   .json-str   { color: #a5d6a7; }
   .json-punct { color: #b0bec5; }
 
-  /* ── footer ── */
+  /* footer */
   footer {
-    margin-top: 24px;
-    text-align: center;
-    font-size: .68rem;
-    color: var(--text3);
-    letter-spacing: .06em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    margin-top: 24px; text-align: center; font-size: .68rem;
+    color: var(--text3); letter-spacing: .06em;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
   }
-  footer::before, footer::after {
-    content: '';
-    width: 32px;
-    height: 1px;
-    background: var(--border);
-  }
+  footer::before, footer::after { content: ''; width: 32px; height: 1px; background: var(--border); }
 
-  @media (max-width: 480px) {
-    .card { padding: 24px 18px; }
-  }
+  @media (max-width: 480px) { .card { padding: 24px 18px; } }
 </style>
 </head>
 <body>
 
 <div class="wrapper">
 
-  <!-- header -->
   <header>
     <div class="logo-row">
       <div class="logo-icon">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <circle cx="14" cy="9" r="4" fill="white" opacity=".95"/>
+          <circle cx="14" cy="9"  r="4" fill="white" opacity=".95"/>
           <circle cx="7"  cy="20" r="3" fill="white" opacity=".8"/>
           <circle cx="21" cy="20" r="3" fill="white" opacity=".8"/>
           <line x1="14" y1="13" x2="7"  y2="17" stroke="white" stroke-width="1.5" opacity=".6"/>
@@ -398,11 +263,11 @@
       </div>
       <div class="logo-mark">fuClaw</div>
     </div>
-    <div class="tagline">AI Agent &nbsp;·&nbsp; System Configuration</div>
+    <div class="tagline">AI Agent &nbsp;·&nbsp; MQTT System Configuration</div>
     <div class="chips">
       <span class="chip"><span class="chip-dot"></span>Online Settings</span>
       <span class="chip">&#128274; Secure Transmission</span>
-      <span class="chip">&#9881; v1.0</span>
+      <span class="chip">&#128200; v1.0</span>
     </div>
   </header>
 
@@ -430,7 +295,7 @@
         <span class="field-hint">Wi-Fi Name</span>
       </div>
       <div class="input-wrap">
-        <input type="text" id="wifi_ssid" value= "wifiSsid" placeholder="MyHomeNetwork" autocomplete="off" spellcheck="false">
+        <input type="text" id="wifi_ssid" value="wifiSsid" placeholder="MyHomeNetwork" autocomplete="off" spellcheck="false">
         <span class="icon">&#128246;</span>
       </div>
     </div>
@@ -441,7 +306,7 @@
         <span class="field-hint">Wi-Fi Password</span>
       </div>
       <div class="input-wrap">
-        <input type="password" id="wifi_pass" value= "wifiPassword" placeholder="••••••••••••" autocomplete="off">
+        <input type="password" id="wifi_pass" value="wifiPassword" placeholder="••••••••••••" autocomplete="off">
         <span class="icon">&#128274;</span>
         <button type="button" class="toggle-vis" onclick="toggleVis('wifi_pass',this)">&#128065;</button>
       </div>
@@ -475,27 +340,38 @@
       </div>
     </div>
 
-    <!-- Gemini -->
+    <!-- API -->
     <div class="section-label">
-      <span class="sl-icon sl-purple">&#10024;</span>Gemini AI
+      <span class="sl-icon sl-purple">&#10024;</span>API Settings
     </div>
 
     <div class="field">
       <div class="field-header">
-        <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
-        <span class="field-hint">Google AI Studio API Key</span>
-      </div>
-      <div class="input-wrap">
-        <input type="password" id="gemini_key" value= "geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
-        <span class="icon">&#128273;</span>
-        <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
-      </div>
-      <div class="field-header">
-        <label for="gemini_model">Model &nbsp;</label>
-        <span class="field-hint">Gemini Model</span>
+        <label for="llm_type">Type &nbsp;</label>
+        <span class="field-hint">API Type</span>
       </div>	  
       <div class="input-wrap">
-        <input type="text" id="gemini_model" value="geminiModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
+        <select id="llm_type">
+            <option value="gemini">Gemini</option>
+            <option value="openai">openAI</option>
+            <option value="grok">Grok</option>            
+        </select>
+      </div>    
+      <div class="field-header">
+        <label for="llm_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">API Key</span>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="llm_key" value="llmKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128273;</span>
+        <button type="button" class="toggle-vis" onclick="toggleVis('llm_key',this)">&#128065;</button>
+      </div>
+      <div class="field-header">
+        <label for="llm_model">Model &nbsp;</label>
+        <span class="field-hint">API Model</span>
+      </div>	  
+      <div class="input-wrap">
+        <input type="text" id="llm_model" value="llmModel" placeholder="gemini-3-flash-preview" autocomplete="off" spellcheck="false">
       </div>	  
     </div>
 	
@@ -507,7 +383,7 @@
     <div class="field">
       <div class="field-header">
         <label for="schedule_tomeout">Timeout &nbsp;</label>
-        <span class="field-hint">in minutes</span>
+        <span class="field-hint">In minutes</span>
       </div>	  
       <div class="input-wrap">
         <input type="number" id="schedule_timeout" value="scheduleTimeout" placeholder="10" min="1" max="3600" step="1" autocomplete="off" spellcheck="false">
@@ -627,7 +503,7 @@
     <div class="btn-row">
       <button class="btn-submit" onclick="sendConfig()">
         <span>Update & Send to Device</span>
-        <span class="arrow">→</span>
+        <span>→</span>
       </button>
     </div>
 
@@ -653,39 +529,42 @@
     t.textContent = msg;
     setTimeout(() => { t.className = 'toast'; }, 5000);
   }
-
+	
   function buildJson() {
     return {
-      wifi_ssid:           document.getElementById('wifi_ssid').value.trim(),
-      wifi_pass:           document.getElementById('wifi_pass').value,
-      telegramBot_token:   document.getElementById('tg_token').value.trim(),
-      telegramBot_chatID:  document.getElementById('tg_chatid').value.trim(),
-      gemini_apikey:       document.getElementById('gemini_key').value.trim(),
-      gemini_model:        document.getElementById('gemini_model').value.trim(),
-      schedule_timeout:    document.getElementById('schedule_timeout').value,	  
-      timezone:            document.getElementById('timezone').value
+      device_name:              document.getElementById('device_name').value.trim(),    
+      wifi_ssid:                document.getElementById('wifi_ssid').value.trim(),
+      wifi_pass:                document.getElementById('wifi_pass').value,
+      telegramBot_token:        document.getElementById('tg_token').value.trim(),
+      telegramBot_chatID:       document.getElementById('tg_chatid').value.trim(),
+      llm_type:                 document.getElementById('llm_type').value,      
+      llm_key:                  document.getElementById('llm_key').value.trim(),
+      llm_model:                document.getElementById('llm_model').value.trim(),
+      schedule_timeout:         document.getElementById('schedule_timeout').value,	  
+      timezone:                 document.getElementById('timezone').value
     };
   }
 
   function validate(cfg) {
-	if (!cfg.wifi_ssid)          return 'Wi-Fi SSID cannot be empty';
-	if (!cfg.wifi_pass)          return 'Wi-Fi password cannot be empty';
-	if (!cfg.telegramBot_token)  return 'Telegram Bot Token cannot be empty';
-	if (!cfg.telegramBot_chatID) return 'Telegram Chat ID cannot be empty';
-	if (!cfg.gemini_apikey)      return 'Gemini API Key cannot be empty';
-	if (!cfg.gemini_model)       return 'Gemini Model cannot be empty';	
-	if (!cfg.schedule_timeout)   return 'Schedule Timeout cannot be empty';
+	if (!cfg.device_name)             return 'Device name cannot be empty';   
+	if (!cfg.wifi_ssid)               return 'Wi-Fi SSID cannot be empty';
+	if (!cfg.wifi_pass)               return 'Wi-Fi password cannot be empty';
+	if (!cfg.telegramBot_token)       return 'Telegram Bot Token cannot be empty';
+	if (!cfg.telegramBot_chatID)      return 'Telegram Chat ID cannot be empty';
+	if (!cfg.llm_key)                 return 'API Key cannot be empty';
+	if (!cfg.llm_model)               return 'API Model cannot be empty';	
+	if (!cfg.schedule_timeout)        return 'Schedule Timeout cannot be empty';		
     return null;
   }
 
   function colorJson(cfg) {
-    const lines = JSON.stringify(cfg, null, 2).split('\n');
-    return lines.map(line => {
-      return line
+    return JSON.stringify(cfg, null, 2)
+      .split('\n')
+      .map(line => line
         .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
         .replace(/: "([^"]*)"/g, ': <span class="json-str">"$1"</span>')
-        .replace(/[{},\[\]]/g, m => `<span class="json-punct">${m}</span>`);
-    }).join('\n');
+        .replace(/[{},\[\]]/g, m => `<span class="json-punct">${m}</span>`)
+      ).join('\n');
   }
 
   function sendConfig() {
@@ -697,15 +576,17 @@
     preview.style.display = 'block';
     preview.innerHTML = colorJson(cfg);
 
-	fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
-	  method: 'GET'
-	})
-	.then(res => res.text())
-	.then(txt => showToast('✔ ' + txt, 'success'))
-	.catch(()  => showToast('⚠ Device connection failed.', 'error'));
+    fetch('/updateConfig?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), { method: 'GET' })
+      .then(res => res.text())
+      .then(txt => {
+        showToast('✔ ' + txt, 'success');
+        setTimeout(() => location.reload(), 3000);
+      })
+      .catch(() => showToast('⚠ Unable to connect to the device. JSON preview is shown below.', 'error'));
   }
 </script>
 <script>
+  document.getElementById('llm_type').value = 'llmType';
   document.getElementById('timezone').value = 'timeZone';
 </script>
 
@@ -743,10 +624,10 @@
   body { padding-bottom: 68px !important; }
 </style>
 <nav class="fc-nav">
-  <a href="/"         id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
-  <a href="/agent"   id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
-  <a href="/schedule" id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
-  <a href="/chat"     id="fcn-chat"     title="Gemini Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
+  <a href="/"           id="fcn-config"   title="System Config"><span class="fc-ico">&#9881;</span><span>Config</span></a>
+  <a href="/agent"    id="fcn-agent"    title="Agent Config"><span class="fc-ico">&#129302;</span><span>Agent</span></a>
+  <a href="/schedule"  id="fcn-schedule" title="Scheduler"><span class="fc-ico">&#128197;</span><span>Schedule</span></a>
+  <a href="/chat"      id="fcn-chat"     title="AI Chat"><span class="fc-ico">&#128172;</span><span>Chat</span></a>
 </nav>
 <script>
   (function(){

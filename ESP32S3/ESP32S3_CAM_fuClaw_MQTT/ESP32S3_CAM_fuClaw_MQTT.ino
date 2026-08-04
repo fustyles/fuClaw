@@ -315,12 +315,14 @@ bool initCamera() {
   if (psramFound()) {
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 10;           
-    config.fb_count = 1;
+    config.fb_count = 2;
   } else {
     config.frame_size = FRAMESIZE_QVGA;
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
+  
+  config.frame_size = FRAMESIZE_QVGA;
 
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
@@ -344,6 +346,13 @@ bool initCamera() {
 // withImageLock()-style usage in replyUserImage()/geminiVisionRequest()/openaiVisionRequest()/grokVisionRequest()/
 // telegramSendCapturedImage() below.
 void captureImage() {
+
+  for (int i = 0; i < 3; i++) {
+    camera_fb_t *stale = esp_camera_fb_get();
+    if (stale) esp_camera_fb_return(stale);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+  }  
+    
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("[DEBUG] Camera capture failed");
