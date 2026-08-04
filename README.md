@@ -18,11 +18,11 @@ It integrates:
 
 * Telegram Bot API (HTTPS long polling)
 * MQTT Broker communication
-* Gemini Chat Web Interface
-* Gemini Chat Web Interface via MQTT (WebSocket)
-* Google Gemini GenerateContent API
-* Gemini Grounded Web Search
-* Gemini Multimodal Vision Reasoning
+* Chat Web Interface
+* Chat Web Interface via MQTT (WebSocket)
+* GenerateContent API
+* Grounded Web Search
+* Multimodal Vision Reasoning
 * Prompt-driven JSON Tool Routing
 * GPIO Digital and Analog I/O Control
 * Camera Capture and Image Upload
