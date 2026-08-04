@@ -47,7 +47,6 @@ It combines:
 - Grounded web search (Gemini Google Search / OpenAI web_search / Grok web_search)
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
-- Persistent conversation memory
 - FreeRTOS concurrent task scheduling
 
 The runtime acts as a hybrid autonomous agent:
@@ -4603,11 +4602,6 @@ void setup() {
 
     historicalMessages += buildLlmMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
   }
-
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_10x20_me);
-  u8g2.enableUTF8Print();
-  u8g2.clear();  
 
 }
 
