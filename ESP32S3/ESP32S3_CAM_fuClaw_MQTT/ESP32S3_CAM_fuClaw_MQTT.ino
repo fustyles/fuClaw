@@ -268,10 +268,6 @@ WiFiServer serverStream(82);
 // MQTT client instance bound to the WiFi socket
 PubSubClient mqttClient(wifiClient);
 
-// schedule tasks
-String scheduleFilename = "schedule.json";
-String scheduleExecutedTodayTasksFilename = "scheduleTodayExecuted.md";
-
 // Forward declarations
 String getUnfinishedScheduleTasksJson(const String &scheduleTasksJson);
 String getExecuteScheduleTasksJson(const String &scheduleTasksJson);
