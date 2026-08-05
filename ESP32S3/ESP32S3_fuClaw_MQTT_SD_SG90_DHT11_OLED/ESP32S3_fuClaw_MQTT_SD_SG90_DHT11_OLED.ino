@@ -1578,7 +1578,6 @@ U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ OLED_SCL, /* data=
 WiFiClient wifiClient;
 
 WiFiServer server(81);
-WiFiServer serverStream(82);
 
 #include "Base64.h"
 #include <ArduinoJson.h>
@@ -4801,7 +4800,6 @@ void setup() {
   executedTodayDate = now->tm_mday;
 
   server.begin(); 
-  serverStream.begin();  
 
   if (xTaskCreate(
         task_getMqttMessage,

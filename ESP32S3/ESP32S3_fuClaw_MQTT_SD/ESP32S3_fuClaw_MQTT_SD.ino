@@ -1459,7 +1459,6 @@ SemaphoreHandle_t sdMutex        = NULL;
 WiFiClient wifiClient;
 
 WiFiServer server(81);
-WiFiServer serverStream(82);
 
 #include "Base64.h"
 #include <ArduinoJson.h>
@@ -4546,8 +4545,7 @@ void setup() {
   struct tm *now = localtime(&rawtime);
   executedTodayDate = now->tm_mday;
 
-  server.begin(); 
-  serverStream.begin();  
+  server.begin();  
 
   if (xTaskCreate(
         task_getMqttMessage,

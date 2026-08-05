@@ -1,4 +1,7 @@
 
+String skillsDefinition = R"(
+
+
 ==================================================
 BUILT-IN SKILLS REGISTRY
 ==================================================
@@ -21,3 +24,5 @@ FALLBACK
 --------------------------------------------------
 
 If uncertain → return natural conversational response.
+
+)";
