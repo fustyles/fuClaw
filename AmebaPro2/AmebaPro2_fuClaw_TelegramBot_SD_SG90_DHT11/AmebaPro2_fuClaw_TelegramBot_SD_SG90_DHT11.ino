@@ -193,7 +193,7 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini response format handled by ArduinoJson validation layer
+- LLM response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
 ------------------------------------------------------------
 */
@@ -225,7 +225,7 @@ String systemCommand =
   "- Digital input reading\n"
   "- Analog input reading\n\n"
   "System Status:\n<memory>"
-  "\n\nYou can chat with Gemini using natural language.\n"
+  "\n\nYou can chat with LLM using natural language.\n"
   "The system supports real-time search and vision-based analysis.\n\n"
   "Documentation:\n"
   "https://github.com/fustyles/fuClaw";
@@ -257,7 +257,7 @@ bool mainPageStatus = false;
 // Actual number of bytes downloaded from Telegram
 size_t downloadedFileSize = 0;
 
-// Defines the core persona and behavioral guidelines for Gemini (e.g., Smart Home Assistant, Hardware Steward).
+// Defines the core persona and behavioral guidelines for LLM (e.g., Smart Home Assistant, Hardware Steward).
 String llmRole = ""; 
 
 // Defines high-level composite workflows and automated macro tasks available to the agent (e.g., theft_detection).
@@ -1577,7 +1577,7 @@ String systemContentNoTools = "";
 // Logs each tool execution as a human-readable record for /getLog command
 String executeToolHistory = "";
   
-// Stores entire chat history in Gemini API JSON format
+// Stores entire chat history in LLM API JSON format
 // Used to preserve conversation memory across requests
 String historicalMessages = "";
 
@@ -1609,7 +1609,7 @@ SemaphoreHandle_t sdMutex        = NULL;
 SemaphoreHandle_t imageMutex     = NULL;
 
 // Maximum ticks to wait when taking a mutex before giving up.
-// 10 s is generous enough for the longest Gemini round-trip.
+// 10 s is generous enough for the longest LLM round-trip.
 #define MUTEX_TIMEOUT_TICKS pdMS_TO_TICKS(10000)
 
 #include <WiFi.h>
@@ -1652,7 +1652,7 @@ String envFilename = "env.json";
 }
 */
 
-// System personality prompt file (defines Gemini assistant behavior)
+// System personality prompt file (defines LLM assistant behavior)
 String soulFilename = "soul.md";
 
 // Persistent conversation memory file (stores historical chat context)
@@ -1905,7 +1905,7 @@ String getRtcTimeString(bool filename = false) {
   return String(buffer);
 }
 
-// Initialize the RTC using Gemini-synchronized local time.
+// Initialize the RTC using LLM-synchronized local time.
 void rtcInitialTime(String workName) {
 	
   rtcUpdateStatus = true;
@@ -3916,7 +3916,7 @@ String tool_dht11(int pin, String workId) {
 	"\"workId\":\"" + workId + "\"}";		
 }
 
-// Ask Gemini to re-check whether the current workflow is complete.
+// Ask LLM to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
 void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
@@ -3942,7 +3942,7 @@ void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "")
     handleAgentResponse(workId, llmChatRequest(workId, prompt));
 }
 
-// Execute tool commands returned by Gemini
+// Execute tool commands returned by LLM
 void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
     String timestamps = "\n" + workId;
 
@@ -4638,7 +4638,7 @@ void handleAgentResponse(String workId, String message) {
   }
 }
 
-// Base64-encode an audio buffer and send it to Gemini for transcription.
+// Base64-encode an audio buffer and send it to LLM for transcription.
 
 String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
@@ -5676,7 +5676,7 @@ void task_theft_detection(void *param) {
 		true, 
 		"Must execute skill theft_detection. Return ONLY tool_call JSON."
 	);
-       // [WDT FIX] evaluateWorkflowContinuation chains Gemini+Vision calls, reset after
+       // [WDT FIX] evaluateWorkflowContinuation chains LLM+Vision calls, reset after
 
   }
   
@@ -5841,7 +5841,7 @@ String getExecuteScheduleTasksJson(const String &scheduleTasksJson) {
 }
 
 // FreeRTOS task that runs every 60 seconds to check for due scheduled tasks.
-// For each due task, constructs a prompt and sends it to Gemini for execution.
+// For each due task, constructs a prompt and sends it to LLM for execution.
 // After all due tasks are processed, triggers /updateScheduleStatus to sync
 // execution state, and persists daily execution records and chat history to SD card.
 void task_time_scheduling(void *param) {
@@ -5901,7 +5901,7 @@ void task_time_scheduling(void *param) {
         JsonArray tasks = doc.as<JsonArray>();
         
         for (JsonObject obj : tasks) {
-             // reset per task to survive long Gemini calls
+             // reset per task to survive long LLM calls
 
           String taskName = obj["task"].as<String>();
 
@@ -5943,7 +5943,7 @@ void task_time_scheduling(void *param) {
 				 // [WDT FIX] llmChatRequest can take up to 20s, reset immediately after
 
 			  handleAgentResponse(workId, response);
-				 // [WDT FIX] handleAgentResponse may chain another Gemini call
+				 // [WDT FIX] handleAgentResponse may chain another LLM call
 				 
           }	
 
