@@ -5889,8 +5889,6 @@ String Ip2String(IPAddress ip) {
 void setup() {
   Serial.begin(115200);
 
-  // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-
   // ------------------------------------------------------------
   // Create mutexes before any task or function that might use them
   // runs. setup() itself calls rtcInitialTime()/replyUserMessage(),
