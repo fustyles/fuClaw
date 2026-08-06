@@ -89,8 +89,6 @@ Supported Tools
 /analogwrite              GPIO analog output
 /digitalread              GPIO digital input
 /analogread               GPIO analog input
-/servo                    Servo angle control (window actuator)
-/dht11                    Read temperature & humidity
 /syncrtc                  Update the hardware RTC
 /getrtc                   Get the hardware RTC current time
 /still                    Capture a still image and send it to the user.
@@ -168,11 +166,7 @@ HUB 8735 Ultra
 - Fill LED  : GPIO 13
 
 External Modules (Confirmed)
-- Emergency button     : GPIO 1  (active-high)
-- Light sensor         : GPIO 2  (analog input, 0-1023)
-- Warning light        : GPIO 11 (PWM output, 0-255)
-- Window actuator (SG90): AMB82-mini → GPIO 5 / HUB 8735 Ultra → GPIO 12 (servo, 0-180)
-- DHT11 Sensor         : AMB82-mini → GPIO 8 / HUB 8735 Ultra → GPIO 20
+
 
 Unknown hardware mappings require clarification.
 GPIO values are strictly validated before execution.
@@ -1076,61 +1070,6 @@ If the destination is unknown, the agent MUST ask the user before calling this t
 The tool call MUST NOT be generated until all required parameters are available.
 Use this tool when the user requests sending a LINE message or notification.
 
---------------------------------------------------
-Servo motor control:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/servo",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
-    "angle": "<Desired absolute angle from 0 to 180>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/servo",
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/servo",
-  "reason":"<error reason>",
-  "workId": "<system-provided>"
-}
-
---------------------------------------------------
-Reading the DHT11 temperature and humidity sensor:
---------------------------------------------------
-{
-  "type": "tool_call",
-  "method": "/dht11",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
-  }
-}
-
-Success response:
-{
-  "status": "success",
-  "method": "/dht11",
-  "temperature": <temperature value>,
-  "humidity": <humidity value>,
-  "workId": "<system-provided>"
-}
-
-Error response:
-{
-  "status": "error",
-  "method": "/dht11", 
-  "reason":"<error reason>",  
-  "workId": "<system-provided>"
-}
-
 ==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
@@ -1712,11 +1651,6 @@ int rtcMinute = 0;
 int rtcSecond = 0;
 String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
-
-#include <AmebaServo.h>
-AmebaServo servos[26];
-
-#include "DHT.h"
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
@@ -3867,55 +3801,6 @@ String toolPinInput(int pin, String mode, String workId) {
 		"\"workId\":\"" + workId + "\"}";
 }
 
-// Control a servo motor's position by specifying a target angle.
-// This function supports precise physical movement for actuators
-// like the SG90 servo connected to GPIO pins.
-String tool_servo(AmebaServo &servo, int pin, int angle, String workId) {
-    if (!servo.attached())
-        servo.attach(pin);
-	
-	if (angle < 0 || angle > 180) {
-		return 
-			"{\"status\":\"error\","
-			"\"method\":\"/servo\","				
-			"\"reason\":\"invalid_servo_angle\","
-			"\"workId\":\"" + workId + "\"}";
-	}
-		
-    servo.write(angle);
-		
-    return
-        "{\"status\":\"success\","
-        "\"method\":\"/servo\","
-		"\"workId\":\"" + workId + "\"}";		
-}
-
-// Read temperature and humidity from a DHT11 sensor.
-// Returns a JSON result string for the agent workflow.
-String tool_dht11(int pin, String workId) {
-  DHT dht(pin, DHT11);
-  dht.begin();
-  float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t)) {
-    return "{\"status\":\"error\","
-		   "\"method\":\"/dht11\","	
-           "\"reason\":\"dht11_read_failed\","
-		   "\"workId\":\"" + workId + "\"}";	
-
-  }
-
-  return
-    "{\"status\":\"success\","
-    "\"method\":\"/dht11\","
-    "\"temperature\":" + String(t) + ","
-    "\"humidity\":"    + String(h) + ","
-	"\"workId\":\"" + workId + "\"}";		
-}
-
 // Ask Gemini to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
@@ -4455,37 +4340,6 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
 
       evaluateWorkflowContinuation(workId, reCheck);
 	}
-    else if (command == "/servo") {
-        int pin = params["pin"].as<int>();
-        int angle = params["angle"].as<int>();
-
-        String response = tool_servo(servos[pin], pin, angle, workId);
-
-        if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
-		  historicalMessages += buildLlmMessage("user", command + timestamps);
-		  historicalMessages += buildLlmMessage("model", response + timestamps);
-		  executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
-		  xSemaphoreGive(stateMutex);
-        }
-		
-        evaluateWorkflowContinuation(workId, reCheck);
-        
-    }    
-    else if (command == "/dht11") {
-      int pin = params["pin"].as<int>();
-		
-      String response = tool_dht11(pin, workId);
-  
-	  if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {  
-		historicalMessages += buildLlmMessage("user", command + timestamps);
-		historicalMessages += buildLlmMessage("model", response + timestamps);
-		executeToolHistory += workId + " " + command + " [ " + response  + " ]\n";
-		xSemaphoreGive(stateMutex);
-	  }
-		
-      evaluateWorkflowContinuation(workId, reCheck);
-  
-    }		
     else if (command == "/help" || command == "/start") {
          
       String mem = getMemoryInfo();
