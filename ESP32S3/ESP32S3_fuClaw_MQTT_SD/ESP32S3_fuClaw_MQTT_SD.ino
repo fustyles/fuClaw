@@ -126,7 +126,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  Device name / WiFi / MQTT / LLM credentials / Time zone
+  Device name / WiFi / MQTT / LLM credentials / Schedule timeout tolerance / Time zone
 
 device.md
   Devices definition
