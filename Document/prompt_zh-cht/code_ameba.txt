@@ -110,7 +110,7 @@ Gemini 不使用原生 Function Calling API，而是：
 持久化檔案說明（存放於 SD 卡）
 ============================================================
 env.json
-  WiFi / Telegram / Gemini 憑證 / 時區設定
+  WiFi / Telegram / Gemini 憑證 / 排程逾時容忍值 / 時區設定
 
 device.md
   裝置定義（GPIO 腳位對應表，以及預留／預設為空的區塊，用於設定 Agent 之間的 MQTT/TCP 通訊目標，以及家庭管理通知的 Telegram／Line／MQTT 通知管道。）
@@ -2175,13 +2175,15 @@ void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "")
     }
 
     prompt +=
-        "If additional hardware actions are strictly required, "
+        "Analyze the latest tool execution result.\n"
+        "If another hardware action is still required to accomplish the user's request,\n"
         "return ONLY a valid tool_call JSON.\n"
-        "If the workflow is already complete, return EXACTLY: NONE.\n"
-        "If no tool action is required and a user-facing reply is needed, "
-        "respond naturally in the user's language.\n"
-        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
-        "Do not include explanation or extra text.";
+        "Otherwise, if the user should be informed of the result,\n"
+        "reply naturally in the user's language.\n"
+        "Return EXACTLY \"NONE\" only when:\n"
+        "- no further tool_call is needed, and\n"
+        "- no user-visible reply is necessary.\n"
+        "Do not include explanations or extra text.";
 
     // 傳送評估請求並處理 Gemini 回應（可能觸發更多工具呼叫）
     handleAgentResponse(workId, geminiChatRequest(workId, prompt));

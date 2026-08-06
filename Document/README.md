@@ -28,7 +28,7 @@
 
 ```
 SD 卡根目錄/
- ├── env.json                    ← 裝置名稱、WiFi、Telegram、Gemini 憑證、時區（必填）
+ ├── env.json                    ← 裝置名稱、WiFi、Telegram、Gemini 憑證、排程逾時容忍值、時區（必填）
  ├── soul.md                     ← AI 個性提示詞（可選，留空使用預設）
  ├── device.md                   ← 硬體裝置定義（可選，留空使用預設）
  ├── skill.md                    ← 技能 SOP 定義（可選，留空使用預設）
