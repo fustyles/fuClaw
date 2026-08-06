@@ -4800,6 +4800,7 @@ void task_getRequest(void *param) {
               client.println("Content-Length: " + String(pageToSend.length()));
               client.println("Access-Control-Allow-Origin: *");
               client.println("Cache-Control: no-cache");
+              client.println("Connection: close");
               client.println();
             
               const char* ptr = pageToSend.c_str();
