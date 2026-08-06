@@ -123,40 +123,6 @@ Supported Tools
 /telegramSendMessage      Send a message to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
-Persistent Files
-------------------------------------------------------------
-env.json
-  Device Name / WiFi / Telegram / LLM credentials / Time zone
-
-device.md
-  Devices definition
-
-skill.md
-  Skills definition
-
-soul.md
-  Custom assistant personality prompt
-
-memory.md
-  Conversation history persistence
-
-schedule.json
-  schedule tasks
-
-scheduleTodayExecuted.md
-  Stores scheduled tasks executed today
-
-index.html
-  Configuration manager (Web Chat Interface)
-  
-index_schedule.html
-  Schedule manager (Web Chat Interface)
-
-index_chat.html
-  LLM talk (Web Chat Interface)
-
-Conversation state is restored automatically on boot.
-------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
 Confirmed device mappings carried over from the ESP32-S3

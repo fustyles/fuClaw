@@ -13,7 +13,6 @@ Repository:
 Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
-Persistent Filesystem Runtime
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
 Build Date: 2026-08-07 00:00:00
@@ -126,43 +125,6 @@ Supported Tools
 /telegramSendMessage      Send a message to Telegram Bot
 /lineSendMessage          Send a message to Line Bot
 ------------------------------------------------------------
-Persistent Files
-------------------------------------------------------------
-env.json
-  Device name / WiFi / MQTT / LLM credentials / Time zone
-
-device.md
-  Devices definition
-
-skill.md
-  Skills definition
-
-soul.md
-  Custom assistant personality prompt
-
-memory.md
-  Conversation history persistence
-
-schedule.json
-  schedule tasks
-
-scheduleTodayExecuted.md
-  Stores scheduled tasks executed today
-
-index.html
-  Configuration manager (Web Chat Interface)
-  
-index_schedule.html
-  Schedule manager (Web Chat Interface)
-
-index_chat.html
-  LLM talk (Web Chat Interface)
-  
-index_mqtt_chat.html
-  LLM MQTT talk (Web Chat Interface) 
-  
-Conversation state is restored automatically on boot.
-------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
 Confirmed device mappings carried over from the ESP32-S3
@@ -206,7 +168,6 @@ Software Stack (ESP32-S3 port)
 - PubSubClient
 - ArduinoJson
 - FreeRTOS (built into ESP32 Arduino core)
-- SD_MMC (built into ESP32 Arduino core)
 - Local Base64 helper (no external dependency)
 - DHT sensor library 1,4,7 (Adafruit)
 - ESP32Servo 3.0.0
