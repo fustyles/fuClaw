@@ -126,7 +126,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  Device Name / WiFi / Telegram / LLM credentials / Time zone
+  Device Name / WiFi / Telegram / LLM credentials / Schedule timeout tolerance / Time zone
 
 device.md
   Devices definition
