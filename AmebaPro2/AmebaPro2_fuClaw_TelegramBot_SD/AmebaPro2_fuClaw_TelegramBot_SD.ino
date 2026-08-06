@@ -193,16 +193,16 @@ Known Limitations
 */
 
 // WiFi credentials
-String wifiSsid = "xxxxxxxxxx";
-String wifiPassword = "xxxxxxxxxx";
+String wifiSsid = "xxxxxx";
+String wifiPassword = "xxxxxx";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";
 String apPassword = "12345678";
 
 // Telegram bot configuration
-String telegrambotToken = "xxxxxxxxxx";
-String telegrambotChatId = "xxxxxxxxxx";
+String telegrambotToken = "xxxxxx";
+String telegrambotChatId = "xxxxxx";
 
 String systemCommand =
   "Built-in commands:\n"
