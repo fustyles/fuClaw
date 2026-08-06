@@ -2634,7 +2634,14 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -2758,7 +2765,14 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
@@ -2913,7 +2927,14 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
-
+    else if (body.length() == 0) {
+      if (xSemaphoreTake(stateMutex, MUTEX_TIMEOUT_TICKS) == pdTRUE) {
+        historicalMessages += buildGeminiMessage("model", "NONE");
+        xSemaphoreGive(stateMutex);
+      }      
+      return "NONE";
+    }
+    
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
