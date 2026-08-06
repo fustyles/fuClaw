@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM-CAM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-04 16:30:00
+Build Date: 2026-08-07 00:00:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -4256,13 +4256,15 @@ void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "")
     }
 
     prompt +=
-        "If additional hardware actions are strictly required, "
+        "Analyze the latest tool execution result.\n"
+        "If another hardware action is still required to accomplish the user's request,\n"
         "return ONLY a valid tool_call JSON.\n"
-        "If the workflow is already complete, return EXACTLY: NONE.\n"
-        "If no tool action is required and a user-facing reply is needed, "
-        "respond naturally in the user's language.\n"
-        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
-        "Do not include explanation or extra text.";
+        "Otherwise, if the user should be informed of the result,\n"
+        "reply naturally in the user's language.\n"
+        "Return EXACTLY \"NONE\" only when:\n"
+        "- no further tool_call is needed, and\n"
+        "- no user-visible reply is necessary.\n"
+        "Do not include explanations or extra text.";
 
     handleAgentResponse(workId, llmChatRequest(workId, prompt));
 }
