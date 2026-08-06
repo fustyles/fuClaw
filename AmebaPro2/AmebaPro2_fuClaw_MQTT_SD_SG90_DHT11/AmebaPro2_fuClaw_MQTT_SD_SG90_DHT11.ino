@@ -127,7 +127,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 env.json
-  Device name / WiFi / MQTT / Gemini credentials / Time zone
+  Device name / WiFi / MQTT / Gemini credentials / Schedule timeout tolerance / Time zone
 
 device.md
   Devices definition
