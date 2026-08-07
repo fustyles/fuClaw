@@ -16,9 +16,9 @@
 | 開發板（擇一） | Realtek AMB82-mini **或** HUB 8735 Ultra |
 | microSD 卡 | 建議 8 GB 以上（FAT32 格式化） |
 | USB 傳輸線 | Micro-USB（用於燒錄與序列埠監控） |
-| WiFi 網路 | 2.4 GHz 或 5 GHz，可連外網（Telegram / Gemini API） |
+| WiFi 網路 | 2.4 GHz 或 5 GHz，可連外網（Telegram / LLM API） |
 | Telegram Bot Token | 向 @BotFather 申請（免費） |
-| Gemini API Key | 至 https://aistudio.google.com 申請（免費額度） |
+| LLM API Key（三選一） | Gemini：至 https://aistudio.google.com 申請｜OpenAI：至 https://platform.openai.com 申請｜Grok：至 https://console.x.ai 申請 |
 
 ---
 
@@ -28,7 +28,7 @@
 
 ```
 SD 卡根目錄/
- ├── env.json                    ← 裝置名稱、WiFi、Telegram、Gemini 憑證、排程逾時容忍值、時區（必填）
+ ├── env.json                    ← 裝置名稱、WiFi、Telegram、LLM 供應商與憑證（Gemini / OpenAI / Grok 三選一）、排程逾時容忍值、時區（必填）
  ├── soul.md                     ← AI 個性提示詞（可選，留空使用預設）
  ├── device.md                   ← 硬體裝置定義（可選，留空使用預設）
  ├── skill.md                    ← 技能 SOP 定義（可選，留空使用預設）
@@ -56,8 +56,9 @@ SD 卡根目錄/
   "wifi_pass": "你的WiFi密碼",
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "telegramBot_chatID": "987654321",
-  "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-  "gemini_model": "gemini-3-flash-preview",
+  "llm_type": "gemini",
+  "llm_key": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "llm_model": "gemini-3-flash-preview",
   "schedule_timeout": 10,
   "timezone": "Asia/Taipei"
 }
@@ -68,7 +69,12 @@ SD 卡根目錄/
 - **device name**：裝置名稱。
 - **Telegram Bot Token**：在 Telegram 搜尋 `@BotFather`，輸入 `/newbot` 依指示建立，複製 Token。
 - **Telegram Chat ID**：啟動 Bot 後，傳一則訊息，再用瀏覽器開啟 `https://api.telegram.org/bot<TOKEN>/getUpdates`，找 `"chat":{"id":...}` 欄位。
-- **Gemini API Key**：前往 [Google AI Studio](https://aistudio.google.com)，登入後點選「Get API key」。
+- **llm_type**：選擇要使用的 LLM 供應商，填入 `gemini`、`openai` 或 `grok` 三者之一，其餘的 `llm_key`／`llm_model` 需與此選擇對應。
+- **llm_key（依 llm_type 而定）**：
+  - Gemini：前往 [Google AI Studio](https://aistudio.google.com)，登入後點選「Get API key」。
+  - OpenAI：前往 [OpenAI Platform](https://platform.openai.com)，於 API Keys 頁面建立金鑰。
+  - Grok（xAI）：前往 [xAI Console](https://console.x.ai)，於 API Keys 頁面建立金鑰。
+- **llm_model**：對應所選供應商的模型字串，例如 Gemini 用 `gemini-3-flash-preview`、OpenAI 用 `gpt-5.6`、Grok 用 `grok-4.5`。
 - **schedule timeout**：排程超過分鐘數逾時不執行
 - **time zone**：裝置所屬時區名稱。
   
@@ -226,7 +232,7 @@ SD 卡根目錄/
 // → value != 0 && value != 1
 // → 回傳 {"status":"error","reason":"invalid_digital_value","pin":24}
 // → 不執行 digitalWrite()
-// → 錯誤訊息注入對話歷史，供 Gemini 下次推理修正
+// → 錯誤訊息注入對話歷史，供 LLM 下次推理修正
 ```
 
 **案例 3：JSON 陣列中途有無效項目（最長有效前綴規則）**
@@ -247,10 +253,10 @@ SD 卡根目錄/
 // ⚠ 這是設計上的安全停損，防止在不完整計畫中繼續執行
 ```
 
-**案例 4：Gemini 輸出包含 Markdown 污染**
+**案例 4：LLM 輸出包含 Markdown 污染**
 
 ```
-// Gemini 實際輸出（含 Markdown 標記）：
+// LLM 實際輸出（含 Markdown 標記，三家供應商皆可能出現此傾向）：
 ```json
 {"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}
 
@@ -306,18 +312,18 @@ Agent 正確決策過程：
 
 ## 第 9 章　Prompt Engineering 設計哲學
 
-### 9.1 為什麼不使用 Gemini 原生 Function Calling API？
+### 9.1 為什麼不使用 LLM 供應商原生的 Function Calling API？
 
 | 比較項目 | 原生 Function Calling | fuClaw Prompt Routing |
 |---------|---------------------|----------------------|
-| 平台依賴 | 強（需要 API 支援此功能） | 低（任何能輸出文字的 LLM 均可） |
-| 模型相容性 | 僅限支援 FC 的模型版本 | 相容所有 Gemini 模型，甚至可替換為 GPT |
+| 平台依賴 | 強（需要 API 支援此功能，且三家供應商的 FC 格式互不相容） | 低（任何能輸出文字的 LLM 均可，這正是 fuClaw 目前已實際支援 Gemini／OpenAI／Grok 三選一的原因） |
+| 模型相容性 | 僅限支援 FC 的模型版本，且換供應商需重寫呼叫邏輯 | 相容所有支援的模型與供應商，`llm_type` 一鍵切換 Gemini／OpenAI／Grok |
 | 開發者控制權 | 較低（API 決定調用格式） | 完整（自定義 JSON Schema） |
 | 嵌入式驗證 | 需依賴 API 回應結構 | 本地 ArduinoJson 驗證，零依賴 |
 | 可移植性 | 差（綁定特定 API 版本） | 好（Prompt 可跨模型遷移） |
 | 安全性 | 取決於 API 實作 | 完整本地驗證，硬體動作不可被模擬 |
 
-> 💡 **設計哲學**：「讓模型學習一個 Schema，而非依賴 API 提供工具能力。」這讓 fuClaw 可在 API 版本升級或更換模型時，僅需調整 Prompt 即可繼續運作。
+> 💡 **設計哲學**：「讓模型學習一個 Schema，而非依賴 API 提供工具能力。」這讓 fuClaw 可在 API 版本升級、更換模型，甚至整個切換 LLM 供應商（Gemini／OpenAI／Grok）時，僅需調整 Prompt 即可繼續運作，不需要為每家供應商各寫一套工具呼叫邏輯。
 
 ---
 
@@ -393,7 +399,7 @@ Prompt 關鍵語句：
 層 1 - 提示詞層：明確列出禁止行為（絕不猜測 GPIO 映射）
 層 2 - 韌體驗證層：toolPinOutput() 強制驗證數值範圍
 層 3 - 確認機制層：硬體動作執行前要求使用者明確確認
-層 4 - 歷史注入層：執行結果回注記憶，讓 Gemini 知道「真實發生的事」
+層 4 - 歷史注入層：執行結果回注記憶，讓 LLM 知道「真實發生的事」
 
 關鍵設計：
 "若對以下事項不確定：→ 自然回覆並請求確認"
@@ -410,7 +416,7 @@ Prompt 關鍵語句：
 □ JSON 格式約束是否明確？（output ONLY valid JSON, no explanation）
 □ 哨兵格式是否嚴格定義？（EXACTLY: NONE，全大寫）
 □ 硬體安全邊界是否重申？（不猜測 GPIO，不跳過確認）
-□ 任務完成條件是否具體？（避免 Gemini 無限循環評估）
+□ 任務完成條件是否具體？（避免 LLM 無限循環評估）
 □ 錯誤退回路徑是否定義？（若不確定 → 詢問，不猜測）
 □ 是否避免模糊的複合指令？（「開關燈」應拆為「開燈」或「關燈」）
 ```
@@ -439,14 +445,14 @@ setup() 載入 memory.md
 使用者傳送訊息
      │
      ▼
-geminiChatRequest() 呼叫
+llmChatRequest() 呼叫（依 llm_type 派發至 Gemini／OpenAI／Grok）
      │
-     ├→ historicalMessages += 使用者訊息（buildGeminiMessage）
+     ├→ historicalMessages += 使用者訊息（buildLlmMessage）
      │
      ▼
-Gemini 回應
+LLM 回應
      │
-     ├→ historicalMessages += Gemini 回應（buildGeminiMessage）
+     ├→ historicalMessages += LLM 回應（buildLlmMessage）
      │
      ▼
 工具執行（若有）
@@ -472,12 +478,12 @@ Gemini 回應
 
 ```
 問題：每次對話都會增加 historicalMessages 的長度
-     → 最終超出 Gemini API 的 Token 上限（約 1M tokens）
+     → 最終超出所設定 LLM 供應商的 Token 上限（依供應商而異，例如 Gemini 約 1M tokens，OpenAI／Grok 依方案與模型不同）
      → 或超出裝置可用的 RAM（AMB82-mini 約 3-4 MB 堆積）
 
 成長速度估算（每輪對話）：
 - 使用者訊息：約 50-200 字元
-- Gemini 回應：約 100-500 字元
+- LLM 回應：約 100-500 字元
 - 工具執行記錄：約 50-200 字元/個工具
 - 建構格式開銷：約 50 字元/訊息
 → 平均每輪：約 300-1000 字元
@@ -495,7 +501,7 @@ Gemini 回應
 
 ```
 
-> ⚠️ **常見誤解澄清**：以上估算的是 `historicalMessages` 隨對話輪數的**增量**成長。但實際上，每一次 `geminiChatRequest()` 呼叫都會**完整重送**一份固定的 `systemContentTools`（角色設定、所有已確認裝置對應、硬體安全規則、技能 SOP、完整工具路由 Schema）——這份固定內容本身在計入使用者訊息或歷史之前，往往就已超過數千字元，且不論這輪對話是否真的用得到硬體工具，都照樣全額傳送。換句話說，**歷史紀錄的增量成長只是次要成本，工具定義的固定重複開銷才是主要成本**。這件事的具體優化方向請見 12.2 節「方向 5：兩段式呼叫路由」。
+> ⚠️ **常見誤解澄清**：以上估算的是 `historicalMessages` 隨對話輪數的**增量**成長。但實際上，每一次 `llmChatRequest()` 呼叫（無論實際派發至 Gemini、OpenAI 或 Grok）都會**完整重送**一份固定的 `systemContentTools`（角色設定、所有已確認裝置對應、硬體安全規則、技能 SOP、完整工具路由 Schema）——這份固定內容本身在計入使用者訊息或歷史之前，往往就已超過數千字元，且不論這輪對話是否真的用得到硬體工具，都照樣全額傳送。換句話說，**歷史紀錄的增量成長只是次要成本，工具定義的固定重複開銷才是主要成本**。這件事的具體優化方向請見 12.2 節「方向 5：兩段式呼叫路由」。
 
 ---
 
@@ -506,7 +512,7 @@ Gemini 回應
 
 現象：
 - 開機後序列埠出現 "JSON parse failed" 或行為異常
-- Gemini 回應不合邏輯或重複舊訊息
+- LLM 回應不合邏輯或重複舊訊息
 
 復原步驟：
 1. 取出 SD 卡，用電腦開啟 memory.md
@@ -730,9 +736,9 @@ EXECUTION RULES（STRICT）
 | **Token 視窗上限** | 對話歷史超長後 API 拒絕請求 | 高 | 定期 /reset；自動截斷舊訊息 |
 | **SRAM 碎片化** | String 操作導致堆積碎片，長時間運行後 malloc 失敗 | 高 | 靜態緩衝區替代 String；更頻繁的 /reset |
 | **阻塞式 HTTPS** | SSL 連線期間 FreeRTOS 其他任務被延遲 | 中 | 非同步 HTTP 客戶端；降低 API 呼叫頻率 |
-| **Gemini 回應延遲** | 含圖片的視覺請求需 5–15 秒 | 中 | 非必要時使用 /still 取代 /vision |
+| **LLM 視覺回應延遲** | 含圖片的視覺請求需 5–15 秒（因供應商與模型而略有差異） | 中 | 非必要時使用 /still 取代 /vision |
 | **無平行工具執行** | 工具只能循序執行，無法並行 | 低 | 架構層面：引入工具執行佇列 |
-| **記憶無摘要機制** | 歷史記憶原文保存，無法壓縮 | 中 | 定期呼叫 Gemini 生成對話摘要替換歷史 |
+| **記憶無摘要機制** | 歷史記憶原文保存，無法壓縮 | 中 | 定期呼叫所設定的 LLM 生成對話摘要替換歷史 |
 | **單一裝置架構** | 每個 fuClaw 實例獨立，無裝置間通信 | 低 | MQTT Broker 橋接多個 fuClaw 節點 |
 
 ---
@@ -742,7 +748,7 @@ EXECUTION RULES（STRICT）
 **方向 1：本地視覺語言模型（Local VLM）整合**
 
 ```
-現狀：視覺分析需要透過網路送至 Gemini API（約 5–15 秒/次）
+現狀：視覺分析需要透過網路送至所設定的 LLM API（Gemini／OpenAI／Grok，約 5–15 秒/次，依供應商而異）
 研究方向：
 - 探索在 AMB82-mini 的 NPU 上運行輕量 VLM（如 MobileVLM-1.7B）
 - 設計「本地粗篩 + 雲端精確分析」的混合推理架構
@@ -783,15 +789,15 @@ Agent C（臥室）──┘
 
 研究方向：
 - 引入「記憶重要性評分」機制（基於話題相關性）
-- 定期呼叫 Gemini 生成對話摘要，以摘要取代原始歷史
+- 定期呼叫所設定的 LLM 生成對話摘要，以摘要取代原始歷史
 - 實作「重要事件標記」機制，確保關鍵指令不被截斷
 
 實作框架（概念）：
 if (historicalMessages.length() > THRESHOLD) {
-    String summary = geminiChatRequest(
+    String summary = llmChatRequest(
         "Summarize the key facts and decisions from our conversation in 200 words.", 0);
-    historicalMessages = buildGeminiMessage("user", "Conversation summary: " + summary, 0)
-                       + buildGeminiMessage("model", "Understood.", 1);
+    historicalMessages = buildLlmMessage("user", "Conversation summary: " + summary, 0)
+                       + buildLlmMessage("model", "Understood.", 1);
     storeHistoricalMessagesToFile();
 }
 ```
@@ -826,7 +832,7 @@ if (historicalMessages.length() > THRESHOLD) {
 
 ```
 現狀（見 10.2 節澄清）：
-- 每次 geminiChatRequest() 都無條件夾帶完整 systemContentTools
+- 每次 llmChatRequest() 都無條件夾帶完整 systemContentTools，無論實際派發至 Gemini、OpenAI 或 Grok 皆然
 - 不論這輪對話是閒聊還是硬體控制，工具 Schema 都全額重複傳送
 - 隨工具數量持續擴充（已從最初十餘個成長至數十個），此固定成本只會越來越高
 
@@ -846,10 +852,10 @@ if (historicalMessages.length() > THRESHOLD) {
    例如 CHAT / HARDWARE / SCHEDULE / VISION_SEARCH 等，
    使正式呼叫只需載入單一分組的 Schema。
 
-3. 部分案例可完全略過 Gemini 分類呼叫，直接用本地規則判斷：
+3. 部分案例可完全略過 LLM 分類呼叫，直接用本地規則判斷：
    - 訊息本身就是 /still、/reboot 等內建斜線指令 → 本地直接判定分類
    - 訊息中出現 device.md 已定義的裝置別名關鍵字 → 高機率為 HARDWARE 分類
-   - 只有真正模糊的自然語言，才送出一次 Gemini 分類呼叫
+   - 只有真正模糊的自然語言，才送出一次 LLM 分類呼叫
 
 4. 安全性優先於省錢（最重要的原則）：
    分類不確定或信心不足時，預設倒向「帶完整工具 Schema」，
@@ -861,7 +867,7 @@ if (historicalMessages.length() > THRESHOLD) {
 
 實作框架（概念）：
 String classifyIntent(String userMessage) {
-    // 本地快速判斷（不呼叫 Gemini）
+    // 本地快速判斷（不呼叫 LLM）
     if (isSlashCommand(userMessage)) return localClassify(userMessage);
     if (matchesDeviceKeyword(userMessage, deviceMd)) return "HARDWARE";
 
@@ -869,8 +875,8 @@ String classifyIntent(String userMessage) {
     String miniPrompt = "僅回傳以下其中一個分類代碼，不要任何說明文字：\n"
                        + "CHAT / HARDWARE / SCHEDULE / VISION_SEARCH\n"
                        + "使用者輸入：" + userMessage;
-    String category = geminiChatRequest(miniPrompt, /*includeHistory=*/false,
-                                         /*includeTools=*/false);
+    String category = llmChatRequest(miniPrompt, /*includeHistory=*/false,
+                                      /*includeTools=*/false);  // 依 llm_type 派發至目前設定的供應商
     category = category.trim();
     if (!isKnownCategory(category)) return "HARDWARE";  // 不確定 → 從寬帶完整工具
     return category;
@@ -903,12 +909,12 @@ String classifyIntent(String userMessage) {
   如何設計「原子式工作流程」來防止部分執行狀態的記憶不一致？
 
 進階問題 2：
-  geminiVisionRequest() 中的 Base64 編碼使用了全域的 imageAddress/imageLength，
+  llmVisionRequest()（派發至 geminiVisionRequest() / openaiVisionRequest() / grokVisionRequest()）中的 Base64 編碼使用了全域的 imageAddress/imageLength，
   若 task_getTelegramMessage 和 task_anti_theft_detection 同時觸發視覺分析，
   會發生什麼 Race Condition？如何用 Mutex 修復？
 
 進階問題 3：
-  目前 /search 工具使用 geminiSearchRequest() 而非 geminiChatRequest()，
+  目前 /search 工具使用 llmSearchRequest() 而非 llmChatRequest()，
   差別在於前者附帶 google_search 工具設定，但後者沒有。
   搜尋完成後的 evaluateWorkflowContinuation() 使用的是哪個函式？
   這個選擇是否合理？有什麼潛在的 token 浪費？
@@ -936,6 +942,8 @@ String classifyIntent(String userMessage) {
 ### API 參考
 - [Telegram Bot API](https://core.telegram.org/bots/api)
 - [Google Gemini API](https://ai.google.dev/docs)
+- [OpenAI API](https://platform.openai.com/docs)
+- [xAI Grok API](https://docs.x.ai)
 - [Google AI Studio（取得 API Key）](https://aistudio.google.com)
 
 ### 相關技術文章
