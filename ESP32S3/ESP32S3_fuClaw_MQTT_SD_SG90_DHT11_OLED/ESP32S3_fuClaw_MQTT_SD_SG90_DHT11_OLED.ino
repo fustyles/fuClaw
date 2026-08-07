@@ -1599,7 +1599,7 @@ PubSubClient mqttClient(wifiClient);
 // File object for SD card access
 File file;
 
-// Environment configuration file (WiFi / Telegram / LLM API settings)
+// Environment configuration file (WiFi / MQTT / LLM API settings)
 String envFilename = "env.json";
   
 /*
