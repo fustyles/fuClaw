@@ -186,6 +186,8 @@ Software Stack
 - VideoStream
 - Base64
 - AmebaFatFS
+- AmebaServo
+- DHT
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
@@ -1634,7 +1636,7 @@ AmebaFatFS fs;
 // File object for SD card access
 File file;
 
-// Environment configuration file (WiFi / Telegram / Gemini API settings)
+// Environment configuration file (WiFi / Telegram / LLM API settings)
 String envFilename = "env.json";
   
 /*

@@ -1547,6 +1547,7 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 //                  any other shared String state
 // sdMutex        : serialises all SD_MMC.begin/end access
 //                  (SD_MMC driver is NOT re-entrant)
+// imageMutex     : serialises all screen snapshot access
 // ------------------------------------------------------------
 SemaphoreHandle_t mqttClientMutex = NULL;
 SemaphoreHandle_t stateMutex     = NULL;
