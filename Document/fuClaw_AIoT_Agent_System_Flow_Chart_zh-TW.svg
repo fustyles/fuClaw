@@ -1,5 +1,5 @@
 <svg width="1100" height="6293" viewBox="0 0 1100 6293" xmlns="http://www.w3.org/2000/svg" role="img">
-<title>fuClaw AIoT Agent 系統流程圖（更新版）</title>
+<title>fuClaw AIoT Agent 系統流程圖</title>
 <desc>fuClaw 嵌入式 AI Agent 的更新版架構流程圖，涵蓋雙通訊模式、可離線執行的排程器、擴充的工具集、Web 介面與持久化層。</desc>
 <rect x="0" y="0" width="1100" height="6293" fill="#ffffff"/>
 <defs>
@@ -7,7 +7,7 @@
 <path d="M1 1L8 5L1 9" fill="none" stroke="#64748b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
 </marker>
 </defs>
-<text x="550.0" y="58" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">fuClaw AIoT Agent 系統 — 流程圖（更新版）</text>
+<text x="550.0" y="58" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a" text-anchor="middle">fuClaw AIoT Agent 系統 — 流程圖</text>
 <text x="550.0" y="70" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" fill="#64748b" text-anchor="middle">Telegram Bot / MQTT 版本 — AmebaPro2、ESP32-S3-CAM、ESP32-S3（無相機）</text>
 <rect x="40" y="100" width="1020" height="40" rx="8" fill="#1e293b"/>
 <text x="58" y="125.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">1. 系統開機與初始化（setup）</text>
@@ -19,7 +19,7 @@
 <path d="M550.0,208 L550.0,236" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="318" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="550.0" y="340" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">設定環境變數</text>
-<text x="550.0" y="357" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">WiFi / Telegram / MQTT / Gemini 憑證、模型、時區、排程容錯時間</text>
+<text x="550.0" y="357" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">WiFi / Telegram / MQTT / LLM 憑證、模型、時區、排程容錯時間</text>
 <path d="M550.0,290 L550.0,318" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="400" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="550.0" y="422" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">初始化硬體</text>
@@ -87,8 +87,8 @@
 <rect x="247.6" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
 <text x="342.4" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">直接執行工具</text>
 <rect x="455.2" y="1218" width="189.6" height="68" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
-<text x="550.0" y="1240" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 Gemini</text>
-<text x="550.0" y="1257" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">geminiChatRequest() 呼叫</text>
+<text x="550.0" y="1240" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 LLM</text>
+<text x="550.0" y="1257" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">llmChatRequest() 呼叫</text>
 <text x="550.0" y="1271" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">handleAgentResponse()</text>
 <rect x="662.8" y="1218" width="189.6" height="68" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
 <text x="757.5999999999999" y="1256.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">停止 / 重新連線</text>
@@ -101,9 +101,9 @@
 <path d="M965.1999999999999,1190 L965.1999999999999,1218" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <line x1="40" y1="1320" x2="1060" y2="1320" stroke="#e2e8f0" stroke-width="1"/>
 <rect x="40" y="1350" width="1020" height="40" rx="8" fill="#1e293b"/>
-<text x="58" y="1375.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">3. Gemini 回應處理（handleAgentResponse）</text>
+<text x="58" y="1375.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">3. LLM 回應處理（handleAgentResponse）</text>
 <rect x="40" y="1412" width="1020.0" height="46" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
-<text x="550.0" y="1439.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">Gemini 回應文字</text>
+<text x="550.0" y="1439.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">LLM 回應文字</text>
 <rect x="40" y="1486" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
 <text x="204.0" y="1517.55" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">JSON 物件 { ... }</text>
 <rect x="386.0" y="1486" width="328.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
@@ -145,7 +145,7 @@
 <path d="M860.0,1766 L860.0,1792" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="1792" width="600" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
 <text x="340.0" y="1814" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">將工具結果加入記憶</text>
-<text x="340.0" y="1831" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">buildGeminiMessage()</text>
+<text x="340.0" y="1831" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">buildLLMMessage()</text>
 <path d="M495.0,1766 L495.0,1779.0 L340.0,1779.0 L340.0,1792" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="1872" width="1020.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="550.0" y="1894" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">儲存至 SD 卡</text>
@@ -312,10 +312,10 @@
 <path d="M550.0,4020 L550.0,4034.0 L809.5,4034.0 L809.5,4048" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="4130" width="501.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
 <text x="290.5" y="4152" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">直接呼叫 handleAgentResponse()</text>
-<text x="290.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">離線 — 完全略過 Gemini</text>
+<text x="290.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">離線 — 完全略過 LLM</text>
 <rect x="559.0" y="4130" width="501.0" height="54" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="809.5" y="4152" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="middle">建立確定性 prompt</text>
-<text x="809.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">geminiChatRequest() 之後呼叫 handleAgentResponse()</text>
+<text x="809.5" y="4169" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">llmChatRequest() 之後呼叫 handleAgentResponse()</text>
 <path d="M290.5,4102 L290.5,4130" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <path d="M809.5,4102 L809.5,4130" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="4212" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
@@ -344,20 +344,20 @@
 <rect x="542.4" y="4591.0" width="15.2" height="15" fill="#ffffff" opacity="0.9"/>
 <text x="550.0" y="4602.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">是</text>
 <rect x="40" y="4704" width="1020.0" height="54" rx="10" fill="#eee9fb" stroke="#8b5cf6" stroke-width="1.3"/>
-<text x="550.0" y="4726" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 Gemini 對話</text>
-<text x="550.0" y="4743" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">tools = true，geminiChatRequest()</text>
+<text x="550.0" y="4726" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#5b21b6" text-anchor="middle">送至 LLM 對話</text>
+<text x="550.0" y="4743" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#5b21b6" text-anchor="middle" opacity="0.85">tools = true，llmChatRequest()</text>
 <path d="M550.0,4676 L550.0,4704" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="4786" width="1020.0" height="54" rx="10" fill="#fde8ea" stroke="#ef4444" stroke-width="1.3"/>
 <text x="550.0" y="4808" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#991b1b" text-anchor="middle">handleAgentResponse(result)</text>
 <text x="550.0" y="4825" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#991b1b" text-anchor="middle" opacity="0.85">可能產生新的工具呼叫</text>
 <path d="M550.0,4758 L550.0,4786" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
-<text x="40" y="4862" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8" font-style="italic">&#8635; 回到第 3 塊（Gemini 回應處理）</text>
+<text x="40" y="4862" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11" fill="#94a3b8" font-style="italic">&#8635; 回到第 3 塊（LLM 回應處理）</text>
 <line x1="40" y1="4888" x2="1060" y2="4888" stroke="#e2e8f0" stroke-width="1"/>
 <rect x="40" y="4918" width="1020" height="40" rx="8" fill="#1e293b"/>
-<text x="58" y="4943.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">8. Gemini API 請求類型</text>
+<text x="58" y="4943.0" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">8. LLM API 請求類型</text>
 <rect x="40" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
 <text x="202.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">對話 Chat</text>
-<text x="202.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiChatRequest()</text>
+<text x="202.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">llmChatRequest()</text>
 <rect x="40" y="5034" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="202.0" y="5058.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">POST generateContent</text>
 <rect x="40" y="5092" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
@@ -365,7 +365,7 @@
 <text x="202.0" y="5131" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">system prompt + 歷史紀錄</text>
 <path d="M202.0,5074 L202.0,5092" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="5163" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
-<text x="202.0" y="5187.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<text x="202.0" y="5187.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">LLM 文字回應</text>
 <path d="M202.0,5145 L202.0,5163" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="40" y="5221" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="202.0" y="5243" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">更新歷史紀錄</text>
@@ -373,14 +373,14 @@
 <path d="M202.0,5203 L202.0,5221" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="388.0" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
 <text x="550.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">搜尋 Search</text>
-<text x="550.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiSearchRequest()</text>
+<text x="550.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">llmSearchRequest()</text>
 <rect x="388.0" y="5034" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="550.0" y="5058.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">+ tools: google_search</text>
 <rect x="388.0" y="5092" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="550.0" y="5116.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">有依據的搜尋結果</text>
 <path d="M550.0,5074 L550.0,5092" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="388.0" y="5150" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
-<text x="550.0" y="5172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<text x="550.0" y="5172" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">LLM 文字回應</text>
 <text x="550.0" y="5189" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">含引用來源</text>
 <path d="M550.0,5132 L550.0,5150" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="388.0" y="5221" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
@@ -389,16 +389,16 @@
 <path d="M550.0,5203 L550.0,5221" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="736.0" y="4980" width="324.0" height="26" rx="6" fill="#1e293b"/>
 <text x="898.0" y="4998" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="12.5" font-weight="700" fill="#ffffff" text-anchor="middle">視覺 Vision</text>
-<text x="898.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">geminiVisionRequest() — 僅限 CAM 版本</text>
+<text x="898.0" y="5021" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">llmVisionRequest() — 僅限 CAM 版本</text>
 <rect x="736.0" y="5034" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="898.0" y="5056" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">內嵌影像（base64 JPEG）</text>
 <text x="898.0" y="5073" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">+ 使用者查詢</text>
 <rect x="736.0" y="5105" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
-<text x="898.0" y="5127" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 視覺分析</text>
+<text x="898.0" y="5127" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">LLM 視覺分析</text>
 <text x="898.0" y="5144" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#1d4ed8" text-anchor="middle" opacity="0.85">多模態</text>
 <path d="M898.0,5087 L898.0,5105" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="736.0" y="5176" width="324.0" height="40" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
-<text x="898.0" y="5200.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">Gemini 文字回應</text>
+<text x="898.0" y="5200.025" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">LLM 文字回應</text>
 <path d="M898.0,5158 L898.0,5176" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arrow)"/>
 <rect x="736.0" y="5234" width="324.0" height="53" rx="10" fill="#e3edfd" stroke="#3b82f6" stroke-width="1.3"/>
 <text x="898.0" y="5256" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="11.5" font-weight="700" fill="#1d4ed8" text-anchor="middle">更新歷史紀錄</text>
@@ -441,10 +441,10 @@
 <text x="896.0" y="5728" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">排程管理介面，含 OFFLINE 徽章</text>
 <rect x="40" y="5771" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
 <text x="204.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_chat.html</text>
-<text x="204.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">Gemini 網頁聊天（HTTP）</text>
+<text x="204.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">LLM 網頁聊天（HTTP）</text>
 <rect x="386.0" y="5771" width="328.0" height="54" rx="10" fill="#dbf7f0" stroke="#0d9488" stroke-width="1.3"/>
 <text x="550.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#0f5c52" text-anchor="middle">index_mqtt_chat.html</text>
-<text x="550.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">透過 MQTT WebSocket 的 Gemini 網頁聊天</text>
+<text x="550.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#0f5c52" text-anchor="middle" opacity="0.85">透過 MQTT WebSocket 的 LLM 網頁聊天</text>
 <rect x="732.0" y="5771" width="328.0" height="54" rx="10" fill="#eef0f2" stroke="#94a3b8" stroke-width="1.3"/>
 <text x="896.0" y="5793" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="13" font-weight="700" fill="#334155" text-anchor="middle">MJPEG 串流</text>
 <text x="896.0" y="5810" font-family="'Noto Sans TC', 'Noto Sans CJK TC', 'PingFang TC', 'Microsoft JhengHei', Helvetica, Arial, sans-serif" font-size="10.5" fill="#334155" text-anchor="middle" opacity="0.85">port 82，僅限 CAM 版本</text>
