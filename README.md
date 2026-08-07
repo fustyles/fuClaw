@@ -20,7 +20,7 @@ It integrates:
 * MQTT Broker communication
 * Chat Web Interface
 * Chat Web Interface via MQTT (WebSocket)
-* GenerateContent API
+* Multi-Provider LLM Reasoning API (Gemini / OpenAI / Grok)
 * Grounded Web Search
 * Multimodal Vision Reasoning
 * Prompt-driven JSON Tool Routing
@@ -34,7 +34,7 @@ The runtime operates as a hybrid autonomous agent, combining:
 
 **Conversation + Reasoning + Tools + Vision + Memory + Hardware**
 
-fuClaw now ships as a **dual-platform, dual-transport** firmware family. Every combination of platform and transport shares the identical Gemini reasoning engine, tool dispatcher, and persistent memory design:
+fuClaw now ships as a **dual-platform, dual-transport** firmware family. Every combination of platform and transport shares the identical multi-provider (Gemini / OpenAI / Grok) reasoning engine, tool dispatcher, and persistent memory design:
 
 | | Telegram Bot | MQTT |
 |---|---|---|
@@ -189,7 +189,7 @@ Conversation state is restored automatically on boot.
 | `mqtt_publishImageTopic` | Topic the device publishes to, for outbound image data (e.g. screenshots or captured photos) |
 | `llm_type` | Gemini / openAI / Grok |
 | `llm_key` | API key |
-| `llm_model` | Selectable model string (e.g. `gemini-3-flash-preview`), letting the same firmware binary switch model generations without recompiling |
+| `llm_model` | Selectable model string matching the chosen `llm_type` (e.g. `gemini-3-flash-preview` for Gemini, `gpt-5.6` for OpenAI, `grok-4.5` for Grok), letting the same firmware binary switch providers or model generations without recompiling |
 | `schedule_timeout` | Minutes of grace tolerance applied by `task_time_scheduling` before a missed scheduled task is silently skipped instead of fired late |
 | `timezone` | IANA-style time zone used for RTC conversion and schedule evaluation |
 
@@ -300,9 +300,9 @@ AI Evaluation
 2. [Atomic Execution & Longest Valid Prefix](#2-atomic-execution--longest-valid-prefix)
 3. [Hardware Safety Layers](#3-hardware-safety-layers)
 4. [Multimodal Integration with Clear Separation of Concerns](#4-multimodal-integration-with-clear-separation-of-concerns)
-5. [Voice Input via Gemini STT](#5-voice-input-via-gemini-stt)
+5. [Voice Input via Multi-Provider STT](#5-voice-input-via-multi-provider-stt)
 6. [Persistent Memory & State Recovery](#6-persistent-memory--state-recovery)
-7. [RTC Time Synchronization via Gemini and HTTP Header Parsing](#7-rtc-time-synchronization-via-gemini-and-http-header-parsing)
+7. [RTC Time Synchronization via Provider-Agnostic HTTP Header Parsing](#7-rtc-time-synchronization-via-provider-agnostic-http-header-parsing)
 8. [FreeRTOS Multi-Task Architecture](#8-freertos-multi-task-architecture)
 9. [Workflow State Tracking & Self-Evaluation](#9-workflow-state-tracking--self-evaluation)
 10. [Extensible Sensor & Actuator Support](#10-extensible-sensor--actuator-support)
@@ -318,12 +318,12 @@ AI Evaluation
 
 ## 1. Prompt-Orchestrated Tool Routing
 
-The most fundamental breakthrough of this design is that it **requires no native function-calling API from Gemini**. Instead, a carefully crafted system prompt teaches the model to emit correctly structured `tool_call` JSON on its own.
+The most fundamental breakthrough of this design is that it **requires no native function-calling API from any LLM provider**. Instead, a carefully crafted system prompt teaches the model — whichever of the three supported providers is configured — to emit correctly structured `tool_call` JSON on its own.
 
 This choice delivers several concrete advantages:
 
 ### Platform Independence
-The format of native function-calling APIs can change at any time. Because all routing logic lives entirely within the prompt, if the Gemini model version changes or the API format is updated, only the prompt needs to be revised — no firmware changes required.
+The format of native function-calling APIs can change at any time, and each provider's format differs from the others. Because all routing logic lives entirely within the prompt rather than inside any vendor SDK, if a model version changes or a provider's API format is updated, only the prompt needs to be revised — no firmware changes required. This is also what makes switching between Gemini, OpenAI, and Grok at runtime possible: the `tool_call` JSON schema the LLM must emit is identical across all three providers.
 
 ### Extreme Flexibility
 Tools can be added, modified, or removed entirely at the text level. Both `skill.md` and `device.md` are plain-text configuration files, meaning users can extend system capabilities without knowing a single line of C++.
@@ -340,7 +340,21 @@ The framework maintains three compiled system prompts:
 | `systemContentNoTools` | Role + Device definitions + Device rules | Lightweight reasoning without tool routing (e.g. RTC conversion) |
 | `systemContent` | Role only | Minimal context calls (e.g. datetime pre-processing) |
 
-The `tools` integer parameter in `geminiChatRequest()` and `geminiSearchRequest()` selects between them at call time (`1` = tools, `0` = no-tools, `-1` = role-only). The STT pipeline (`sendFileToGemini()`) is purpose-built as a standalone transcription call that bypasses all system prompts entirely — it sends only the audio data and a minimal transcription instruction, keeping token usage minimal and avoiding any tool-routing interference in a context that requires only raw text output.
+The `tools` integer parameter in `llmChatRequest()` and `llmSearchRequest()` selects between them at call time (`1` = tools, `0` = no-tools, `-1` = role-only). The STT pipeline (`sendFileToLlm()`) is purpose-built as a standalone transcription call that bypasses all system prompts entirely — it sends only the audio data and a minimal transcription instruction, keeping token usage minimal and avoiding any tool-routing interference in a context that requires only raw text output.
+
+### Multi-LLM Provider Dispatch Layer (Gemini / OpenAI / Grok)
+fuClaw does not hard-wire itself to a single LLM vendor. Every reasoning entry point in the firmware is a thin dispatcher keyed off the `llm_type` field in `env.json`:
+
+```cpp
+String llmChatRequest(String workId, String message, int tools = 1) {
+    if (llmType == "gemini")      return geminiChatRequest(workId, message, tools);
+    else if (llmType == "openai") return openaiChatRequest(workId, message, tools);
+    else if (llmType == "grok")   return grokChatRequest(workId, message, tools);
+    else                          return "NONE";
+}
+```
+
+The same pattern repeats for `llmSearchRequest()`, `llmVisionRequest()`, and — on the Telegram build — `sendFileToLlm()` for voice transcription. Above this dispatch layer, every call site in the firmware (`rtcInitialTime()`, `handleAgentResponse()`, the tool executor, the scheduler, the theft-detection task) calls only `llmChatRequest()` / `llmSearchRequest()` / `llmVisionRequest()` and never references a provider-specific function directly. Underneath, three parallel families of provider-specific functions (`geminiChatRequest()` / `openaiChatRequest()` / `grokChatRequest()`, and their Search/Vision counterparts) each speak that provider's native REST format — Gemini's `generateContent` endpoint, OpenAI's Chat Completions / Responses API, and Grok's (xAI) Chat Completions-compatible API — while returning the exact same plain-text or `tool_call` JSON shape upstream. Switching a device from one provider to another is therefore a single `llm_type` change pushed through `/updateConfig`, not a firmware rewrite.
 
 ---
 
@@ -354,7 +368,7 @@ Every `tool_call` does exactly **one thing**: one pin, one operation, one value.
 
 ### Longest Valid Prefix
 
-When Gemini generates a multi-step workflow as a JSON array, `handleAgentResponse()` does not apply an all-or-nothing strategy. Instead it iterates through the array and executes **as many valid steps as possible from the beginning**, stopping the moment it encounters an incomplete or malformed entry:
+When the configured LLM generates a multi-step workflow as a JSON array, `handleAgentResponse()` does not apply an all-or-nothing strategy. Instead it iterates through the array and executes **as many valid steps as possible from the beginning**, stopping the moment it encounters an incomplete or malformed entry:
 
 ```cpp
 for (int i = 0; i < toolCount; i++) {
@@ -370,7 +384,7 @@ for (int i = 0; i < toolCount; i++) {
 This means that even when the AI produces partially incorrect output, the system can still act on the maximum valid portion rather than shutting down entirely. For resource-constrained embedded devices where retries are expensive, this is an exceptionally practical design.
 
 ### `reCheck` Flag — Selective Continuation Evaluation
-In multi-tool array execution, only the **last tool** in the batch sets `reCheck = true` and triggers `evaluateWorkflowContinuation()`. Intermediate tools pass `reCheck = false`, preventing redundant mid-sequence Gemini queries that would waste network resources and inflate conversation history unnecessarily.
+In multi-tool array execution, only the **last tool** in the batch sets `reCheck = true` and triggers `evaluateWorkflowContinuation()`. Intermediate tools pass `reCheck = false`, preventing redundant mid-sequence LLM queries that would waste network resources and inflate conversation history unnecessarily.
 
 ---
 
@@ -379,10 +393,10 @@ In multi-tool array execution, only the **last tool** in the batch sets `reCheck
 The GPIO control system is protected by multiple independent safety layers, each serving a distinct purpose.
 
 ### Explicit Mapping Requirement
-The system only allows control of devices explicitly defined in `device.md`. If a user says "turn on the light" but no pin mapping for "light" exists, Gemini is instructed to stop and ask for clarification rather than guess. This prevents AI hallucinations from causing direct hardware misfires.
+The system only allows control of devices explicitly defined in `device.md`. If a user says "turn on the light" but no pin mapping for "light" exists, the LLM is instructed to stop and ask for clarification rather than guess. This prevents AI hallucinations from causing direct hardware misfires.
 
 ### Hard Value Constraints
-The `constrain(value, 0, 255)` call inside `toolPinOutput()` acts as a last line of hardware defense. Even if Gemini outputs an out-of-range analog value, the firmware layer forces it within bounds before it ever reaches the hardware. Digital outputs are strictly validated to accept only `0` or `1`; any other value returns a structured error JSON response. The same constraint pattern is applied in `tool_servo()` — servo angles are clamped to the 0–180° range at the firmware level, independent of what the AI specifies.
+The `constrain(value, 0, 255)` call inside `toolPinOutput()` acts as a last line of hardware defense. Even if the LLM outputs an out-of-range analog value, the firmware layer forces it within bounds before it ever reaches the hardware. Digital outputs are strictly validated to accept only `0` or `1`; any other value returns a structured error JSON response. The same constraint pattern is applied in `tool_servo()` — servo angles are clamped to the 0–180° range at the firmware level, independent of what the AI specifies.
 
 ### Input-Only Pin Protection
 The button pin (pin 12) is explicitly marked as **INPUT ONLY** in the system prompt, blocking any AI-level attempt to use it as an output before a tool call is ever produced.
@@ -413,19 +427,24 @@ This design creates a clean **perception layer / action layer** architecture. Th
 Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. If `frames` is `false` and no prior image exists in the buffer (`imageLength == 0`), both functions detect this condition and return an early error rather than proceeding with an empty buffer. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly. On the ESP32-S3-CAM build, the same cache contract is honored by the `esp_camera` frame buffer (`esp_camera_fb_get()` / `esp_camera_fb_return()`) instead of `VideoStream`, with no change to the prompt-level tool semantics.
 
 ### Vision Request Architecture
-`geminiVisionRequest()` sends the captured JPEG frame as Base64 inline data in a stateless Gemini call — separate from the conversation history request. The result is then injected back into `historicalMessages` so the agent can reason about the observation in subsequent turns. This keeps the vision call lean while ensuring the analysis result participates fully in the ongoing agent workflow.
+`llmVisionRequest()` dispatches to the configured provider's vision handler (`geminiVisionRequest()` / `openaiVisionRequest()` / `grokVisionRequest()`), which sends the captured JPEG frame as Base64 inline (or provider-native) image data in a stateless call — separate from the conversation history request. The result is then injected back into `historicalMessages` so the agent can reason about the observation in subsequent turns. This keeps the vision call lean while ensuring the analysis result participates fully in the ongoing agent workflow.
 
 ---
 
-## 5. Voice Input via Gemini STT
+## 5. Voice Input via Multi-Provider STT
 
-Voice message support is implemented end-to-end with careful attention to embedded memory constraints.
+Voice message support is implemented end-to-end with careful attention to embedded memory constraints, and — like chat, search, and vision — is fully dispatched across all three supported LLM providers via `sendFileToLlm()`.
 
 ### Binary-Safe Download Pipeline
 Voice files from Telegram are downloaded using **HTTP/1.0** deliberately — this disables chunked transfer encoding, ensuring the response body is a clean binary stream that can be read byte-by-byte into a heap buffer without complex chunk-boundary parsing logic. The `MAX_FILE_SIZE` guard (256 KB) prevents heap overflow from unexpectedly large audio files.
 
-### Inline Base64 Encoding for Gemini
-Rather than uploading audio to a file storage service, the OGG/Opus audio is Base64-encoded and sent **inline within the Gemini API JSON request** using the `inline_data` field. This eliminates the need for a separate file hosting step and keeps the entire voice-to-response pipeline within a single API call. Memory is carefully managed: the Base64 buffer is `malloc`-allocated, immediately used to build the request string, then `free`-d before the network call proceeds — ensuring the large encoding buffer does not compete with the SSL client for heap space during transmission:
+### Per-Provider Transcription Strategy
+`sendFileToLlm()` dispatches to `sendFileToGemini()`, `sendFileToOpenAI()`, or `sendFileToGrok()` based on `llm_type`, and each is tailored to its provider's actual transcription contract rather than forcing a one-size-fits-all payload:
+
+- **Gemini and Grok**: the OGG/Opus audio is Base64-encoded and sent **inline within the JSON request** using an `inline_data`-style field. This eliminates the need for a separate file hosting step and keeps the entire voice-to-response pipeline within a single API call.
+- **OpenAI**: Whisper (`/v1/audio/transcriptions`) requires a genuine **multipart file upload** rather than inline Base64, so `sendFileToOpenAI()` streams the raw OGG bytes directly into a multipart body instead of encoding them.
+
+For the Base64 path, memory is carefully managed: the Base64 buffer is `malloc`-allocated, immediately used to build the request string, then `free`-d before the network call proceeds — ensuring the large encoding buffer does not compete with the SSL client for heap space during transmission:
 
 ```cpp
 char* encodedData = (char*)malloc(encodedLen);
@@ -435,15 +454,15 @@ free(encodedData);  // Released before SSL connection opens
 ```
 
 ### Unified Input Pipeline
-Voice messages, once transcribed, are routed through **the exact same processing pipeline as text input** — including slash-command detection and Gemini reasoning. There is no special-case branching for voice vs. text after transcription:
+Voice messages, once transcribed, are routed through **the exact same processing pipeline as text input** — including slash-command detection and LLM reasoning. There is no special-case branching for voice vs. text after transcription, and no branching by provider either — the transcribed text is handed to `llmChatRequest()` exactly like any typed message:
 
 ```cpp
-text = sendFileToGemini(voiceFile, downloadedFileSize, "audio/ogg; codecs=opus",
+text = sendFileToLlm(voiceFile, downloadedFileSize, "audio/ogg; codecs=opus",
                         "Transcribe this audio to text exactly as spoken.");
 if (text.startsWith("/"))
     executeTool(workId, text, JsonObject());
 else {
-    text = geminiChatRequest(workId, text);
+    text = llmChatRequest(workId, text);
     handleAgentResponse(workId, text);
 }
 ```
@@ -457,7 +476,7 @@ This architectural cleanliness means all future improvements to the text pipelin
 The conversation memory persistence design solves a fundamental challenge on embedded devices: how to restore context after a reboot.
 
 ### Real-Time Synchronization
-`storeDataToFile()` is called after **every conversation update** — not in batches. This ensures that even if the device loses power at any moment, the most recent conversation state has already been saved. On boot, the system automatically loads this memory so Gemini can resume the conversation in context, without the user needing to re-explain any background.
+`storeDataToFile()` is called after **every conversation update** — not in batches. This ensures that even if the device loses power at any moment, the most recent conversation state has already been saved. On boot, the system automatically loads this memory so the configured LLM can resume the conversation in context, without the user needing to re-explain any background.
 
 ### Atomic File Write with Backup
 Before writing a new `memory.md`, the function checks whether the current file exists, renames it to `memory.md.bak`, and only then writes the new version. This two-step rename-then-write strategy ensures that a power loss mid-write leaves the previous backup intact rather than corrupting the only copy of conversation history:
@@ -478,7 +497,7 @@ file.println(data.c_str());             // Write new state
 | `soul.md` | AI personality definition |
 | `device.md` | Hardware pin mappings, plus reserved (empty by default) blocks for agent-to-agent communication targets (MQTT topics, TCP peer addresses) and household-admin notification channels (Telegram Bot, Line Bot, MQTT) |
 | `skill.md` | Skill workflow scripts |
-| `env.json` | Authentication credentials, Gemini model selection, schedule timeout |
+| `env.json` | Authentication credentials, LLM provider & model selection (`llm_type` / `llm_model` / `llm_key`), schedule timeout |
 | `memory.md` | Persistent conversation history |
 | `schedule.json` | Schedule tasks |
 | `scheduleTodayExecuted.md` | Stores scheduled tasks executed today; prevents recurring tasks from re-triggering within the same calendar day |
@@ -488,7 +507,7 @@ file.println(data.c_str());             // Write new state
 | `index_chat.html` | Web chat interface |
 | `index_mqtt_chat.html` | Web chat via MQTT interface |
 
-All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations — including which Gemini model generation each device targets.
+All files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations — including which LLM provider and model generation each device targets.
 
 ### Timestamp-Based `workId` Event Tracking Mechanism
 In a complex environment involving concurrent multi-tasking and multimodal interactions, the system assigns a unique, timestamp-embedded identifier—`workId`—to every generated workflow or tool call. This design delivers several core architectural advantages:
@@ -502,18 +521,18 @@ In a complex environment involving concurrent multi-tasking and multimodal inter
 
 ---
 
-## 7. RTC Time Synchronization via Gemini and HTTP Header Parsing
+## 7. RTC Time Synchronization via Provider-Agnostic HTTP Header Parsing
 
 Time awareness on an embedded device without an NTP library is a non-trivial problem. fuClaw solves it elegantly using two complementary techniques.
 
-### Gemini API Response Header as Time Source (Telegram version)
-Inside the `getTelegramMessage()` polling loop, the firmware extracts the `Date:` field from the HTTP response header into `getTime` while reading the message body simultaneously. This provides a GMT timestamp at **zero additional network cost** — the time data rides entirely on the Telegram communication that was already necessary.
+### Telegram Response Header as Time Source (Telegram version)
+Inside the `getTelegramMessage()` polling loop, the firmware extracts the `Date:` field from the HTTP response header into `getTime` while reading the message body simultaneously. This provides a GMT timestamp at **zero additional network cost** — the time data rides entirely on the Telegram communication that was already necessary, independent of which LLM provider is configured.
 
-### Dedicated Gemini Pre-Call for Time (General)
-`getGeminiDatetime()` makes a lightweight Gemini API call and captures the `Date:` header from the HTTP response. This approach works independently of Telegram, making it available for both the Telegram and MQTT versions. If the connection fails, the function gracefully falls back to a grounded search prompt.
+### Provider-Agnostic `getGoogleDatetime()` Pre-Call (General)
+`getGoogleDatetime()` opens a lightweight HTTPS connection directly to `google.com` and captures the `Date:` header from the HTTP response — it does **not** depend on any of the three configured LLM providers. This is a deliberate decoupling: with three interchangeable providers now supported, time synchronization can no longer assume a specific vendor's API is reachable or free of rate limits, so it is sourced independently of `llm_type`. This approach works independently of Telegram, making it available for both the Telegram and MQTT versions. If the connection fails, the function gracefully falls back to a grounded search prompt via the configured LLM.
 
-### Gemini Handles Timezone Conversion — Without Search
-`rtcInitialTime()` receives the GMT time string and calls `geminiChatRequest(workId, prompt, -1)` — the role-only system prompt — asking Gemini to convert the GMT time to the configured `timeZone` and add exactly 4 seconds of propagation compensation. The prompt enforces a strict pure-JSON response (no Markdown, no explanation, first character must be `{`, last must be `}`). Once parsed, individual fields are extracted and written to the hardware RTC.
+### The Configured LLM Handles Timezone Conversion — Without Search
+`rtcInitialTime()` receives the GMT time string and calls `llmChatRequest(workId, prompt, -1)` — the role-only system prompt, dispatched to whichever of Gemini / OpenAI / Grok is configured — asking the LLM to convert the GMT time to the configured `timeZone` and add exactly 4 seconds of propagation compensation. The prompt enforces a strict pure-JSON response (no Markdown, no explanation, first character must be `{`, last must be `}`). Once parsed, individual fields are extracted and written to the hardware RTC.
 
 ### Scheduling Only Runs When RTC Is Ready
 The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task first attempts a **self-repair** by calling `executeTool("/syncrtc")` to re-synchronize the hardware clock automatically. Only if that synchronization attempt also fails — leaving rtcYear still 0 — does the task continue to skip the current cycle. This **self-repair before skip** strategy avoids missed scheduled tasks caused by a transient RTC initialization failure, while still guaranteeing that no scheduled task ever fires against an uninitialized clock state.
@@ -522,9 +541,9 @@ The `task_time_scheduling` background task checks `rtcYear == 0` before each eva
 fuClaw introduces a highly flexible and intuitive dual-mode interaction mechanism for edge-side schedule management, allowing users to switch seamlessly based on different scenarios:
 
 * **AI Natural Language Parsing Mode:**
-  Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based Gemini engine automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard storage's `schedule.json`.
+  Users do not need to understand complex Cron expressions or programming syntax. They can simply input casual human language through Telegram or the chat interface (e.g., *"Set up theft detection every Monday to Friday at 8:30 AM"*). The cloud-based LLM engine — Gemini, OpenAI, or Grok, whichever is configured — automatically parses the user's intent and temporal parameters, translating them into a structured JSON task format sent to the firmware. After passing local boundary safety validations, the firmware writes it in real-time onto the onboard storage's `schedule.json`.
 
-  At this creation step, the `SCHEDULE TASK CREATION RULES` embedded in the system prompt make one further decision on Gemini's side: if the requested action can be fully represented as one or more `tool_call` objects — no reasoning, conversation, multimodal analysis, or search needed to carry it out — Gemini stores that complete `tool_call` JSON (a single object or an array representing a multi-step sequence) directly in the `task` field, and is explicitly instructed to **prefer this format whenever possible**. Only when the request genuinely requires reasoning at trigger time does Gemini fall back to storing a natural-language description string instead. This single upstream decision is what determines, later, whether the scheduled entry can fire fully offline (see below) or still needs a live Gemini call when it comes due.
+  At this creation step, the `SCHEDULE TASK CREATION RULES` embedded in the system prompt make one further decision on the LLM's side: if the requested action can be fully represented as one or more `tool_call` objects — no reasoning, conversation, multimodal analysis, or search needed to carry it out — the LLM stores that complete `tool_call` JSON (a single object or an array representing a multi-step sequence) directly in the `task` field, and is explicitly instructed to **prefer this format whenever possible**. Only when the request genuinely requires reasoning at trigger time does the LLM fall back to storing a natural-language description string instead. This single upstream decision is what determines, later, whether the scheduled entry can fire fully offline (see below) or still needs a live LLM call when it comes due.
 * **Manual Graphical Web UI Mode:**
   To ensure rock-solid reliability and pixel-perfect control when offline or in quiet environments, the system features a built-in dedicated schedule management web interface (`index_schedule.html`). Users can utilize the standard graphical interface to **manually add, edit, modify, or delete** any scheduled task with deterministic precision.
 
@@ -532,14 +551,14 @@ fuClaw introduces a highly flexible and intuitive dual-mode interaction mechanis
 Both distinct control paths **read and write to the exact same core `schedule.json` file in real-time**. This design achieves a perfect harmony between "highly flexible natural language input" and "highly deterministic graphical management," ensuring a seamless, robust user experience across all deployment conditions.
 
 ### Fully Offline Execution via Structured `tool_call` Storage
-Not every scheduled task needs a live Gemini call at the moment it fires. The `task` field of each entry in `schedule.json` can hold either of two fundamentally different payload types, and `task_time_scheduling` treats them differently:
+Not every scheduled task needs a live LLM call at the moment it fires. The `task` field of each entry in `schedule.json` can hold either of two fundamentally different payload types, and `task_time_scheduling` treats them differently:
 
-* **Plain-text description** (e.g. `"Turn off the green light"`) — at trigger time, the firmware sends this text to `geminiChatRequest()` so the cloud model can interpret intent and produce the corresponding `tool_call` JSON. This mode requires a working network connection and a reachable Gemini endpoint at the exact moment the task is due.
-* **Pre-authored `tool_call` JSON** — a single tool_call object (`{"type":"tool_call","method":"/digitalwrite","params":{...}}`) or an array of tool_call objects representing a multi-step sequence (e.g. turn a pin on, delay, turn it off, delay, repeat). The scheduler detects this case with a simple boundary check — the stored string starts with `{`/ends with `}`, or starts with `[`/ends with `]` — and when matched, calls `handleAgentResponse()` **directly**, completely bypassing any Gemini API call.
+* **Plain-text description** (e.g. `"Turn off the green light"`) — at trigger time, the firmware sends this text to `llmChatRequest()` so the cloud model can interpret intent and produce the corresponding `tool_call` JSON. This mode requires a working network connection and a reachable endpoint for the configured LLM provider at the exact moment the task is due.
+* **Pre-authored `tool_call` JSON** — a single tool_call object (`{"type":"tool_call","method":"/digitalwrite","params":{...}}`) or an array of tool_call objects representing a multi-step sequence (e.g. turn a pin on, delay, turn it off, delay, repeat). The scheduler detects this case with a simple boundary check — the stored string starts with `{`/ends with `}`, or starts with `[`/ends with `]` — and when matched, calls `handleAgentResponse()` **directly**, completely bypassing any LLM API call.
 
-Because the reasoning has already happened once, at authoring time, a pre-authored `tool_call` schedule fires purely from local firmware logic, with **zero cloud dependency at execution time** — it continues to run correctly even if Wi-Fi, the Gemini API, or the MQTT broker is unreachable at the exact trigger moment. This makes fuClaw suitable for latency-critical or connectivity-fragile automations (relay pulses, servo sequences, sensor polling loops) that must fire on schedule regardless of network conditions.
+Because the reasoning has already happened once, at authoring time, a pre-authored `tool_call` schedule fires purely from local firmware logic, with **zero cloud dependency at execution time** — it continues to run correctly even if Wi-Fi, the configured LLM's API, or the MQTT broker is unreachable at the exact trigger moment. This makes fuClaw suitable for latency-critical or connectivity-fragile automations (relay pulses, servo sequences, sensor polling loops) that must fire on schedule regardless of network conditions.
 
-`index_schedule.html` surfaces this distinction directly in the UI: any task stored as a `tool_call` object or `tool_call` sequence is flagged with an **OFFLINE** badge in the schedule table, so users can tell at a glance which entries will run without any cloud round-trip, versus which ones still depend on a live Gemini call to be interpreted.
+`index_schedule.html` surfaces this distinction directly in the UI: any task stored as a `tool_call` object or `tool_call` sequence is flagged with an **OFFLINE** badge in the schedule table, so users can tell at a glance which entries will run without any cloud round-trip, versus which ones still depend on a live LLM call to be interpreted.
 
 ---
 
@@ -579,13 +598,13 @@ The `task_time_scheduling` task is **enabled** by default in `setup()`. Schedule
 `evaluateWorkflowContinuation()` is the core of the entire agent's autonomy.
 
 ### Active Completion Checking
-After each tool execution, instead of silently waiting for the user's next command, the system actively asks Gemini: *"Is the current workflow complete? Is anything else needed?"* This gives the system the ability to autonomously complete multi-step tasks without requiring the user to manually guide each individual step.
+After each tool execution, instead of silently waiting for the user's next command, the system actively asks the configured LLM: *"Is the current workflow complete? Is anything else needed?"* This gives the system the ability to autonomously complete multi-step tasks without requiring the user to manually guide each individual step.
 
 ### Goal-Referenced Evaluation
-The `task` parameter design ensures this self-evaluation has a clear reference point. When Gemini assesses whether to continue, it compares against the **original user intent** — not just the result of the last execution step. This makes workflow completion detection more accurate and reduces unnecessary redundant actions. The prompt also includes a deduplication rule: Gemini is explicitly instructed not to repeat the same semantic content as its immediately previous response within the same workflow.
+The `task` parameter design ensures this self-evaluation has a clear reference point. When the LLM assesses whether to continue, it compares against the **original user intent** — not just the result of the last execution step. This makes workflow completion detection more accurate and reduces unnecessary redundant actions. The prompt also includes a deduplication rule: the LLM is explicitly instructed not to repeat the same semantic content as its immediately previous response within the same workflow.
 
 ### NONE Sentinel Value
-When Gemini determines a workflow is complete, it returns the exact string `"NONE"`. The firmware handles this in `handleAgentResponse()` with an explicit `message != "NONE"` guard — no message is sent to the user, no further processing occurs:
+When the LLM determines a workflow is complete, it returns the exact string `"NONE"`. The firmware handles this in `handleAgentResponse()` with an explicit `message != "NONE"` guard — no message is sent to the user, no further processing occurs:
 
 ```cpp
 } else if (message != "NONE") {
@@ -605,7 +624,7 @@ The prompt-driven tool architecture scales naturally to more complex peripherals
 Servo control uses a reference-passed servo instance (`AmebaServo` on AmebaPro2, `ESP32Servo` on the ESP32-S3-CAM build) rather than a global singleton, making it straightforward to extend to multiple servo pins in the future. Angle clamping at the firmware layer (`constrain(angle, 0, 180)`) provides the same hardware safety guarantee on both platforms. Undefined servo pins return a structured error JSON rather than silently failing, maintaining the system's consistent error contract. The `servo.attached()` check before `servo.attach(pin)` prevents redundant re-initialization.
 
 ### DHT11 Temperature & Humidity Sensor (`/dht11`)
-The DHT11 integration handles the sensor's known failure mode — returning `NaN` on read errors — with an explicit `isnan()` check that produces a structured `dht11_read_failed` error response. This is fed back into the Gemini conversation history, allowing the AI to reason about sensor failures and respond naturally (e.g., "The sensor didn't respond — please check the wiring") rather than propagating silent errors downstream.
+The DHT11 integration handles the sensor's known failure mode — returning `NaN` on read errors — with an explicit `isnan()` check that produces a structured `dht11_read_failed` error response. This is fed back into the LLM conversation history, allowing the AI to reason about sensor failures and respond naturally (e.g., "The sensor didn't respond — please check the wiring") rather than propagating silent errors downstream.
 
 ### OLED Text Display (`/oled`, OLED-equipped variant)
 The variant adds a fourth tool, `/oled`, driving an SSD1306 128×64 I2C display via `U8g2lib`. The tool accepts up to four independent text lines (`line1`–`line4`); any line left as an empty string simply clears that row rather than requiring the caller to resend the full screen contents. Unlike `/still` or `/vision`, the OLED is a pure output surface with no read-back path, so it carries no risk of feeding stale or conflicting sensor state back into the conversation. UTF-8 rendering (including Chinese) is supported by the selected `u8g2` font; when swapping in a different CJK font, verify glyph coverage against the character set you actually intend to display, since different `u8g2` Chinese font tables cover different character subsets.
@@ -617,7 +636,7 @@ All three new tools follow the same JSON response contract as all existing tools
 
 ## 11. Dual Communication Modes: Telegram Bot vs MQTT
 
-fuClaw ships in two communication variants, each optimized for a different deployment scenario. Both share the identical Gemini reasoning engine, tool dispatcher, and persistent memory system.
+fuClaw ships in two communication variants, each optimized for a different deployment scenario. Both share the identical multi-provider (Gemini / OpenAI / Grok) reasoning engine, tool dispatcher, and persistent memory system.
 
 ### Telegram Bot Version
 
@@ -626,7 +645,7 @@ The Telegram version uses HTTPS long-polling against the `getUpdates` API on a p
 - **Built-in identity**: The `chatId` acts as a natural access control layer — only the configured user can issue commands. No additional authentication layer is needed.
 - **Keyboard shortcuts**: `telegrambotKeyboard` injects a persistent reply keyboard into the `/help` response, providing one-tap access to common commands from mobile.
 - **HTTP header time parasitism**: The `Date:` header extracted from each polling response provides GMT time for RTC initialization at zero additional cost.
-- **Voice message support**: Telegram's voice message objects (OGG/Opus) are downloaded, Base64-encoded, and sent to Gemini STT inline — the entire voice-to-action pipeline requires no external storage service.
+- **Voice message support**: Telegram's voice message objects (OGG/Opus) are downloaded and sent to the configured provider's STT pipeline via `sendFileToLlm()` — inline Base64 for Gemini/Grok, multipart upload to Whisper for OpenAI — the entire voice-to-action pipeline requires no external storage service.
 - **Image delivery**: Camera frames are uploaded as multipart JPEG directly to Telegram's `sendPhoto` API, delivering native in-chat photo messages.
 - **WorkId routing**: The `replyUserMessage()` function uses a `workId` prefix (`<BOT>`, `<PAGE>`, `<TIME_SCHEDULING>`, `<THEFT_DETECTION>`) to route replies to the correct output channel without passing channel references through the entire call stack.
 
@@ -649,7 +668,7 @@ Key design characteristics:
 - **Broker-agnostic**: Standard MQTT protocol means the firmware works with any broker (Mosquitto, HiveMQ, cloud brokers) without code changes — only `env.json` needs updating.
 
 ### Architectural Commonality
-Despite the different transport layers, both versions share identical implementations of: `geminiChatRequest()`, `geminiSearchRequest()`, `geminiVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, all tool handlers, and the persistence layer. The communication transport is the only architectural difference, making it straightforward to maintain both variants in sync — and this same commonality now extends across both supported hardware platforms.
+Despite the different transport layers, both versions share identical implementations of: `llmChatRequest()`, `llmSearchRequest()`, `llmVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, all tool handlers, and the persistence layer. The communication transport is the only architectural difference, making it straightforward to maintain both variants in sync — and this same commonality now extends across both supported hardware platforms.
 
 ---
 
@@ -673,11 +692,11 @@ A dedicated FreeRTOS task runs a lightweight HTTP server on **port 81**, serving
 | `GET /schedule` | Serves `index_schedule.html` (schedule manager UI) |
 | `GET /getScheduleTasks` | Returns the raw `schedule.json` content |
 | `GET /updateScheduleTasks?{json}` | Overwrites `schedule.json` with new task array |
-| `GET /chat` | Serves `index_chat.html` (Gemini web chat UI) |
-| `GET /mqtt` | Serves `index_mqtt_chat.html` (Gemini web chat UI) |
+| `GET /chat` | Serves `index_chat.html` (LLM web chat UI) |
+| `GET /mqtt` | Serves `index_mqtt_chat.html` (LLM web chat UI) |
 | `GET /message?{text}` | Processes a chat message and returns the AI reply |
 
-The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to storage, preventing partial or corrupted configuration saves. The configuration page also renders the currently selected `gemini_model` and `schedule_timeout`, so both can be reviewed and changed from the browser without touching the source code.
+The `/updateConfig` endpoint validates that the incoming payload is a complete JSON object (`startsWith("{") && endsWith("}")`) before writing to storage, preventing partial or corrupted configuration saves. The configuration page also renders the currently selected `llm_type`, `llm_model`, and `schedule_timeout`, so all three can be reviewed and changed from the browser without touching the source code.
 
 A second server on **port 82** streams a live MJPEG feed directly from the camera.
 
@@ -688,7 +707,7 @@ The device launches both an Access Point (`192.168.1.1:81`) and a Station connec
 The chat page communicates with the device via `GET /message?<text>` — a pure HTTP query with no WebSocket or backend server required. Design highlights:
 
 - **Auto-resize textarea**: The input field grows with content and shrinks back, keeping the mobile viewport clean.
-- **Typing indicator**: Three-dot bounce animation signals that Gemini is processing, preventing duplicate submissions.
+- **Typing indicator**: Three-dot bounce animation signals that the configured LLM is processing, preventing duplicate submissions.
 - **Inline image rendering**: When the response contains `data:image`, the bubble switches to HTML render mode, displaying the captured frame directly inside the chat.
 - **Error toast**: Network failures surface as a timed overlay rather than breaking the UI state.
 - **Markdown stripping for web context**: `handleAgentResponse()` applies a separate stripping path for `<PAGE>` workIds, converting `*` list markers to `•` bullets and removing fenced code block markers, producing clean readable output without raw Markdown syntax.
@@ -710,7 +729,7 @@ The MQTT chat interface is designed for scenarios requiring **continuous bidirec
 
 `handleAgentResponse()` applies systematic text normalization before routing any natural language response to the user. For Telegram output, HTML special characters (`&`, `<`, `>`) are escaped to prevent injection into Telegram's HTML parse mode. For web chat output, Markdown formatting artifacts (`**`, `__`, `###`, ` ``` `, backticks, `---`) are stripped and `* ` list markers are converted to `•` bullets.
 
-This dual-path sanitization ensures that Gemini's tendency to use Markdown formatting does not leak raw syntax characters into either the Telegram chat or the web UI, regardless of the model's output style.
+This dual-path sanitization ensures that an LLM's tendency to use Markdown formatting does not leak raw syntax characters into either the Telegram chat or the web UI, regardless of which of the three providers is configured or that provider's output style.
 
 ---
 
@@ -718,7 +737,7 @@ This dual-path sanitization ensures that Gemini's tendency to use Markdown forma
 
 To evolve from a standalone edge device into a collaborative **Multi-Agent Ecosystem**, fuClaw expands its Prompt-Orchestrated Tool Routing mechanism with native autonomous communication tools: `/tcpSendMessage`, `/mqttSendMessage`, `/mqttSendImage`, `/telegramSendMessage`, `/telegramSendImage`, and `/lineSendMessage`.
 
-These tools empower the Gemini reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks, MQTT brokers, Telegram, and Line. The target addresses for these channels (peer MQTT topics, TCP peer endpoints, household-admin Telegram/Line/MQTT destinations) live in dedicated, reserved sections of `device.md` alongside the GPIO pin mappings — populated only once a deployment actually needs multi-agent or multi-channel notification, and left empty by default on a single-device setup.
+These tools empower the configured LLM reasoning engine to not only manipulate local GPIOs but also autonomously decide when to propagate state telemetry, textual alerts, or raw binary payloads across P2P networks, MQTT brokers, Telegram, and Line. The target addresses for these channels (peer MQTT topics, TCP peer endpoints, household-admin Telegram/Line/MQTT destinations) live in dedicated, reserved sections of `device.md` alongside the GPIO pin mappings — populated only once a deployment actually needs multi-agent or multi-channel notification, and left empty by default on a single-device setup.
 
 ### Extended Tool Contracts
 
@@ -734,7 +753,7 @@ These tools empower the Gemini reasoning engine to not only manipulate local GPI
 ### Architectural Design & Optimization
 
 1. **Decoupled Multi-Agent Collaboration (`/tcpSendMessage`)**
-   When the Gemini engine evaluates local sensor anomalies (e.g., DHT11 temperature thresholds breached) and determines that a remote physical zone requires collective intervention, it invokes `/tcpSendMessage`. This bypasses centralized server logic, allowing edge agents to negotiate actions directly in application layers, preserving the operational context within `memory.md`.
+   When the configured LLM evaluates local sensor anomalies (e.g., DHT11 temperature thresholds breached) and determines that a remote physical zone requires collective intervention, it invokes `/tcpSendMessage`. This bypasses centralized server logic, allowing edge agents to negotiate actions directly in application layers, preserving the operational context within `memory.md`.
 
 2. **Asynchronous IoT Pub/Sub Topology (`/mqttSendMessage`)**
    Unlike standard Telegram synchronous request-response loops, `/mqttSendMessage` enables sub-second telemetry broadcasting. Messages are dispatched directly to the topic configured in `env.json`, providing out-of-the-box integration with industrial IoT platforms, Home Assistant, Node-RED, or custom ESP32/Ameba sub-nodes.
@@ -754,7 +773,7 @@ These tools empower the Gemini reasoning engine to not only manipulate local GPI
 fuClaw's prompt-orchestrated core was designed from the start to be transport- and hardware-agnostic, and the codebase now proves this with a second fully working hardware port: the **ESP32-S3-WROOM-CAM** board, alongside the original **Realtek AmebaPro2 (RTL8735B)** boards.
 
 ### What Stays Identical
-Across both platforms, the entire reasoning and orchestration layer is unchanged: `geminiChatRequest()`, `geminiSearchRequest()`, `geminiVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, the JSON tool contract, `device.md` / `skill.md` / `soul.md` parsing, and the scheduling engine. A `device.md` or `skill.md` written for one platform works unmodified on the other, as long as the pin numbers reflect the target board's confirmed GPIO set.
+Across both platforms, the entire reasoning and orchestration layer is unchanged: `llmChatRequest()`, `llmSearchRequest()`, `llmVisionRequest()`, `handleAgentResponse()`, `executeTool()`, `evaluateWorkflowContinuation()`, the JSON tool contract, `device.md` / `skill.md` / `soul.md` parsing, and the scheduling engine. A `device.md` or `skill.md` written for one platform works unmodified on the other, as long as the pin numbers reflect the target board's confirmed GPIO set.
 
 ### What Changes at the Platform Boundary
 | Concern | AmebaPro2 | ESP32-S3-CAM |
@@ -772,12 +791,12 @@ A developer porting fuClaw to a third board only needs to replace the five hardw
 
 ---
 
-## 16. Configurable Model & Schedule Tolerance
+## 16. Configurable LLM Provider, Model & Schedule Tolerance
 
-Two small `env.json` additions meaningfully improve deployability without any firmware recompilation.
+Three small `env.json` fields meaningfully improve deployability without any firmware recompilation.
 
-### Runtime-Selectable Gemini Model
-`gemini_model` is now read from `env.json` into a runtime `geminiModel` string and substituted directly into every `generateContent` endpoint call. This means upgrading from one Gemini generation to the next (e.g. moving to a newer flash-tier model) — or rolling back after a regression — is a configuration change pushed through `/updateConfig`, not a firmware re-flash. The same binary can also be fleet-deployed with different devices intentionally pinned to different model tiers based on cost or latency requirements.
+### Runtime-Selectable LLM Provider & Model
+`llm_type` (`gemini` / `openai` / `grok`), `llm_model`, and `llm_key` are read from `env.json` into runtime `llmType`, `llmModel`, and `llmKey` strings and substituted directly into every request built by `llmChatRequest()`, `llmSearchRequest()`, `llmVisionRequest()`, and `sendFileToLlm()`. This means switching cloud providers entirely — e.g. moving from Gemini to OpenAI or Grok — or upgrading from one model generation to the next within the same provider (e.g. moving to a newer flash-tier or GPT-tier model), or rolling back after a regression, is a configuration change pushed through `/updateConfig`, not a firmware re-flash. The same binary can also be fleet-deployed with different devices intentionally pinned to different providers or model tiers based on cost, latency, or capability requirements.
 
 ### Missed-Schedule Tolerance Window
 `schedule_timeout` defines, in minutes, how long after a scheduled task's target time the `task_time_scheduling` loop will still treat it as eligible to fire. Because the scheduler only evaluates once per minute and depends on a correctly synchronized RTC, a task whose trigger time has already passed by more than `schedule_timeout` minutes is treated as missed for that cycle rather than executed late — preventing, for example, a "close the window at 18:00" automation from firing hours late after a temporary RTC desync or device reboot. Setting `schedule_timeout` to `0` disables the tolerance check, causing the scheduler to always attempt to run any task whose time has passed.
@@ -788,17 +807,17 @@ Two small `env.json` additions meaningfully improve deployability without any fi
 
 ### Token Usage & System Prompt Cost
 
-Every call to `geminiChatRequest()` and `geminiSearchRequest()` sends the full `systemContentTools` prompt — which bundles the role definition, all confirmed device mappings, hardware safety rules, skill workflow scripts, and the complete tool routing schema — along with the entire conversation history accumulated since boot. On a device where memory is abundant but API budget is not, this has compounding consequences.
+Every call to `llmChatRequest()` and `llmSearchRequest()` sends the full `systemContentTools` prompt — which bundles the role definition, all confirmed device mappings, hardware safety rules, skill workflow scripts, and the complete tool routing schema — along with the entire conversation history accumulated since boot. On a device where memory is abundant but API budget is not, this has compounding consequences.
 
 - **Per-call overhead.**: The `systemContentTools` prompt alone can exceed several thousand tokens before the user's message or conversation history is counted. For a simple greeting or a factual question, this overhead is pure waste: no tool will be invoked, no device will be touched, yet the full hardware ruleset travels across the network on every turn.
 
 - **History growth.**: `historicalMessages` is append-only. Each tool execution injects its JSON result back into the conversation. A session involving several hardware actions, a vision analysis, and a scheduled task evaluation can accumulate thousands of tokens of history within a single uptime cycle. There is currently no sliding-window or summarization mechanism: the entire history is sent verbatim on every subsequent call.
 
-- **Cost amplification under autonomous workflows.**: `evaluateWorkflowContinuation()` triggers additional Gemini calls after each tool execution to assess whether the workflow is complete. In a multi-step workflow, a single user request can result in four to six API round-trips, each carrying the full system prompt and the growing history. The token bill for one user message can therefore be five to ten times what a naive count would suggest.
+- **Cost amplification under autonomous workflows.**: `evaluateWorkflowContinuation()` triggers additional LLM calls after each tool execution to assess whether the workflow is complete. In a multi-step workflow, a single user request can result in four to six API round-trips, each carrying the full system prompt and the growing history. The token bill for one user message can therefore be five to ten times what a naive count would suggest.
 
 - **No prompt-tier routing.**: The three compiled system prompts (`systemContent`, `systemContentNoTools`, `systemContentTools`) exist in the codebase, but the main message handler always selects `systemContentTools` regardless of whether the user's input has anything to do with hardware. A lightweight pre-classification call — using only the role prompt plus the last few history entries — could route simple conversational turns to `systemContent` and avoid sending the full tool schema on the majority of interactions. This optimization is architecturally straightforward but has not yet been implemented.
 
-- **Model selection is manual, not adaptive.**: While `gemini_model` is now configurable, the firmware does not yet auto-select a lighter or heavier model based on request complexity (e.g. routing simple chat to a smaller model and vision/search workflows to a more capable one). All requests on a given device currently use the same configured model regardless of task weight.
+- **Model selection is manual, not adaptive.**: While `llm_type` and `llm_model` are now configurable, the firmware does not yet auto-select a different provider or a lighter/heavier model based on request complexity (e.g. routing simple chat to a smaller model and vision/search workflows to a more capable one). All requests on a given device currently use the same configured model regardless of task weight.
 
 ---
 
@@ -812,7 +831,7 @@ The core architectural insight is replacing native function calling with prompt 
 
 **fuClaw is a working reference implementation, not a production-optimized product.** It is designed to demonstrate what is architecturally possible on constrained embedded hardware — and to give you a complete, running starting point rather than a blank page. The quad-variant example code (two platforms × two transports) covers the full agent loop end-to-end, and adapting it to a new scenario requires only editing `soul.md` and `device.md`; the core architecture needs no redesign.
 
-That said, deploying fuClaw in a cost-sensitive or high-frequency environment requires careful consideration of the token economics described in [Section 17](#17-concerns--known-limitations). Every interaction currently sends the full system prompt and the complete conversation history to the Gemini API. For occasional personal use or a low-traffic prototype, the cost is negligible. For a device that processes dozens of interactions per day over many months, or for any deployment where the Gemini API free tier is exhausted, the cumulative token spend warrants attention before going live.
+That said, deploying fuClaw in a cost-sensitive or high-frequency environment requires careful consideration of the token economics described in [Section 17](#17-concerns--known-limitations). Every interaction currently sends the full system prompt and the complete conversation history to whichever LLM API is configured (Gemini, OpenAI, or Grok). For occasional personal use or a low-traffic prototype, the cost is negligible. For a device that processes dozens of interactions per day over many months, or for any deployment where the configured provider's free tier is exhausted, the cumulative token spend warrants attention before going live.
 
 If you are evaluating fuClaw as a foundation for a larger project, treat Section 14 and Section 17 as a checklist of what to address before scaling up. The architecture is sound; the cost profile simply needs to be matched to your usage pattern.
 
@@ -850,7 +869,7 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 
 ## 繁體中文
 
-> fuClaw 是一套運行於 Realtek AmebaPro2 與 ESP32-S3-CAM 裝置上的嵌入式多模態 AI Agent 框架,在單一 FreeRTOS runtime 中整合 Telegram / MQTT / Web Chat、Gemini 推理引擎、硬體控制與持久化記憶。
+> fuClaw 是一套運行於 Realtek AmebaPro2 與 ESP32-S3-CAM 裝置上的嵌入式多模態 AI Agent 框架,在單一 FreeRTOS runtime 中整合 Telegram / MQTT / Web Chat、Gemini / OpenAI / Grok 三選一推理引擎、硬體控制與持久化記憶。
 
 ### 目錄
 
@@ -858,9 +877,9 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 2. [原子化執行與「最長有效前綴」策略](#2-原子化執行與最長有效前綴策略)
 3. [硬體安全層](#3-硬體安全層)
 4. [多模態整合與職責分離](#4-多模態整合與職責分離)
-5. [透過 Gemini STT 的語音輸入](#5-透過-gemini-stt-的語音輸入)
+5. [透過多供應商 STT 的語音輸入](#5-透過多供應商-stt-的語音輸入)
 6. [持久化記憶與斷電復原](#6-持久化記憶與斷電復原)
-7. [透過 Gemini 與 HTTP Header 解析的 RTC 時間同步](#7-透過-gemini-與-http-header-解析的-rtc-時間同步)
+7. [透過與供應商無關的 HTTP Header 解析的 RTC 時間同步](#7-透過與供應商無關的-http-header-解析的-rtc-時間同步)
 8. [FreeRTOS 多工架構](#8-freertos-多工架構)
 9. [工作流程狀態追蹤與自我評估](#9-工作流程狀態追蹤與自我評估)
 10. [可擴充的感測器與致動器支援](#10-可擴充的感測器與致動器支援)
@@ -876,11 +895,11 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 
 ## 1. Prompt 驅動的工具路由
 
-本架構最根本的突破在於**完全不依賴 Gemini 原生的 function-calling API**。取而代之的是,透過精心設計的 system prompt,讓模型自行產出格式正確的 `tool_call` JSON。
+本架構最根本的突破在於**完全不依賴任何 LLM 供應商原生的 function-calling API**。取而代之的是,透過精心設計的 system prompt,讓模型——無論實際設定的是 Gemini、OpenAI 或 Grok 三者中的哪一個——自行產出格式正確的 `tool_call` JSON。
 
 這個選擇帶來幾項實際優勢:
 
-**平台獨立性**:原生 function-calling API 的格式可能隨時改變。由於所有路由邏輯完全存在於 prompt 中,即使 Gemini 模型版本或 API 格式更新,也只需修改 prompt,不需要更動韌體。
+**平台獨立性**:原生 function-calling API 的格式可能隨時改變,且三家供應商的格式彼此互不相同。由於所有路由邏輯完全存在於 prompt 中,而非依賴任何廠商 SDK,即使某個模型版本或某家供應商的 API 格式更新,也只需修改 prompt,不需要更動韌體。這也是能在執行期於 Gemini、OpenAI、Grok 之間切換的關鍵——三者所需輸出的 `tool_call` JSON schema 完全一致。
 
 **極高彈性**:工具可在文字層級自由新增、修改或移除。`skill.md` 與 `device.md` 都是純文字設定檔,使用者無需撰寫任何 C++ 程式碼即可擴充系統能力。
 
@@ -894,7 +913,20 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 | `systemContentNoTools` | 角色 + 裝置定義 + 裝置規則 | 不需工具路由的輕量推理(如 RTC 轉換) |
 | `systemContent` | 僅角色 | 最小情境呼叫(如日期時間前處理) |
 
-`geminiChatRequest()` 與 `geminiSearchRequest()` 中的 `tools` 整數參數會在呼叫時選擇對應的 prompt(`1` = 含工具、`0` = 不含工具、`-1` = 僅角色)。STT 管線(`sendFileToGemini()`)則是一個獨立的轉錄專用呼叫,完全略過所有 system prompt——只傳送音訊資料與一段簡短的轉錄指示,在只需要純文字輸出的情境下,將 token 用量降到最低,並避免任何工具路由的干擾。
+`llmChatRequest()` 與 `llmSearchRequest()` 中的 `tools` 整數參數會在呼叫時選擇對應的 prompt(`1` = 含工具、`0` = 不含工具、`-1` = 僅角色)。STT 管線(`sendFileToLlm()`)則是一個獨立的轉錄專用呼叫,完全略過所有 system prompt——只傳送音訊資料與一段簡短的轉錄指示,在只需要純文字輸出的情境下,將 token 用量降到最低,並避免任何工具路由的干擾。
+
+**多 LLM 供應商派發層(Gemini / OpenAI / Grok)**:fuClaw 並未將自己綁死在單一 LLM 廠商上。韌體中每一個推理進入點,都只是一層以 `env.json` 中 `llm_type` 欄位為鍵值的輕量派發器:
+
+```cpp
+String llmChatRequest(String workId, String message, int tools = 1) {
+    if (llmType == "gemini")      return geminiChatRequest(workId, message, tools);
+    else if (llmType == "openai") return openaiChatRequest(workId, message, tools);
+    else if (llmType == "grok")   return grokChatRequest(workId, message, tools);
+    else                          return "NONE";
+}
+```
+
+同樣的模式也套用在 `llmSearchRequest()`、`llmVisionRequest()`,以及 Telegram 版本專用的語音轉錄函式 `sendFileToLlm()` 上。在這層派發之上,韌體中所有呼叫點(`rtcInitialTime()`、`handleAgentResponse()`、工具執行器、排程器、防盜偵測任務)一律只呼叫 `llmChatRequest()` / `llmSearchRequest()` / `llmVisionRequest()`,從不直接參照任何特定供應商的函式。派發層之下,三組平行的供應商專屬函式家族(`geminiChatRequest()` / `openaiChatRequest()` / `grokChatRequest()`,以及對應的 Search / Vision 版本)各自說著該供應商原生的 REST 格式——Gemini 的 `generateContent` 端點、OpenAI 的 Chat Completions / Responses API,以及 Grok(xAI)相容於 Chat Completions 的 API——但對上層一律回傳完全相同形狀的純文字或 `tool_call` JSON。要將某台裝置從一家供應商切換到另一家,只需透過 `/updateConfig` 變更一個 `llm_type` 欄位,無需重寫韌體。
 
 ---
 
@@ -904,9 +936,9 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 
 **原子化執行規則**:每個 `tool_call` 只做**一件事**:一個 pin、一個操作、一個數值。在硬體控制情境下這點至關重要——若允許單一指令同時操作多個 pin,執行到一半失敗將使系統陷入不確定的半完成狀態,可能造成裝置損壞或安全疑慮。原子性保證每個步驟都是完整且可驗證的。
 
-**最長有效前綴**:當 Gemini 以 JSON 陣列產生多步驟工作流程時,`handleAgentResponse()` 並非採取全有全無策略,而是從頭逐項執行**盡可能多的有效步驟**,一旦遇到不完整或格式錯誤的項目就立即停止。即便 AI 產出部分錯誤的內容,系統仍可在最大有效範圍內動作,而非整體中止。對於重試成本高昂的資源受限嵌入式裝置而言,這是極為實用的設計。
+**最長有效前綴**:當所設定的 LLM 以 JSON 陣列產生多步驟工作流程時,`handleAgentResponse()` 並非採取全有全無策略,而是從頭逐項執行**盡可能多的有效步驟**,一旦遇到不完整或格式錯誤的項目就立即停止。即便 AI 產出部分錯誤的內容,系統仍可在最大有效範圍內動作,而非整體中止。對於重試成本高昂的資源受限嵌入式裝置而言,這是極為實用的設計。
 
-**`reCheck` 旗標——選擇性的後續評估**:在多工具陣列執行中,只有**最後一個工具**會設定 `reCheck = true` 並觸發 `evaluateWorkflowContinuation()`。中間的工具一律傳入 `reCheck = false`,避免序列執行中段產生多餘的 Gemini 查詢,浪費網路資源並使對話歷史不必要地膨脹。
+**`reCheck` 旗標——選擇性的後續評估**:在多工具陣列執行中,只有**最後一個工具**會設定 `reCheck = true` 並觸發 `evaluateWorkflowContinuation()`。中間的工具一律傳入 `reCheck = false`,避免序列執行中段產生多餘的 LLM 查詢,浪費網路資源並使對話歷史不必要地膨脹。
 
 ---
 
@@ -914,9 +946,9 @@ Copyright (c) 2026 ChungYi Fu (fustyles)
 
 GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
-**明確對應要求**:系統只允許控制 `device.md` 中明確定義的裝置。若使用者說「把燈打開」但找不到「燈」的 pin 對應,Gemini 會被要求停下來詢問澄清,而非自行猜測——避免 AI 幻覺直接造成硬體誤動作。
+**明確對應要求**:系統只允許控制 `device.md` 中明確定義的裝置。若使用者說「把燈打開」但找不到「燈」的 pin 對應,LLM 會被要求停下來詢問澄清,而非自行猜測——避免 AI 幻覺直接造成硬體誤動作。
 
-**強制數值限制**:`toolPinOutput()` 內的 `constrain(value, 0, 255)` 作為硬體層的最後防線。即使 Gemini 輸出超出範圍的類比值,韌體層也會在數值送達硬體前強制限制範圍。數位輸出嚴格僅接受 `0` 或 `1`,其餘數值會回傳結構化錯誤 JSON。`tool_servo()` 中也採用相同限制模式——伺服角度在韌體層被限制在 0–180° 範圍內,與 AI 的輸出無關。
+**強制數值限制**:`toolPinOutput()` 內的 `constrain(value, 0, 255)` 作為硬體層的最後防線。即使 LLM 輸出超出範圍的類比值,韌體層也會在數值送達硬體前強制限制範圍。數位輸出嚴格僅接受 `0` 或 `1`,其餘數值會回傳結構化錯誤 JSON。`tool_servo()` 中也採用相同限制模式——伺服角度在韌體層被限制在 0–180° 範圍內,與 AI 的輸出無關。
 
 **唯讀腳位保護**:按鈕腳位(pin 12)在 system prompt 中明確標示為「僅輸入」,在 tool call 產生之前即在 AI 層級阻擋任何將其當作輸出使用的嘗試。
 
@@ -939,19 +971,24 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
 **快取影格重用**:`/still` 與 `/vision` 皆支援 `frames: false` 參數,讓工作流程中的後續工具能**重用先前拍攝的影格**,而不需重新觸發相機擷取。若 `frames` 為 `false` 且緩衝區中無既有影像(`imageLength == 0`),兩個函式都會偵測此狀況並提早回傳錯誤,而非以空緩衝區繼續執行。在相機擷取成本高昂(時間與 CPU 週期)的資源受限硬體上,這是相當實際的優化。先進行 `/vision` 分析、再以 `/still` 將同一影格轉發至 Telegram,是這種設計能順暢處理的自然工作流程。在 ESP32-S3-CAM 版本中,同樣的快取機制改由 `esp_camera` 的影格緩衝(`esp_camera_fb_get()` / `esp_camera_fb_return()`)實作,prompt 層的工具語意完全不變。
 
-**Vision 請求架構**:`geminiVisionRequest()` 將拍攝到的 JPEG 影格以 Base64 inline data 方式,透過一次獨立於對話歷史之外的無狀態 Gemini 呼叫送出。分析結果隨後會被寫回 `historicalMessages`,讓 Agent 能在後續輪次中針對觀察結果進行推理,同時保持 Vision 呼叫本身的精簡。
+**Vision 請求架構**:`llmVisionRequest()` 會派發至目前設定供應商對應的 Vision 處理函式(`geminiVisionRequest()` / `openaiVisionRequest()` / `grokVisionRequest()`),將拍攝到的 JPEG 影格以 Base64 inline(或該供應商原生格式)方式,透過一次獨立於對話歷史之外的無狀態呼叫送出。分析結果隨後會被寫回 `historicalMessages`,讓 Agent 能在後續輪次中針對觀察結果進行推理,同時保持 Vision 呼叫本身的精簡。
 
 ---
 
-## 5. 透過 Gemini STT 的語音輸入
+## 5. 透過多供應商 STT 的語音輸入
 
-語音訊息支援經過完整實作,並充分考量嵌入式記憶體限制。
+語音訊息支援經過完整實作,並充分考量嵌入式記憶體限制;與聊天、搜尋、視覺功能一樣,語音轉錄也透過 `sendFileToLlm()` 完整支援三家供應商。
 
 **二進位安全的下載管線**:Telegram 的語音檔案刻意使用 **HTTP/1.0** 下載——停用 chunked transfer encoding,確保回應主體是一段乾淨的二進位串流,可逐位元組讀入 heap 緩衝區,無需複雜的 chunk 邊界解析邏輯。`MAX_FILE_SIZE` 限制(256 KB)可避免異常大型音訊檔造成 heap 溢位。
 
-**Gemini 的 Inline Base64 編碼**:不將音訊上傳至檔案儲存服務,而是將 OGG/Opus 音訊以 Base64 編碼後,透過 `inline_data` 欄位直接夾帶於 Gemini API 的 JSON 請求中。這省去獨立檔案託管步驟,讓整個語音轉回覆流程能在單一 API 呼叫內完成。記憶體管理也十分謹慎:Base64 緩衝區以 `malloc` 配置,立即用於組裝請求字串後即 `free`,確保大型編碼緩衝區不會在傳輸期間與 SSL client 競爭 heap 空間。
+**依供應商而異的轉錄策略**:`sendFileToLlm()` 依 `llm_type` 派發至 `sendFileToGemini()`、`sendFileToOpenAI()` 或 `sendFileToGrok()`,各自貼合該供應商實際的轉錄合約,而非強行套用單一格式:
 
-**統一輸入管線**:語音訊息經轉錄後,會走過**與文字輸入完全相同的處理管線**,包含斜線指令偵測與 Gemini 推理。轉錄完成後沒有任何語音 / 文字的特殊分支處理,這種架構上的簡潔性意味著未來對文字管線的任何改進都會自動惠及語音輸入。
+- **Gemini 與 Grok**:OGG/Opus 音訊以 Base64 編碼後,透過 `inline_data` 風格欄位直接夾帶於 JSON 請求中。這省去獨立檔案託管步驟,讓整個語音轉回覆流程能在單一 API 呼叫內完成。
+- **OpenAI**:Whisper(`/v1/audio/transcriptions`)要求真正的 **multipart 檔案上傳**,而非 inline Base64,因此 `sendFileToOpenAI()` 會將原始 OGG 位元組直接串流進 multipart 請求主體,不做 Base64 編碼。
+
+就 Base64 路徑而言,記憶體管理也十分謹慎:緩衝區以 `malloc` 配置,立即用於組裝請求字串後即 `free`,確保大型編碼緩衝區不會在傳輸期間與 SSL client 競爭 heap 空間。
+
+**統一輸入管線**:語音訊息經轉錄後,會走過**與文字輸入完全相同的處理管線**,包含斜線指令偵測與 LLM 推理。轉錄完成後沒有任何語音 / 文字的特殊分支處理,也沒有依供應商而異的分支——轉錄後的文字會直接送入 `llmChatRequest()`,與一般打字輸入完全相同。這種架構上的簡潔性意味著未來對文字管線的任何改進都會自動惠及語音輸入。
 
 ---
 
@@ -959,7 +996,7 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
 對話記憶持久化設計解決了嵌入式裝置的根本難題:重開機後如何還原情境。
 
-**即時同步**:`storeDataToFile()` 在**每一次**對話更新後就會被呼叫,而非批次處理。這確保即使裝置在任何時刻斷電,最近一次的對話狀態都已被儲存。開機時系統會自動載入此記憶,讓 Gemini 能在情境中接續對話,使用者無需重新說明背景。
+**即時同步**:`storeDataToFile()` 在**每一次**對話更新後就會被呼叫,而非批次處理。這確保即使裝置在任何時刻斷電,最近一次的對話狀態都已被儲存。開機時系統會自動載入此記憶,讓所設定的 LLM 能在情境中接續對話,使用者無需重新說明背景。
 
 **帶備份的原子化檔案寫入**:在寫入新的 `memory.md` 之前,函式會先檢查目前檔案是否存在,將其重新命名為 `memory.md.bak`,接著才寫入新版本。這種「先改名、後寫入」的兩步驟策略,確保寫入過程中斷電時,先前的備份仍完整保留,而非毀損唯一一份對話歷史。
 
@@ -970,7 +1007,7 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 | `soul.md` | AI 人格定義 |
 | `device.md` | 硬體腳位對應,另含預設為空的保留區塊:Agent 對 Agent 通訊目標(MQTT 主題、TCP 對端位址)、家庭管理員通知通道(Telegram Bot、Line Bot、MQTT) |
 | `skill.md` | 技能工作流程腳本 |
-| `env.json` | 驗證憑證、Gemini 模型選擇、排程容錯時間 |
+| `env.json` | 驗證憑證、LLM 供應商與模型選擇(`llm_type` / `llm_model` / `llm_key`)、排程容錯時間 |
 | `memory.md` | 持久化對話歷史 |
 | `schedule.json` | 排程任務 |
 | `scheduleTodayExecuted.md` | 記錄今日已執行的排程任務,避免週期性任務在同一天內重複觸發 |
@@ -980,7 +1017,7 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 | `index_chat.html` | Web 聊天介面 |
 | `index_mqtt_chat.html` | 透過 MQTT 的 Web 聊天介面 |
 
-所有檔案完全解耦,任一檔案都可獨立修改而無需重新燒錄韌體。`env.json` 中的憑證會在開機時最先載入,讓同一份韌體二進位檔可部署於多台設定各異的裝置——包含各裝置所對應的 Gemini 模型版本。
+所有檔案完全解耦,任一檔案都可獨立修改而無需重新燒錄韌體。`env.json` 中的憑證會在開機時最先載入,讓同一份韌體二進位檔可部署於多台設定各異的裝置——包含各裝置所對應的 LLM 供應商與模型版本。
 
 **以時間戳記為基礎的 `workId` 事件追蹤機制**:在涉及並行多工與多模態互動的複雜環境中,系統會為每一個產生的工作流程或工具呼叫指派一個唯一、內嵌時間戳記的識別碼——`workId`。此設計帶來幾項核心架構優勢:
 
@@ -990,36 +1027,36 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
 ---
 
-## 7. 透過 Gemini 與 HTTP Header 解析的 RTC 時間同步
+## 7. 透過與供應商無關的 HTTP Header 解析的 RTC 時間同步
 
 在沒有 NTP 函式庫的嵌入式裝置上,時間感知並非小問題。fuClaw 以兩種互補技巧優雅地解決了這個問題。
 
-**以 Gemini API 回應 Header 作為時間來源(Telegram 版本)**:在 `getTelegramMessage()` 輪詢迴圈中,韌體在讀取訊息內容的同時,從 HTTP 回應標頭擷取 `Date:` 欄位存入 `getTime`。這以**零額外網路成本**提供了 GMT 時間戳記——時間資料完全搭載在原本就必要的 Telegram 通訊上。
+**以 Telegram 回應 Header 作為時間來源(Telegram 版本)**:在 `getTelegramMessage()` 輪詢迴圈中,韌體在讀取訊息內容的同時,從 HTTP 回應標頭擷取 `Date:` 欄位存入 `getTime`。這以**零額外網路成本**提供了 GMT 時間戳記——時間資料完全搭載在原本就必要的 Telegram 通訊上,與目前設定哪一家 LLM 供應商無關。
 
-**專用 Gemini 預先呼叫取得時間(通用版本)**:`getGeminiDatetime()` 會發出一次輕量的 Gemini API 呼叫,並擷取 HTTP 回應中的 `Date:` 標頭。此作法不依賴 Telegram,因此 Telegram 版與 MQTT 版皆可使用。若連線失敗,函式會優雅地退回至有依據的搜尋提示詞。
+**與供應商無關的 `getGoogleDatetime()` 預先呼叫(通用版本)**:`getGoogleDatetime()` 直接對 `google.com` 建立一次輕量 HTTPS 連線,並擷取 HTTP 回應中的 `Date:` 標頭——**不**依賴目前設定的三家 LLM 供應商中的任何一家。這是刻意的解耦設計:既然現在支援三種可互換的供應商,時間同步就不能再假設某家特定廠商的 API 一定可連通、或不受配額限制,因此改為完全獨立於 `llm_type` 之外取得時間來源。此作法不依賴 Telegram,因此 Telegram 版與 MQTT 版皆可使用。若連線失敗,函式會優雅地退回至透過所設定 LLM 進行的有依據搜尋提示詞。
 
-**由 Gemini 負責時區轉換——無需搜尋**:`rtcInitialTime()` 接收 GMT 時間字串,並以角色限定的 system prompt 呼叫 `geminiChatRequest(workId, prompt, -1)`,要求 Gemini 將 GMT 時間轉換為設定的 `timeZone`,並加上恰好 4 秒的傳播延遲補償。提示詞強制要求純 JSON 回應(無 Markdown、無說明文字、第一個字元須為 `{`、最後一個字元須為 `}`)。解析完成後,各欄位會被擷取並寫入硬體 RTC。
+**由所設定的 LLM 負責時區轉換——無需搜尋**:`rtcInitialTime()` 接收 GMT 時間字串,並以角色限定的 system prompt 呼叫 `llmChatRequest(workId, prompt, -1)`(會派發至 Gemini、OpenAI 或 Grok 中目前設定的那一個),要求該 LLM 將 GMT 時間轉換為設定的 `timeZone`,並加上恰好 4 秒的傳播延遲補償。提示詞強制要求純 JSON 回應(無 Markdown、無說明文字、第一個字元須為 `{`、最後一個字元須為 `}`)。解析完成後,各欄位會被擷取並寫入硬體 RTC。
 
 **RTC 就緒後排程才會運作**:`task_time_scheduling` 背景任務在每次評估週期前都會檢查 `rtcYear == 0`。若 RTC 尚未初始化,任務會先嘗試**自我修復**,呼叫 `executeTool("/syncrtc")` 自動重新同步硬體時鐘。只有在該次同步嘗試也失敗、`rtcYear` 仍為 0 時,任務才會跳過當次週期。這種「先自我修復、再跳過」的策略,避免因暫時性 RTC 初始化失敗而錯過排程任務,同時保證絕不會有任何排程任務在未初始化的時鐘狀態下被觸發。
 
 **雙模式排程管理:智慧與精準兼具**:fuClaw 為邊緣端排程管理引入高度靈活且直覺的雙模式互動機制:
 
-* **AI 自然語言解析模式**:使用者無需理解複雜的 Cron 表達式或程式語法,只要透過 Telegram 或聊天介面輸入日常語言(例如:「週一到週五早上 8:30 設定防盜偵測」),雲端的 Gemini 引擎便會自動解析使用者意圖與時間參數,轉換為結構化的 JSON 任務格式送至韌體。經過本地邊界安全驗證後,韌體會即時寫入儲存裝置上的 `schedule.json`。
+* **AI 自然語言解析模式**:使用者無需理解複雜的 Cron 表達式或程式語法,只要透過 Telegram 或聊天介面輸入日常語言(例如:「週一到週五早上 8:30 設定防盜偵測」),雲端的 LLM 引擎——依設定為 Gemini、OpenAI 或 Grok 其中之一——便會自動解析使用者意圖與時間參數,轉換為結構化的 JSON 任務格式送至韌體。經過本地邊界安全驗證後,韌體會即時寫入儲存裝置上的 `schedule.json`。
 
-  在這個新增排程的步驟中,system prompt 內嵌的 `SCHEDULE TASK CREATION RULES` 會讓 Gemini 端多做一項判斷:若使用者要求的動作可以完整表達成一個或多個 `tool_call` 物件——也就是不需要在執行當下額外推理、對話、多模態分析或搜尋——Gemini 便會直接將完整的 `tool_call` JSON(可以是單一物件,或代表多步驟序列的物件陣列)存入 `task` 欄位,且 prompt 明確要求 **只要可行就優先採用此格式**。只有在該請求確實需要在觸發當下進行推理時,Gemini 才會退而求其次,改存成純文字描述字串。這個發生在「上游」的單一決策,決定了該筆排程日後觸發時究竟能完全離線執行(見下方說明),還是仍需即時呼叫 Gemini。
+  在這個新增排程的步驟中,system prompt 內嵌的 `SCHEDULE TASK CREATION RULES` 會讓 LLM 端多做一項判斷:若使用者要求的動作可以完整表達成一個或多個 `tool_call` 物件——也就是不需要在執行當下額外推理、對話、多模態分析或搜尋——該 LLM 便會直接將完整的 `tool_call` JSON(可以是單一物件,或代表多步驟序列的物件陣列)存入 `task` 欄位,且 prompt 明確要求 **只要可行就優先採用此格式**。只有在該請求確實需要在觸發當下進行推理時,該 LLM 才會退而求其次,改存成純文字描述字串。這個發生在「上游」的單一決策,決定了該筆排程日後觸發時究竟能完全離線執行(見下方說明),還是仍需即時呼叫 LLM。
 * **手動圖形化 Web UI 模式**:為確保離線或安靜環境下的高度可靠與精準控制,系統內建專屬的排程管理 Web 介面(`index_schedule.html`),使用者可透過標準圖形介面以確定性的方式**手動新增、編輯、修改或刪除**任一排程任務。
 
 **✨ 核心架構優勢**:兩條獨立的控制路徑**即時讀寫同一份核心 `schedule.json` 檔案**。此設計在「高度靈活的自然語言輸入」與「高度確定的圖形化管理」之間取得完美平衡,確保在各種部署條件下都有無縫且穩健的使用體驗。
 
 ### 透過結構化 `tool_call` 儲存實現完全離線執行
-並非每一筆排程任務在觸發當下都需要即時呼叫 Gemini。`schedule.json` 中每筆任務的 `task` 欄位可以儲存兩種本質不同的內容,`task_time_scheduling` 會分別以不同方式處理:
+並非每一筆排程任務在觸發當下都需要即時呼叫 LLM。`schedule.json` 中每筆任務的 `task` 欄位可以儲存兩種本質不同的內容,`task_time_scheduling` 會分別以不同方式處理:
 
-* **純文字描述**(例如 `"關閉綠燈"`)——觸發時,韌體會將這段文字送至 `geminiChatRequest()`,由雲端模型即時解讀意圖並產生對應的 `tool_call` JSON。此模式要求在任務到期的當下,必須有可用的網路連線與可連通的 Gemini 端點。
-* **預先寫好的 `tool_call` JSON**——可以是單一 tool_call 物件(`{"type":"tool_call","method":"/digitalwrite","params":{...}}`),或是代表多步驟序列的 tool_call 物件陣列(例如:開啟腳位、延遲、關閉腳位、延遲、重複)。排程器僅以簡單的邊界字元判斷此情形——儲存字串以 `{` 開頭且以 `}` 結尾,或以 `[` 開頭且以 `]` 結尾——一旦符合,便**直接**呼叫 `handleAgentResponse()`,完全略過任何 Gemini API 呼叫。
+* **純文字描述**(例如 `"關閉綠燈"`)——觸發時,韌體會將這段文字送至 `llmChatRequest()`,由雲端模型即時解讀意圖並產生對應的 `tool_call` JSON。此模式要求在任務到期的當下,必須有可用的網路連線,以及可連通所設定 LLM 供應商的端點。
+* **預先寫好的 `tool_call` JSON**——可以是單一 tool_call 物件(`{"type":"tool_call","method":"/digitalwrite","params":{...}}`),或是代表多步驟序列的 tool_call 物件陣列(例如:開啟腳位、延遲、關閉腳位、延遲、重複)。排程器僅以簡單的邊界字元判斷此情形——儲存字串以 `{` 開頭且以 `}` 結尾,或以 `[` 開頭且以 `]` 結尾——一旦符合,便**直接**呼叫 `handleAgentResponse()`,完全略過任何 LLM API 呼叫。
 
-由於「推理」這件事已經在撰寫排程當下完成過一次,預先寫好 `tool_call` 的排程任務,執行時完全依靠本地韌體邏輯運作,在**執行當下零雲端依賴**——即使在觸發那一刻 Wi-Fi、Gemini API 或 MQTT Broker 恰好無法連線,任務仍會正常執行。這讓 fuClaw 也適用於對延遲敏感、或網路可能不穩的自動化情境(繼電器脈衝控制、伺服馬達動作序列、感測器輪詢迴圈等),確保這些動作無論網路狀態如何都能準時觸發。
+由於「推理」這件事已經在撰寫排程當下完成過一次,預先寫好 `tool_call` 的排程任務,執行時完全依靠本地韌體邏輯運作,在**執行當下零雲端依賴**——即使在觸發那一刻 Wi-Fi、所設定的 LLM API 或 MQTT Broker 恰好無法連線,任務仍會正常執行。這讓 fuClaw 也適用於對延遲敏感、或網路可能不穩的自動化情境(繼電器脈衝控制、伺服馬達動作序列、感測器輪詢迴圈等),確保這些動作無論網路狀態如何都能準時觸發。
 
-`index_schedule.html` 在介面上直接呈現這項區別:任何以 tool_call 物件或 tool_call 序列儲存的任務,都會在排程表格中標示 **OFFLINE** 徽章,讓使用者一眼就能分辨哪些項目完全不需雲端往返即可執行,哪些項目仍需即時呼叫 Gemini 才能被解讀執行。
+`index_schedule.html` 在介面上直接呈現這項區別:任何以 tool_call 物件或 tool_call 序列儲存的任務,都會在排程表格中標示 **OFFLINE** 徽章,讓使用者一眼就能分辨哪些項目完全不需雲端往返即可執行,哪些項目仍需即時呼叫 LLM 才能被解讀執行。
 
 ---
 
@@ -1052,11 +1089,11 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 
 `evaluateWorkflowContinuation()` 是整個 Agent 自主性的核心。
 
-**主動完成度檢查**:每次工具執行後,系統不會默默等待使用者下一個指令,而是主動詢問 Gemini:「目前的工作流程是否已完成?是否還需要其他動作?」這讓系統能自主完成多步驟任務,無需使用者逐步手動引導每個步驟。
+**主動完成度檢查**:每次工具執行後,系統不會默默等待使用者下一個指令,而是主動詢問所設定的 LLM:「目前的工作流程是否已完成?是否還需要其他動作?」這讓系統能自主完成多步驟任務,無需使用者逐步手動引導每個步驟。
 
-**以目標為參照的評估**:`task` 參數的設計確保此自我評估有明確的參照點。Gemini 判斷是否繼續時,比對的是**使用者最初的意圖**,而非僅僅最後一步的執行結果,這讓工作流程完成度的判斷更為準確,並減少不必要的重複動作。提示詞中也包含去重規則:明確指示 Gemini 在同一工作流程中,不得重複前一輪回應的相同語意內容。
+**以目標為參照的評估**:`task` 參數的設計確保此自我評估有明確的參照點。LLM 判斷是否繼續時,比對的是**使用者最初的意圖**,而非僅僅最後一步的執行結果,這讓工作流程完成度的判斷更為準確,並減少不必要的重複動作。提示詞中也包含去重規則:明確指示 LLM 在同一工作流程中,不得重複前一輪回應的相同語意內容。
 
-**NONE 哨兵值**:當 Gemini 判定工作流程已完成時,會回傳精確的字串 `"NONE"`。韌體在 `handleAgentResponse()` 中以明確的 `message != "NONE"` 條件處理此狀況——不傳送訊息給使用者,也不進行任何後續處理。這個乾淨的終止訊號避免了 AI Agent 常見的失敗模式:為每個自動化步驟都產生冗長的「任務完成」確認訊息,這在背景監控情境中會造成干擾。
+**NONE 哨兵值**:當所設定的 LLM 判定工作流程已完成時,會回傳精確的字串 `"NONE"`。韌體在 `handleAgentResponse()` 中以明確的 `message != "NONE"` 條件處理此狀況——不傳送訊息給使用者,也不進行任何後續處理。這個乾淨的終止訊號避免了 AI Agent 常見的失敗模式:為每個自動化步驟都產生冗長的「任務完成」確認訊息,這在背景監控情境中會造成干擾。
 
 ---
 
@@ -1066,7 +1103,7 @@ Prompt 驅動的工具架構能自然擴展至基本 GPIO 之外更複雜的周�
 
 **伺服馬達控制(`/servo`)**:伺服控制使用以參考傳遞的伺服物件(AmebaPro2 使用 `AmebaServo`,ESP32-S3-CAM 版本使用 `ESP32Servo`),而非全域單例,便於未來擴充至多個伺服腳位。韌體層的角度限制(`constrain(angle, 0, 180)`)在兩個平台上提供相同的硬體安全保證。未定義的伺服腳位會回傳結構化錯誤 JSON 而非靜默失敗,維持系統一致的錯誤合約。`servo.attach(pin)` 前的 `servo.attached()` 檢查可避免重複初始化。
 
-**DHT11 溫濕度感測器(`/dht11`)**:DHT11 整合處理了該感測器讀取錯誤時回傳 `NaN` 的已知失效模式,透過明確的 `isnan()` 檢查產生結構化的 `dht11_read_failed` 錯誤回應。此結果會回饋至 Gemini 對話歷史,讓 AI 能針對感測器失效做出自然回應(例如:「感測器沒有回應——請檢查接線」),而非將靜默錯誤向下游傳遞。
+**DHT11 溫濕度感測器(`/dht11`)**:DHT11 整合處理了該感測器讀取錯誤時回傳 `NaN` 的已知失效模式,透過明確的 `isnan()` 檢查產生結構化的 `dht11_read_failed` 錯誤回應。此結果會回饋至 LLM 對話歷史,讓 AI 能針對感測器失效做出自然回應(例如:「感測器沒有回應——請檢查接線」),而非將靜默錯誤向下游傳遞。
 
 **OLED 文字顯示(`/oled`)**:這個工具 `/oled`,透過 `U8g2lib` 驅動 SSD1306 128×64 I2C 顯示器。此工具接受四行各自獨立的文字(`line1`–`line4`);任一行留空字串即可清除該行,呼叫端不需要每次都重送整個畫面內容。與 `/still` 或 `/vision` 不同,OLED 是純輸出裝置、沒有讀回路徑,因此不會有把過時或衝突的感測狀態帶回對話歷史的風險。UTF-8(含中文)渲染由所選的 `u8g2` 字型決定;若要更換成其他 CJK 字型,建議先對照你實際要顯示的字集確認涵蓋範圍,因為不同的 `u8g2` 中文字型表所涵蓋的字集並不相同。
 
@@ -1076,13 +1113,13 @@ Prompt 驅動的工具架構能自然擴展至基本 GPIO 之外更複雜的周�
 
 ## 11. 雙通訊模式:Telegram Bot 與 MQTT
 
-fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者共享完全相同的 Gemini 推理引擎、工具派發器與持久化記憶系統。
+fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者共享完全相同的多供應商(Gemini / OpenAI / Grok)推理引擎、工具派發器與持久化記憶系統。
 
-**Telegram Bot 版本**使用 HTTPS 長輪詢對 `getUpdates` API 進行查詢,維持一條持久的 SSL 連線。設計重點:`chatId` 作為天然的存取控制層,僅有設定的使用者能下達指令,無需額外驗證層;`telegrambotKeyboard` 在 `/help` 回應中注入持久化的回覆鍵盤,讓行動裝置可一鍵存取常用指令;每次輪詢回應中擷取的 `Date:` 標頭以零額外成本提供 RTC 初始化所需的 GMT 時間;語音訊息(OGG/Opus)會被下載、Base64 編碼後直接送至 Gemini STT,整條語音轉動作管線無需任何外部儲存服務;相機影格以 multipart JPEG 方式直接上傳至 Telegram 的 `sendPhoto` API,提供原生的聊天內照片訊息;`replyUserMessage()` 透過 `workId` 前綴(`<BOT>`、`<PAGE>`、`<TIME_SCHEDULING>`、`<THEFT_DETECTION>`)將回覆路由至正確的輸出通道,無需在整個呼叫堆疊中傳遞通道參考。
+**Telegram Bot 版本**使用 HTTPS 長輪詢對 `getUpdates` API 進行查詢,維持一條持久的 SSL 連線。設計重點:`chatId` 作為天然的存取控制層,僅有設定的使用者能下達指令,無需額外驗證層;`telegrambotKeyboard` 在 `/help` 回應中注入持久化的回覆鍵盤,讓行動裝置可一鍵存取常用指令;每次輪詢回應中擷取的 `Date:` 標頭以零額外成本提供 RTC 初始化所需的 GMT 時間;語音訊息(OGG/Opus)會被下載後透過 `sendFileToLlm()` 送至所設定供應商的 STT 管線——Gemini 與 Grok 走 inline Base64,OpenAI 則走 Whisper 的 multipart 上傳——整條語音轉動作管線無需任何外部儲存服務;相機影格以 multipart JPEG 方式直接上傳至 Telegram 的 `sendPhoto` API,提供原生的聊天內照片訊息;`replyUserMessage()` 透過 `workId` 前綴(`<BOT>`、`<PAGE>`、`<TIME_SCHEDULING>`、`<THEFT_DETECTION>`)將回覆路由至正確的輸出通道,無需在整個呼叫堆疊中傳遞通道參考。
 
 **MQTT 版本**使用 `PubSubClient` 連接至 Broker,並使用三個專屬主題:`xxx/subscribe`(接收任意 MQTT client 的使用者指令)、`xxx/publish`(發送文字回覆)、`xxx/publishimage`(發送拍攝的 JPEG 影格)。設計重點包括:以平台前綴加上隨機十六進位後綴產生的 client ID,避免多裝置共用同一 Broker 時的連線衝突;`wifiClient.setNonBlockingMode()` 確保 RTOS 排程器在 Broker I/O 期間不會被卡住;`reconnect()` 以 5 秒重試間隔進行迴圈重連,並在每次成功重連後自動重新訂閱指令主題;將 JPEG 資料發布至獨立的 `publishimage` 主題,讓二進位影像負載與文字回覆流量乾淨分離,便於 Broker 端篩選;標準 MQTT 協定使韌體可與任何 Broker(Mosquitto、HiveMQ、雲端 Broker)搭配使用而無需修改程式碼,只需更新 `env.json`。
 
-**架構共通性**:儘管傳輸層不同,兩個版本對 `geminiChatRequest()`、`geminiSearchRequest()`、`geminiVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、所有工具處理函式與持久化層的實作完全相同。通訊傳輸是唯一的架構差異,使兩個版本易於同步維護——而這種共通性如今也延伸至兩個受支援的硬體平台之間。
+**架構共通性**:儘管傳輸層不同,兩個版本對 `llmChatRequest()`、`llmSearchRequest()`、`llmVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、所有工具處理函式與持久化層的實作完全相同。通訊傳輸是唯一的架構差異,使兩個版本易於同步維護——而這種共通性如今也延伸至兩個受支援的硬體平台之間。
 
 ---
 
@@ -1104,11 +1141,11 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 | `GET /schedule` | 提供 `index_schedule.html`(排程管理介面) |
 | `GET /getScheduleTasks` | 回傳原始 `schedule.json` 內容 |
 | `GET /updateScheduleTasks?{json}` | 以新任務陣列覆寫 `schedule.json` |
-| `GET /chat` | 提供 `index_chat.html`(Gemini Web 聊天介面) |
-| `GET /mqtt` | 提供 `index_mqtt_chat.html`(Gemini Web 聊天介面) |
+| `GET /chat` | 提供 `index_chat.html`(LLM Web 聊天介面) |
+| `GET /mqtt` | 提供 `index_mqtt_chat.html`(LLM Web 聊天介面) |
 | `GET /message?{text}` | 處理聊天訊息並回傳 AI 回覆 |
 
-`/updateConfig` 端點會在寫入儲存裝置前驗證傳入的內容是否為完整 JSON 物件(`startsWith("{") && endsWith("}")`),避免儲存到部分或損毀的設定。設定頁面也會顯示目前選用的 `gemini_model` 與 `schedule_timeout`,讓使用者可直接在瀏覽器中檢視與變更,無需修改原始碼。
+`/updateConfig` 端點會在寫入儲存裝置前驗證傳入的內容是否為完整 JSON 物件(`startsWith("{") && endsWith("}")`),避免儲存到部分或損毀的設定。設定頁面也會顯示目前選用的 `llm_type`、`llm_model` 與 `schedule_timeout`,讓使用者可直接在瀏覽器中檢視與變更,無需修改原始碼。
 
 另有一個在 **port 82** 上運作的伺服器,直接從相機串流即時 MJPEG 影像。
 
@@ -1124,7 +1161,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 
 `handleAgentResponse()` 在將任何自然語言回應路由給使用者之前,會進行系統性的文字正規化處理。對 Telegram 輸出而言,HTML 特殊字元(`&`、`<`、`>`)會被轉義,避免注入 Telegram 的 HTML 解析模式。對 Web 聊天輸出而言,Markdown 格式符號(`**`、`__`、`###`、` ``` `、反引號、`---`)會被移除,`* ` 清單標記則會轉換為 `•` 項目符號。
 
-這套雙路徑清理機制確保無論 Gemini 模型的輸出風格如何,Markdown 格式傾向都不會洩漏原始語法字元至 Telegram 聊天或 Web UI 中。
+這套雙路徑清理機制確保無論目前設定的是 Gemini、OpenAI 或 Grok,也無論該模型的輸出風格如何,Markdown 格式傾向都不會洩漏原始語法字元至 Telegram 聊天或 Web UI 中。
 
 ---
 
@@ -1132,7 +1169,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 
 為了從單一邊緣裝置進化為協作式的**多 Agent 生態系統**,fuClaw 以原生自主通訊工具擴充其 Prompt 驅動工具路由機制:`/tcpSendMessage`、`/mqttSendMessage`、`/mqttSendImage`、`/telegramSendMessage`、`/telegramSendImage`,以及 `/lineSendMessage`。
 
-這些工具讓 Gemini 推理引擎不僅能操作本地 GPIO,更能自主決定何時將狀態遙測、文字告警或原始二進位資料,透過 P2P 網路、MQTT Broker、Telegram 與 Line 進行傳播。這些通道所需的目標位址(對端 MQTT 主題、TCP 對端端點、家庭管理員的 Telegram/Line/MQTT 通知目標)都存放在 `device.md` 中與 GPIO 腳位對應並列的專屬保留區塊裡——只有在實際部署需要多 Agent 協作或多通道通知時才會填入內容,單裝置情境下預設留空。
+這些工具讓所設定的 LLM 推理引擎不僅能操作本地 GPIO,更能自主決定何時將狀態遙測、文字告警或原始二進位資料,透過 P2P 網路、MQTT Broker、Telegram 與 Line 進行傳播。這些通道所需的目標位址(對端 MQTT 主題、TCP 對端端點、家庭管理員的 Telegram/Line/MQTT 通知目標)都存放在 `device.md` 中與 GPIO 腳位對應並列的專屬保留區塊裡——只有在實際部署需要多 Agent 協作或多通道通知時才會填入內容,單裝置情境下預設留空。
 
 **擴充的工具合約**:
 
@@ -1147,7 +1184,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 
 **架構設計與優化**:
 
-1. **去中心化多 Agent 協作(`/tcpSendMessage`)**:當 Gemini 引擎評估本地感測器異常(例如 DHT11 溫度超過閾值)並判斷需要遠端實體區域共同介入時,便會呼叫 `/tcpSendMessage`,繞過集中式伺服器邏輯,讓邊緣 Agent 在應用層直接協商動作,並將操作情境保留於 `memory.md` 中。
+1. **去中心化多 Agent 協作(`/tcpSendMessage`)**:當所設定的 LLM 引擎評估本地感測器異常(例如 DHT11 溫度超過閾值)並判斷需要遠端實體區域共同介入時,便會呼叫 `/tcpSendMessage`,繞過集中式伺服器邏輯,讓邊緣 Agent 在應用層直接協商動作,並將操作情境保留於 `memory.md` 中。
 2. **非同步 IoT 發布/訂閱拓樸(`/mqttSendMessage`)**:不同於標準 Telegram 的同步請求-回應迴圈,`/mqttSendMessage` 能進行次秒級的遙測廣播,訊息會直接送往 `env.json` 設定的主題,與工業 IoT 平台、Home Assistant、Node-RED 或自訂的 ESP32/Ameba 子節點開箱即用地整合。
 3. **影格重用與記憶體保護(`/mqttSendImage`、`/telegramSendImage`)**:在高度受限的 FreeRTOS 環境中,以 MQTT 或 HTTPS 傳輸數十 KB 等級的 JPEG 串流存在嚴重的 stack overflow 風險,故採取:**影格快取保留**——延續 `/still` 與 `/vision` 的行為規則,設定 `"frames": false` 可強制工具重用先前 Vision 任務鎖定的既有 JPEG 緩衝區,省去重複的相機感測讀取週期,節省大量 CPU 時脈;**Heap 配置安全**——執行區塊在 `task_getMqttMessage` 緊湊的 stack(配置 32 KB)之外動態配置記憶體(`malloc`/`free`),確保網路 socket 與 SSL 交握過程不會與核心 runtime 爭奪記憶體。
 4. **跨通道通知備援(`/telegramSendMessage`、`/lineSendMessage`)**:由於這兩項工具可在任何推理情境下被觸發——排程任務、防盜偵測或互動聊天——Agent 可同時將同一則告警分發至 Telegram 與 Line,讓部署環境內建通知備援路徑,無需額外的外部自動化伺服器。
@@ -1158,7 +1195,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 
 fuClaw 的 Prompt 驅動核心從一開始就以跨傳輸層、跨硬體為設計目標,如今程式碼庫已證明這一點——除了原本的 **Realtek AmebaPro2(RTL8735B)** 系列開發板之外,還新增了第二個完整可運作的硬體移植版本:**ESP32-S3-WROOM-CAM** 開發板。
 
-**完全不變的部分**:在兩個平台之間,整個推理與協調層完全相同:`geminiChatRequest()`、`geminiSearchRequest()`、`geminiVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、JSON 工具合約,以及 `device.md` / `skill.md` / `soul.md` 的解析邏輯與排程引擎。為其中一個平台撰寫的 `device.md` 或 `skill.md`,只要腳位編號符合目標板確認過的 GPIO 集合,即可不經修改直接在另一平台使用。
+**完全不變的部分**:在兩個平台之間,整個推理與協調層完全相同:`llmChatRequest()`、`llmSearchRequest()`、`llmVisionRequest()`、`handleAgentResponse()`、`executeTool()`、`evaluateWorkflowContinuation()`、JSON 工具合約,以及 `device.md` / `skill.md` / `soul.md` 的解析邏輯與排程引擎。為其中一個平台撰寫的 `device.md` 或 `skill.md`,只要腳位編號符合目標板確認過的 GPIO 集合,即可不經修改直接在另一平台使用。
 
 **平台邊界上的差異**:
 
@@ -1176,11 +1213,11 @@ fuClaw 的 Prompt 驅動核心從一開始就以跨傳輸層、跨硬體為設�
 
 ---
 
-## 16. 可設定模型與排程容錯時間
+## 16. 可設定 LLM 供應商、模型與排程容錯時間
 
-`env.json` 兩項小幅新增,在無需重新編譯韌體的前提下,顯著提升了實際部署的彈性。
+`env.json` 三項欄位,在無需重新編譯韌體的前提下,顯著提升了實際部署的彈性。
 
-**可在執行期選擇的 Gemini 模型**:`gemini_model` 現在會從 `env.json` 讀入執行期的 `geminiModel` 字串,並直接代入每一次 `generateContent` 端點呼叫。這表示從某一代 Gemini 模型升級至下一代(例如改用較新的 flash 等級模型),或在發生退化時回退舊版,只是透過 `/updateConfig` 推送的一項設定變更,而非重新燒錄韌體。同一份韌體二進位檔也能依成本或延遲需求,讓不同裝置在艦隊部署時刻意對應不同的模型等級。
+**可在執行期選擇的 LLM 供應商與模型**:`llm_type`(`gemini` / `openai` / `grok`)、`llm_model` 與 `llm_key` 會從 `env.json` 讀入執行期的 `llmType`、`llmModel`、`llmKey` 字串,並直接代入 `llmChatRequest()`、`llmSearchRequest()`、`llmVisionRequest()` 與 `sendFileToLlm()` 所組裝的每一次請求中。這表示無論是整個切換雲端供應商(例如從 Gemini 改為 OpenAI 或 Grok),或是在同一供應商內從某一代模型升級至下一代(例如改用較新的 flash 等級或 GPT 等級模型),或在發生退化時回退舊版,都只是透過 `/updateConfig` 推送的一項設定變更,而非重新燒錄韌體。同一份韌體二進位檔也能依成本、延遲或能力需求,讓不同裝置在艦隊部署時刻意對應不同的供應商或模型等級。
 
 **錯過排程的容錯時間窗**:`schedule_timeout` 定義 `task_time_scheduling` 迴圈在排程任務目標時間之後,仍將其視為可觸發的容許分鐘數。由於排程器每分鐘才評估一次,且依賴正確同步的 RTC,若某任務的觸發時間已超過 `schedule_timeout` 分鐘,該任務在本次週期會被視為錯過而非延遲執行——例如可避免「18:00 關窗」的自動化在 RTC 暫時失準或裝置重開機後,於數小時後才延遲觸發。將 `schedule_timeout` 設為 `0` 則會停用此容錯檢查,使排程器永遠嘗試執行任何時間已過的任務。
 
@@ -1190,13 +1227,13 @@ fuClaw 的 Prompt 驅動核心從一開始就以跨傳輸層、跨硬體為設�
 
 **Token 用量與 System Prompt 成本**
 
-每一次 `geminiChatRequest()` 與 `geminiSearchRequest()` 呼叫,都會送出完整的 `systemContentTools` prompt——其中包含角色定義、所有已確認的裝置對應、硬體安全規則、技能工作流程腳本與完整的工具路由 schema——再加上開機以來累積的完整對話歷史。在記憶體充裕但 API 預算有限的裝置上,這會帶來累積性的後果。
+每一次 `llmChatRequest()` 與 `llmSearchRequest()` 呼叫,都會送出完整的 `systemContentTools` prompt——其中包含角色定義、所有已確認的裝置對應、硬體安全規則、技能工作流程腳本與完整的工具路由 schema——再加上開機以來累積的完整對話歷史。在記憶體充裕但 API 預算有限的裝置上,這會帶來累積性的後果。
 
 - **單次呼叫開銷**:`systemContentTools` prompt 本身在計入使用者訊息或對話歷史之前,即可能超過數千 token。對於簡單的問候或事實性問題,這樣的開銷純屬浪費——不會觸發任何工具、不會碰觸任何裝置,但完整的硬體規則集仍會在每一輪對話中傳輸。
 - **歷史持續成長**:`historicalMessages` 採只增不減的方式累積。每次工具執行都會將其 JSON 結果寫回對話中。一次涉及多項硬體動作、一次 Vision 分析與一次排程任務評估的會話,可能在單一開機週期內累積數千 token 的歷史。目前沒有滑動視窗或摘要機制——每次後續呼叫都會原封不動送出整段歷史。
-- **自主工作流程下的成本放大**:`evaluateWorkflowContinuation()` 在每次工具執行後會觸發額外的 Gemini 呼叫以評估工作流程是否完成。在多步驟工作流程中,單一使用者請求可能導致四到六次 API 往返,每一次都帶著完整的 system prompt 與持續增長的歷史。單一使用者訊息的 token 帳單,因此可能是樸素估算的五到十倍。
+- **自主工作流程下的成本放大**:`evaluateWorkflowContinuation()` 在每次工具執行後會觸發額外的 LLM 呼叫以評估工作流程是否完成。在多步驟工作流程中,單一使用者請求可能導致四到六次 API 往返,每一次都帶著完整的 system prompt 與持續增長的歷史。單一使用者訊息的 token 帳單,因此可能是樸素估算的五到十倍。
 - **沒有依複雜度分級的 Prompt 路由**:程式碼庫中存在三組編譯好的 system prompt(`systemContent`、`systemContentNoTools`、`systemContentTools`),但主要訊息處理函式目前一律選用 `systemContentTools`,無論使用者輸入是否與硬體相關。一次僅使用角色 prompt 加上最近幾筆對話歷史的輕量預先分類呼叫,理論上可將單純的對話輪次導向 `systemContent`,避免在大多數互動中送出完整工具 schema——此優化在架構上相當直接,但目前尚未實作。
-- **模型選擇仍為手動,而非自適應**:雖然 `gemini_model` 現已可設定,韌體尚未依請求複雜度自動選擇較輕或較重的模型(例如將簡單聊天導向較小模型,而 Vision/Search 工作流程則導向能力較強的模型)。同一台裝置上的所有請求目前一律使用相同設定的模型,無論任務權重為何。
+- **模型選擇仍為手動,而非自適應**:雖然 `llm_type` 與 `llm_model` 現已可設定,韌體尚未依請求複雜度自動選擇不同供應商或較輕、較重的模型(例如將簡單聊天導向較小模型,而 Vision/Search 工作流程則導向能力較強的模型)。同一台裝置上的所有請求目前一律使用相同設定的模型,無論任務權重為何。
 
 ---
 
@@ -1210,7 +1247,7 @@ fuClaw 清楚證明了一件事:完整的 AI Agent 並不需要雲端伺服器�
 
 **fuClaw 是一份可運作的參考實作,而非已針對生產環境優化的產品**,其設計目的在於展示資源受限嵌入式硬體上架構上的可能性,並提供一個完整、可運行的起點,而非一張空白頁。四種變體範例程式碼(兩種平台 × 兩種傳輸方式)涵蓋了完整的 Agent Loop,若要套用至新情境,只需修改 `soul.md` 與 `device.md`,核心架構無需重新設計。
 
-話雖如此,在成本敏感或高頻率的環境中部署 fuClaw,需要仔細考量第 17 節所描述的 token 經濟學。每一次互動目前都會將完整的 system prompt 與完整的對話歷史送至 Gemini API。對於偶爾的個人使用或低流量原型而言,此成本可忽略不計;但對於每日處理數十次互動、持續運行數月的裝置,或任何已耗盡 Gemini API 免費額度的部署情境而言,累積的 token 支出在正式上線前值得審慎評估。
+話雖如此,在成本敏感或高頻率的環境中部署 fuClaw,需要仔細考量第 17 節所描述的 token 經濟學。每一次互動目前都會將完整的 system prompt 與完整的對話歷史送至目前設定的 LLM API(Gemini、OpenAI 或 Grok)。對於偶爾的個人使用或低流量原型而言,此成本可忽略不計;但對於每日處理數十次互動、持續運行數月的裝置,或任何已耗盡所設定供應商免費額度的部署情境而言,累積的 token 支出在正式上線前值得審慎評估。
 
 若您正評估以 fuClaw 作為更大型專案的基礎,建議將第 14 節與第 17 節視為擴展規模前的檢查清單。架構本身是穩健的,只需將成本結構與您的使用模式相互配對。
 
