@@ -5742,6 +5742,7 @@ void setup() {
 
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
+  Serial.println("Video stream: http://192.168.1.1:82"); 
   Serial.println("AP ssid : " + apSsid);
   Serial.println("AP password : " + apPassword);
   Serial.println();  
@@ -5828,7 +5829,8 @@ void setup() {
     }
 	
     Serial.println("STA mode"); 
-    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");       
+    Serial.println("fuClaw Manager: http://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("Video stream: http://" + Ip2String(WiFi.localIP()) + ":82");        
     Serial.println();
 
     historicalMessages += buildLlmMessage("user", "Current Device IP: " + Ip2String(WiFi.localIP()));
