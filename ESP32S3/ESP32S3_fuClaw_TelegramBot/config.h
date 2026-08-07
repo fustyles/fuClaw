@@ -41,6 +41,8 @@ String llmModel = "xxxxxx";    // [gemini] gemini-3-flash-preview ,[openai] gpt-
 int llmMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float llmTemperature = 1.0;
 
+int scheduleTimeout = 5;    // minutes
+
 String timeZone = "Asia/Taipei";
 
 String deviceName = "fuClaw";

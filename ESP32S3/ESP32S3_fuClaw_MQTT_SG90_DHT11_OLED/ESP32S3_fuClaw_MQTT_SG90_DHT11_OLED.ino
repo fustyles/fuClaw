@@ -225,7 +225,7 @@ String historicalMessages = "";
 
 // Schedule Tasks
 String scheduleTasks = "";
-int scheduleTimeout = 5;    // minutes
+
 String executedTodayTasks = "";
 int executedTodayDate = 0;
 
