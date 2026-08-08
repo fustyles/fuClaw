@@ -589,9 +589,6 @@ The MQTT client is configured with `wifiClient.setNonBlockingMode()` before init
 ### Watchdog-Aware Task Design (ESP32-S3-CAM)
 On the ESP32-S3-CAM build, the dual-core scheduler interacts with the ESP-IDF task watchdog (`esp_task_wdt.h`). Long-running blocking operations — large SSL transfers, camera capture, and JPEG encoding — are interleaved with explicit yields so the watchdog is fed even during heavier multimodal workloads.
 
-### Opt-In Background Tasks
-The `task_time_scheduling` task is **enabled** by default in `setup()`. Scheduled task execution is considered a core runtime capability — users who define schedules expect them to fire without additional configuration steps. Conversely, the `task_theft_detection` feature remains **disabled** by default via a comment block in `setup()`. Enabling autonomous vision-based intrusion detection is a significant behavioral change with direct hardware consequences; users should consciously opt into it rather than have it activate unexpectedly upon the initial flash, thereby serving as a paradigm for skill design.
-
 ---
 
 ## 9. Workflow State Tracking & Self-Evaluation
@@ -1082,8 +1079,6 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 **非阻塞 MQTT(MQTT 版本)**:MQTT client 在初始化前以 `wifiClient.setNonBlockingMode()` 設定,避免 TCP 堆疊在 I/O 期間阻塞 RTOS 排程器。`task_getMqttMessage` 配置較大的 stack(32768 bytes),以容納 MQTT 函式庫的內部處理與 JPEG 影像負載發布。
 
 **對 Watchdog 友善的任務設計(ESP32-S3-CAM)**:在 ESP32-S3-CAM 版本中,雙核心排程器需與 ESP-IDF 的 task watchdog(`esp_task_wdt.h`)互動。大型 SSL 傳輸、相機擷取與 JPEG 編碼等長時間阻塞操作之間,會穿插明確的 yield,確保即使在較重的多模態工作負載下 watchdog 仍持續被餵食。
-
-**選擇性啟用的背景任務**:`task_time_scheduling` 在 `setup()` 中**預設啟用**——排程任務的執行被視為核心 runtime 能力,設定排程的使用者預期任務會自動觸發,無需額外設定步驟。相對地,`task_theft_detection` 功能透過 `setup()` 中的註解區塊**預設停用**。啟用自主視覺式入侵偵測是具有直接硬體後果的重大行為變更,使用者應主動選擇啟用,而非在初次燒錄後意外啟動,這也為日後的技能設計樹立了範例。
 
 ---
 
