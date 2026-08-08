@@ -268,8 +268,6 @@ bool heartbeat = false;
 // Every tag MUST be enclosed in angle brackets '<' and '>'.
 const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<HEARTBEAT>", "<THEFT_DETECTION>" };
 
-bool heartbeat = false;
-
 String mainPageHTML = "";
 bool mainPageStatus = false;
 
