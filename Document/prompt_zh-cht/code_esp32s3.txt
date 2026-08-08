@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-08-07 00:00:00
+Build Date: 2026-08-08 20:30:00
 ------------------------------------------------------------
 */
 
@@ -87,7 +87,7 @@ String deviceName = "fuClaw";  // 裝置名稱,會出現在系統提示詞與記
 
 // 事件來源標籤:用來標記一則訊息/工作是從哪個管道觸發的
 // <PAGE> = 網頁介面、<BOT> = Telegram、<MQTT> = MQTT、
-// <TIME_SCHEDULING> = 排程任務觸發、<THEFT_DETECTION> = 防盜偵測任務觸發
+// <TIME_SCHEDULING> = 排程任務觸發、<HEARTBEAT> = 定時檢查未完成的工作繼續執行、<THEFT_DETECTION> = 防盜偵測任務觸發
 const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
 
 String mainPageHTML = "";  // 快取的主設定頁 HTML 內容(從 SD 卡讀出後常駐記憶體,加速回應)
@@ -4160,7 +4160,7 @@ void task_theft_detection(void *param) {
     
     Serial.println("\n\nExecuting Skill: theft_detection\n\n");
 
-    String workId = String(taskTags[4]) + " " + getRtcTimeString();  // taskTags[4] = "<THEFT_DETECTION>"，標記此次事件來源
+    String workId = String(taskTags[5]) + " " + getRtcTimeString();
     
     evaluateWorkflowContinuation(
 		workId, 
@@ -4499,6 +4499,93 @@ void task_time_scheduling(void *param) {
 }
 
 // ============================================================
+// 【FreeRTOS Task】心跳巡檢引擎
+// 用途：每 86400 秒（24 小時）執行一次「未完成任務」巡檢，
+// 是整個系統用來提醒使用者「有任務卡住沒完成」的背景機制。
+//
+// 執行流程：
+//   1. 長時間延遲（24 小時）拆成 1 秒為單位、共 86400 次的迴圈執行，
+//      目的是讓 watchdog 能定期被重置，而不是一次性睡滿 24 小時才餵狗，
+//      避免因單次延遲過長而被系統判定為卡死重啟
+//   2. 延遲結束後，先確認 heartbeat 開關是否開啟（使用者/系統可關閉此巡檢功能）
+//   3. 若開啟，組裝一個 workId（標記本次事件來源為 <HEARTBEAT>，並附上目前 RTC 時間）
+//   4. 呼叫 LLM，請它依照嚴格規則從歷史紀錄中「篩選出尚未完成、且不是排程任務」的項目：
+//      - 明確排除所有排程/週期性任務（那些由 task_time_scheduling 那條獨立機制負責，
+//        避免兩邊職責重疊、重複回報同一件事）
+//      - 只挑出時間落在「已過 1~2 天」區間內的未完成任務（太新的先不用急著提醒，
+//        太舊的則假設已經處理過或使用者已經放棄，避免無限期一直提醒舊任務）
+//      - 判斷「未完成」的依據：歷史紀錄中只有使用者的請求、但沒有對應的工具呼叫或回覆；
+//        或是已經產生工具呼叫，但找不到執行結果的回報
+//   5. 若有符合條件的未完成任務，LLM 會整理成一份任務狀態報告（單一份、非多筆獨立訊息），
+//      內容包含原始任務描述、Work ID、起始時間、經過時間、目前已知狀態、失敗原因（如有）、
+//      尚未完成的部分，並以使用者當前使用的語言回覆
+//   6. 若沒有符合條件的未完成任務，LLM 會回傳固定字串 NONE，代表本輪無需回報
+//   7. 最後透過 replyUserMessage() 把結果（報告或 NONE）回覆給使用者
+//
+// 這個設計讓系統具備「主動巡檢卡住任務」的能力：即使使用者忘記追蹤，
+// 系統也會在任務卡住 1~2 天後自動彙整一次狀態，提醒使用者後續處理，
+// 同時透過明確排除排程任務，避免和 task_time_scheduling 的職責互相干擾。
+// ============================================================
+void task_heartbeat(void *param) {
+  (void)param;
+  
+  while (1) {
+    // 長延遲拆成 1 秒為單位、累積 86400 次（= 24 小時），
+    // 讓 watchdog 能週期性被重置，而不是每 5 分鐘才餵狗一次
+    for (int i = 0; i < 86400000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    if (heartbeat) {
+    
+        Serial.println("\n\nExecuting Heartbeat\n\n");
+        String workId = String(taskTags[4]) + " " + getRtcTimeString();  // taskTags[4] = "<HEARTBEAT>"，標記本次事件來源
+        
+        // 請 LLM 依照嚴格規則，從歷史紀錄中挑出「未完成、非排程」的任務並整理成報告
+        String response = llmChatRequest(
+            workId,
+            "Identify and summarize all incomplete tasks that meet the specified conditions, and report their status to the user."
+        
+            "【IMPORTANT: COMPLETELY EXCLUDE SCHEDULED TASKS】"
+            "Scheduled tasks are handled by an independent scheduling system."
+            "During this check, absolutely do not inspect, execute, continue, retry, or report any scheduled tasks."
+            "Ignore all scheduled, timed, recurring, or tasks managed by the scheduling system."
+        
+            "【TASK TIME DETERMINATION】"
+            "Each Work ID contains the task content and a timestamp."
+            "Use the timestamp associated with the Work ID in the historical records to determine how much time has elapsed since the task."
+            "Only process incomplete, non-scheduled tasks whose timestamp is more than 1 day but less than 2 days old."
+        
+            "【INCOMPLETE TASK DETERMINATION】"
+            "Only look for non-scheduled tasks that have not yet been confirmed as completed."
+            "Do not include completed tasks."
+            "Do not include tasks that have already been explicitly reported to the user as completed."
+            "If the historical records contain only a user request but no corresponding tool command generation or response message, or if a tool command was generated but there is no report of the tool command execution result, include the task in the report."
+        
+            "【REPORT CONTENT】"
+            "If there are any incomplete tasks that meet the conditions, summarize the following information for each task:"
+            "1. The original task description."
+            "2. The Work ID or other information that can be used to identify the task."
+            "3. The task start time or the most recent relevant timestamp."
+            "4. The elapsed time."
+            "5. The currently known execution status."
+            "6. If there are any failure or error records, briefly explain the reason for the failure."
+            "7. The parts of the task that are still incomplete."
+            "8. Reply in the user's current language."            
+        
+            "If multiple tasks meet the conditions, organize them into a single clear task status report. Do not create multiple independent tasks."
+        
+            "【NO QUALIFYING TASKS】"
+            "If there are no incomplete, non-scheduled tasks that meet the conditions, return exactly the following content: NONE."
+        );
+        // 將 LLM 整理出的報告（或 NONE）回覆給使用者
+        replyUserMessage(workId, response);
+    }
+  }
+}
+
+// ============================================================
 // 【核心函式】初始化 WiFi 連線
 // 用途：開機時執行的網路初始化流程。先以 WiFi.mode(WIFI_AP_STA) 同時啟用兩種模式：
 //   1. Station 模式（WiFi.begin）：嘗試以已儲存的帳密連上既有的 WiFi 網路，
@@ -4765,6 +4852,18 @@ void setup() {
   }  
   // 注意：task_theft_detection 在此並未透過 xTaskCreate 建立，
   // 代表防盜偵測背景任務目前不會隨開機自動啟動（僅函式定義存在，供未來啟用或其他觸發方式使用）
+
+  if (xTaskCreate(
+        task_heartbeat,
+        (const char *)"task_heartbeat",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_heartbeat failed");
+  }
 
   pinMode(LED_BUILTIN, OUTPUT);  // 初始化板載 LED 腳位為輸出模式，用於後續狀態指示
 
