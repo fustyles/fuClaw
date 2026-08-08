@@ -16,7 +16,7 @@ Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 ESP32-S3-WROOM board (ESP32-S3-WROOM-1-N16R8)
 
-Build Date: 2026-08-07 00:00:00
+Build Date: 2026-08-08 20:30:00
 
 ------------------------------------------------------------
 Arduino IDE settings
@@ -255,9 +255,11 @@ String timeZone = "Asia/Taipei";
 
 String deviceName = "fuClaw";
 
+bool heartbeat = false;
+
 // Array of task-related tags used as stop markers when parsing text
 // Every tag MUST be enclosed in angle brackets '<' and '>'.
-const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<THEFT_DETECTION>" };
+const char* taskTags[] = { "<PAGE>", "<BOT>", "<MQTT>", "<TIME_SCHEDULING>", "<HEARTBEAT>", "<THEFT_DETECTION>" };
 
 String mainPageHTML = "";
 bool mainPageStatus = false;
@@ -4368,6 +4370,68 @@ void task_time_scheduling(void *param) {
   }
 }
 
+// Periodic system check: unfinished work
+void task_heartbeat(void *param) {
+  (void)param;
+  
+  while (1) {
+
+    // Long sleep broken into slices so the watchdog is reset
+    // periodically instead of once every 5 minutes.
+    for (int i = 0; i < 86400000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    if (heartbeat) {
+    
+        Serial.println("\n\nExecuting Heartbeat\n\n");
+
+        String workId = String(taskTags[4]) + " " + getRtcTimeString();
+        
+        String response = llmChatRequest(
+            workId,
+            "Identify and summarize all incomplete tasks that meet the specified conditions, and report their status to the user."
+        
+            "【IMPORTANT: COMPLETELY EXCLUDE SCHEDULED TASKS】"
+            "Scheduled tasks are handled by an independent scheduling system."
+            "During this check, absolutely do not inspect, execute, continue, retry, or report any scheduled tasks."
+            "Ignore all scheduled, timed, recurring, or tasks managed by the scheduling system."
+        
+            "【TASK TIME DETERMINATION】"
+            "Each Work ID contains the task content and a timestamp."
+            "Use the timestamp associated with the Work ID in the historical records to determine how much time has elapsed since the task."
+            "Only process incomplete, non-scheduled tasks whose timestamp is more than 1 day but less than 2 days old."
+        
+            "【INCOMPLETE TASK DETERMINATION】"
+            "Only look for non-scheduled tasks that have not yet been confirmed as completed."
+            "Do not include completed tasks."
+            "Do not include tasks that have already been explicitly reported to the user as completed."
+            "If the historical records contain only a user request but no corresponding tool command generation or response message, or if a tool command was generated but there is no report of the tool command execution result, include the task in the report."
+        
+            "【REPORT CONTENT】"
+            "If there are any incomplete tasks that meet the conditions, summarize the following information for each task:"
+            "1. The original task description."
+            "2. The Work ID or other information that can be used to identify the task."
+            "3. The task start time or the most recent relevant timestamp."
+            "4. The elapsed time."
+            "5. The currently known execution status."
+            "6. If there are any failure or error records, briefly explain the reason for the failure."
+            "7. The parts of the task that are still incomplete."
+            "8. Reply in the user's current language."            
+        
+            "If multiple tasks meet the conditions, organize them into a single clear task status report. Do not create multiple independent tasks."
+        
+            "【NO QUALIFYING TASKS】"
+            "If there are no incomplete, non-scheduled tasks that meet the conditions, return exactly the following content: NONE."
+        );
+
+        replyUserMessage(workId, response);
+    }
+  }
+}
+
 // Initialize WiFi
 void initWiFi() {
   WiFi.mode(WIFI_AP_STA);
@@ -4585,6 +4649,18 @@ void setup() {
 
     Serial.println("Create task_time_scheduling failed");
   }  
+
+  if (xTaskCreate(
+        task_heartbeat,
+        (const char *)"task_heartbeat",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_heartbeat failed");
+  }
 
   // Indicator LED  
   pinMode(LED_BUILTIN, OUTPUT);  

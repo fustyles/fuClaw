@@ -55,3 +55,5 @@ int scheduleTimeout = 5;    // minutes
 String timeZone = "Asia/Taipei";
 
 String deviceName = "fuClaw";
+
+bool heartbeat = false;
