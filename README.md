@@ -574,8 +574,9 @@ The multi-task design solves concrete concurrency and scheduling problems across
 | `task_getRequestStream` | 16384 bytes | HTTP server for web video streaming |
 | `task_getTelegramMessage` | 16384 bytes | Continuous Telegram long-polling for user input |
 | `task_getMqttMessage` | 32768 bytes | MQTT keep-alive, reconnect, and inbound message dispatch |
-| `task_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
 | `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min) |
+| `task_heartbeat` | 6144 bytes | Periodically reminds the user that there are `unfinished tasks` (every 24 hours) |
+| `task_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
 
 If these ran in the same thread, a scheduled task would block user input, and user interactions would disrupt the periodic schedule. Splitting them into independent FreeRTOS tasks allows all to run concurrently — the system simultaneously stays responsive to user messages and executes background monitoring and scheduling on their respective cadences.
 
@@ -1070,8 +1071,9 @@ GPIO 控制系統受到多層獨立安全機制保護,各司其職。
 | `task_getRequestStream` | 16384 bytes | 提供 Web 影像串流的 HTTP 伺服器 |
 | `task_getTelegramMessage` | 16384 bytes | 持續對 Telegram 進行長輪詢以接收使用者輸入 |
 | `task_getMqttMessage` | 32768 bytes | MQTT 保持連線、重新連線與收到訊息的派發 |
-| `task_theft_detection` | 6144 bytes | 週期性以視覺進行入侵偵測(每 5 分鐘) |
 | `task_time_scheduling` | 6144 bytes | 排程硬體動作評估(每 1 分鐘) |
+| `task_heartbeat` | 6144 bytes | 週期性提醒使用者「有未完成工作」(每 24 小時) |
+| `task_theft_detection` | 6144 bytes | 週期性以視覺進行入侵偵測(每 5 分鐘) |
 
 若這些任務在同一執行緒中運作,排程任務將阻塞使用者輸入,使用者互動也會干擾週期性排程。將其拆分為獨立的 FreeRTOS 任務,讓所有任務得以並行運作——系統能同時對使用者訊息保持回應,並依各自頻率執行背景監控與排程。
 
