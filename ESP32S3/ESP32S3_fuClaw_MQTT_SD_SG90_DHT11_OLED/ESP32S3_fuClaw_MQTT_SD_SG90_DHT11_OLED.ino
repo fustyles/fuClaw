@@ -4636,7 +4636,7 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskNotifier\n\n");
 
     String workId = String(taskTags[4]) + " " + getRtcTimeString();
     
