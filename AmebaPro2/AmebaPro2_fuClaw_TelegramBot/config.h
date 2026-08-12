@@ -25,8 +25,6 @@ String timeZone = "Asia/Taipei";
 
 String deviceName = "fuClaw";
 
-bool heartbeat = false;
-
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
