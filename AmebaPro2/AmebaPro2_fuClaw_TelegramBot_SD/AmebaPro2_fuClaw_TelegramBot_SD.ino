@@ -1726,27 +1726,37 @@ String escapeForJson(const String &src, bool gemini) {
   return out;
 }
 
-// Convert role/content pair into Gemini-compatible JSON message object
+// Convert role/content pair into a JSON message object compatible with the active LLM (Gemini / OpenAI / Grok)
 String buildLlmMessage(String role, String message, bool comma = true) {
-  String esc;
-  String jsonMessage;
+  
+  String jsonMessage = "";
+  if (comma)
+    jsonMessage = ", {\"role\": \"";
+  else
+    jsonMessage = "{\"role\": \"";
 
-  if (llmType == "gemini") {
-    esc = escapeForJson(message, true);
+  message.replace("\"", "\\\"");
+  message.replace("\\\\", "\\");    
+
+  if (llmType == "gemini") {  
+    jsonMessage += role;
+    jsonMessage += "\", \"parts\":[{ \"text\": \"";
+    jsonMessage += message;
+    jsonMessage += "\" }]}";
   } 
   else {
-    esc = escapeForJson(message, false);
-    role.replace("model", "system"); 
+    role.replace("model", "system");
+
+    message.replace("\r", "\\r");
+    message.replace("\n", "\\n");
+    message.replace("\t", "\\t");   
+
+    jsonMessage += role;
+    jsonMessage += "\", \"content\": \"";
+    jsonMessage += message;
+    jsonMessage += "\" }";
   }
-  
-  jsonMessage.reserve(esc.length() + role.length() + 48);
-  
-  jsonMessage  = comma ? ", {\"role\": \"" : "{\"role\": \"";
-  jsonMessage += role;
-  jsonMessage += "\", \"content\": \"";
-  jsonMessage += esc;
-  jsonMessage += "\" }";
-    
+
   return jsonMessage;
 }
 
