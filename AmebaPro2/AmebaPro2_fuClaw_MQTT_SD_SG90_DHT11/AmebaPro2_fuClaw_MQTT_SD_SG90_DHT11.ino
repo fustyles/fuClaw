@@ -5674,6 +5674,13 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
     Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
 
     String workId = String(taskTags[4]) + " " + getRtcTimeString();
+
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }  	  
     
     String response = llmChatRequest(
         workId,
