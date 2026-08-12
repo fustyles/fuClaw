@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-08-12 14:30:00
+Build Date: 2026-08-13 03:00:00
 ------------------------------------------------------------
 */
 
@@ -4537,9 +4537,16 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
     }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
-    Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskNotifier\n\n");
     
     String workId = String(taskTags[4]) + " " + getRtcTimeString();  // taskTags[4] = "<HEARTBEAT>"，標記本次事件來源
+    
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }      
     
     // 請 LLM 依照嚴格規則，從歷史紀錄中挑出「未完成、非排程」的任務並整理成報告
     String response = llmChatRequest(
@@ -4849,9 +4856,7 @@ void setup() {
 
     Serial.println("Create task_time_scheduling failed");
   }  
-  // 注意：task_theft_detection 在此並未透過 xTaskCreate 建立，
-  // 代表防盜偵測背景任務目前不會隨開機自動啟動（僅函式定義存在，供未來啟用或其他觸發方式使用）
-  
+
 /*
   if (xTaskCreate(
         task_heartbeat_incompleteTaskNotifier,
@@ -4863,6 +4868,20 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_heartbeat_incompleteTaskNotifier failed");
+  }
+*/
+
+/*
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
   }
 */
 
