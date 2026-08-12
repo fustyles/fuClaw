@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-08-12 14:30:00
+Build Date: 2026-08-13 03:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1825,32 +1825,33 @@ String escapeForJson(const String &src, bool gemini) {
 
 // Convert role/content pair into a JSON message object compatible with the active LLM (Gemini / OpenAI / Grok)
 String buildLlmMessage(String role, String message, bool comma = true) {
+  String esc;
+  String jsonMessage;
+  if (llmType == "gemini") {
+    esc = escapeForJson(message, true);
+  } 
+  else {
+    esc = escapeForJson(message, false);
+    role.replace("model", "system"); 
+  }
   
-  String jsonMessage = "";
   if (comma)
     jsonMessage = ", {\"role\": \"";
   else
     jsonMessage = "{\"role\": \"";
 
-  message.replace("\"", "\\\"");
-  message.replace("\\\\", "\\");    
-
   if (llmType == "gemini") {  
     jsonMessage += role;
     jsonMessage += "\", \"parts\":[{ \"text\": \"";
-    jsonMessage += message;
+    jsonMessage += esc;
     jsonMessage += "\" }]}";
   } 
   else {
     role.replace("model", "system");
 
-    message.replace("\r", "\\r");
-    message.replace("\n", "\\n");
-    message.replace("\t", "\\t");   
-
     jsonMessage += role;
     jsonMessage += "\", \"content\": \"";
-    jsonMessage += message;
+    jsonMessage += esc;
     jsonMessage += "\" }";
   }
 
@@ -2749,8 +2750,8 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
     } 
     else if (doc["error"]) {
       responseText = "[DEBUG] Gemini API Error: " + doc["error"]["message"].as<String>();
-	  Serial.println(responseText);
-	  responseText = "Gemini API Error";
+  	  Serial.println(responseText);
+  	  responseText = "Gemini API Error";
     } 
     else {
       responseText = "Unexpected response from Gemini.";
@@ -5681,7 +5682,7 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
-    Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskNotifier\n\n");
 
     String workId = String(taskTags[4]) + " " + getRtcTimeString();
 
@@ -5690,7 +5691,7 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
       executeTool(workId, "/syncrtc", JsonObject(), false);
       if (rtcYear == 0)
         continue;
-    }  	  
+    }    
     
     String response = llmChatRequest(
         workId,
@@ -5730,6 +5731,89 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
     );
 
     replyUserMessage(workId, response);
+
+  }
+}
+
+// Periodic system check: Continue unfinished work
+void task_heartbeat_incompleteTaskContinue(void *param) {
+  (void)param;
+  
+  while (1) {
+
+    // Long sleep broken into slices so the watchdog is reset
+    // periodically instead of once every 5 minutes.
+    for (int i = 0; i < 86400000 / 1000; i++) {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskContinue\n\n");
+
+    String workId = String(taskTags[4]) + " " + getRtcTimeString();
+
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }    
+    
+    String message = llmChatRequest(
+        workId,
+        "Identify all incomplete tasks that meet the specified conditions."
+        
+        "【IMPORTANT: COMPLETELY EXCLUDE SCHEDULED TASKS】"
+        "Scheduled tasks are handled by an independent scheduling system."
+        "During this check, absolutely do not inspect, execute, continue, retry, or report any scheduled tasks."
+        "Ignore all scheduled, timed, recurring, or tasks managed by the scheduling system."
+    
+        "【TASK TIME DETERMINATION】"
+        "Each Work ID contains the task content and a timestamp."
+        "Use the timestamp associated with the Work ID in the historical records to determine how much time has elapsed since the task."
+        "Only process incomplete, non-scheduled tasks whose timestamp is more than 1 hour but less than 2 hours old."
+    
+        "【INCOMPLETE TASK DETERMINATION】"
+        "Only look for non-scheduled tasks that have not yet been confirmed as completed."
+        "Do not include completed tasks."
+        "Do not include tasks that have already been explicitly reported to the user as completed."
+        "If the historical records contain only a user request but no corresponding tool command generation or response message, or if a tool command was generated but there is no report of the tool command execution result, include the task in the report."
+        
+        "【RETRY FAILURE EXCLUSION】"
+        "Even if a task is otherwise incomplete and within the time window, EXCLUDE it from the result if the historical records show two or more failed attempts for that same task "
+        "(i.e., two or more tool execution results, error responses, or retry attempts indicating failure for the same task). "
+        "Such tasks are considered abandoned and must NOT be included in the workIds array."        
+    
+        "【REPORT CONTENT】"
+        "If there are any incomplete tasks that meet the conditions, output ONLY a valid JSON object with a single field \"workIds\" containing an array of the original Work ID strings, for example: {\"workIds\": [\"workId_1\", \"workId_2\"]}. "
+        "Each element MUST be the exact original Work ID string taken verbatim from the historical records. "
+        "Do NOT include explanations, markdown, code fences, or any text other than the JSON object."
+
+        "【NO QUALIFYING TASKS】"
+        "If there are no incomplete, non-scheduled tasks that meet the conditions, return exactly the following content: {\"workIds\": []}"
+    );
+    
+    if (message.startsWith("{") && message.endsWith("}")) {
+        
+        DynamicJsonDocument doc(4096);
+        DeserializationError error = deserializeJson(doc, message);
+
+        if (error) {
+          Serial.println("[DEBUG] JSON parse failed\n" + message);
+          continue;
+        }
+    
+        JsonArray workIds = doc["workIds"].as<JsonArray>();
+
+        for (JsonVariant v : workIds) {
+            String workId = v.as<String>();
+            evaluateWorkflowContinuation(workId, true);
+        }  
+    }        
+    else {
+        Serial.println("[DEBUG] JSON parse failed\n" + message);
+    }
 
   }
 }
@@ -5945,7 +6029,21 @@ void setup() {
 
     Serial.println("Create task_time_scheduling failed");
   } 
-  
+
+/*  
+  if (xTaskCreate(
+        task_heartbeat_incompleteTaskContinue,
+        (const char *)"task_heartbeat_incompleteTaskContinue",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_heartbeat_incompleteTaskContinue failed");
+  }   
+*/
+
 /*
   if (xTaskCreate(
         task_heartbeat_incompleteTaskNotifier,

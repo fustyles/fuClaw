@@ -13,7 +13,7 @@ Version
 ------------------------------------------------------------
 Prompt-Orchestrated Embedded Agent Edition
 
-Build Date: 2026-08-12 14:30:00
+Build Date: 2026-08-13 03:00:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -354,32 +354,33 @@ String escapeForJson(const String &src, bool gemini) {
 
 // Convert role/content pair into a JSON message object compatible with the active LLM (Gemini / OpenAI / Grok)
 String buildLlmMessage(String role, String message, bool comma = true) {
+  String esc;
+  String jsonMessage;
+  if (llmType == "gemini") {
+    esc = escapeForJson(message, true);
+  } 
+  else {
+    esc = escapeForJson(message, false);
+    role.replace("model", "system"); 
+  }
   
-  String jsonMessage = "";
   if (comma)
     jsonMessage = ", {\"role\": \"";
   else
     jsonMessage = "{\"role\": \"";
 
-  message.replace("\"", "\\\"");
-  message.replace("\\\\", "\\");    
-
   if (llmType == "gemini") {  
     jsonMessage += role;
     jsonMessage += "\", \"parts\":[{ \"text\": \"";
-    jsonMessage += message;
+    jsonMessage += esc;
     jsonMessage += "\" }]}";
   } 
   else {
     role.replace("model", "system");
 
-    message.replace("\r", "\\r");
-    message.replace("\n", "\\n");
-    message.replace("\t", "\\t");   
-
     jsonMessage += role;
     jsonMessage += "\", \"content\": \"";
-    jsonMessage += message;
+    jsonMessage += esc;
     jsonMessage += "\" }";
   }
 
