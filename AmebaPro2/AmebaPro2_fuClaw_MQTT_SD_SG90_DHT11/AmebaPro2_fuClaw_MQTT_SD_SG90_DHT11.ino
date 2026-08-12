@@ -5943,6 +5943,20 @@ void setup() {
   }   
 */
 
+/*
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
+  }
+*/
+
   Serial.println("AP mode"); 
   Serial.println("fuClaw Manager: http://192.168.1.1:81");
   Serial.println("Video stream: http://192.168.1.1:82"); 
