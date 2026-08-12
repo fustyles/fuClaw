@@ -5890,6 +5890,20 @@ void setup() {
   }
 */
 
+/*
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
+  }
+*/
+
   // Indicator LED  
   pinMode(LED_BUILTIN, OUTPUT);  
 
