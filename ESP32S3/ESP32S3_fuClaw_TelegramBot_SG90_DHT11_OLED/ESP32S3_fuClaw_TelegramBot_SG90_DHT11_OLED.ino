@@ -3672,9 +3672,16 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskNotifier\n\n");
 
     String workId = String(taskTags[4]) + " " + getRtcTimeString();
+    
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      executeTool(workId, "/syncrtc", JsonObject(), false);
+      if (rtcYear == 0)
+        continue;
+    }      
     
     String response = llmChatRequest(
         workId,
@@ -3899,6 +3906,20 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_heartbeat_incompleteTaskNotifier failed");
+  }
+*/
+
+/*
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
   }
 */
 

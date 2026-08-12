@@ -4879,7 +4879,7 @@ void task_heartbeat_incompleteTaskNotifier(void *param) {
 
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    Serial.println("\n\nExecuting heartbeat_incompleteTaskNotifier\n\n");
+    Serial.println("\n\nExecuting task_heartbeat_incompleteTaskNotifier\n\n");
 
     String workId = String(taskTags[4]) + " " + getRtcTimeString();
     
@@ -5143,6 +5143,20 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_heartbeat_incompleteTaskNotifier failed");
+  }
+*/
+
+/*
+  if (xTaskCreate(
+        task_theft_detection,
+        (const char *)"task_theft_detection",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_theft_detection failed");
   }
 */
 
