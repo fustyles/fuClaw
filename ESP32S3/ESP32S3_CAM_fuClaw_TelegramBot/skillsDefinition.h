@@ -65,13 +65,6 @@ Step 2: If person detected → trigger alert sequence
       "pinmode": "digitalwrite",
       "value": 0
     }
-  },
-  {
-    "type": "tool_call",
-    "method": "/delay",
-    "params": {
-      "milliseconds": 500
-    }
   }
 ]
 
