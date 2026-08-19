@@ -746,7 +746,7 @@ These tools empower the configured LLM reasoning engine to not only manipulate l
 | `/mqttSendImage` | Captures and flushes the current camera video snapshot to a specific MQTT topic. | Monitored by FreeRTOS stack guards; large image packets use automated dynamic chunk buffers. |
 | `/telegramSendMessage` | Pushes a text alert directly to the configured Telegram chat, independent of the inbound polling loop. | Reuses the bot token / chatID from `env.json`; does not require an inbound user message to trigger. |
 | `/telegramSendImage` | Pushes the current camera frame to Telegram as a native photo message. | Same frame-cache rules as `/still` apply; large transfers are bounded by available heap. |
-| `/lineSendMessage` | Publishes a text notification to a configured Line Bot / Line Notify endpoint. | Requires a valid Line channel token; returns Error JSON on delivery failure. |
+| `/lineSendMessage` | Publishes a text notification to a configured Line Bot endpoint. | Requires a valid Line channel token; returns Error JSON on delivery failure. |
 
 ### Architectural Design & Optimization
 
@@ -1177,7 +1177,7 @@ fuClaw 提供兩種通訊變體,分別針對不同部署情境最佳化,兩者�
 | `/mqttSendImage` | 擷取並推送目前相機快照至指定 MQTT 主題 | 受 FreeRTOS stack 防護監控;大型影像封包使用自動動態分塊緩衝區 |
 | `/telegramSendMessage` | 直接將文字告警推送至設定的 Telegram 聊天,獨立於輪詢迴圈之外 | 重複使用 `env.json` 中的 bot token / chatID;不需要先有使用者訊息即可觸發 |
 | `/telegramSendImage` | 將目前相機影格以原生照片訊息推送至 Telegram | 與 `/still` 相同的影格快取規則;傳輸大小受可用 heap 限制 |
-| `/lineSendMessage` | 將文字通知發布至設定的 Line Bot / Line Notify 端點 | 須提供有效的 Line 頻道 token;傳送失敗時回傳錯誤 JSON |
+| `/lineSendMessage` | 將文字通知發布至設定的 Line Bot 端點 | 須提供有效的 Line 頻道 token;傳送失敗時回傳錯誤 JSON |
 
 **架構設計與優化**:
 
